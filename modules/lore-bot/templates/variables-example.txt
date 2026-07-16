@@ -1,0 +1,19 @@
+# eddic lore bot config — copy to variables.txt (gitignored) and fill.
+# Real environment variables override this file.
+DISCORD_TOKEN=
+ANTHROPIC_API_KEY=
+# local mode (default): read the projection from disk
+CORPUS_DIR=dist/player
+# cloud mode: read the wiki repo tarball instead (unset CORPUS vars above)
+#GITHUB_REPO=owner/campaign-repo
+#CORPUS_SUBDIR=dist/player
+#GITHUB_TOKEN=
+#GITHUB_BRANCH=master
+MODEL=claude-sonnet-5
+MAX_TOKENS=800
+REFRESH_MINUTES=5
+COOLDOWN_SECONDS=15
+#AUTO_CHANNEL_IDS=
+#OWNER_ID=
+#PLAYERS_FILE=
+#SITE_URL=

@@ -1,0 +1,25 @@
+name: lore-bot
+version: 0.1.0
+summary: >
+  The Discord lore-keeper: answers the table's questions from the
+  player projection (corpus in a prompt-cached system block),
+  self-refreshing by polling its source per the freshness contract.
+  Players get "what the hell is a Celeste" answered where they
+  already are.
+touches:
+  - bot/
+depends:
+  - cli
+  - wiki
+cost_posture:
+  free: >
+    Run locally (any always-on machine) for nothing beyond LLM API
+    usage, which prompt caching keeps small. The bot answers from an
+    API key, not a subscription.
+  paid: >
+    A worker host (e.g. Railway, ~$5/mo) if no always-on machine
+    exists; API usage scales with table chattiness.
+  heuristic: >
+    Local while a machine is reliably on during play sessions; a
+    host when the table expects answers at 2am or the DM's laptop
+    sleeps.
