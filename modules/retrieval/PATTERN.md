@@ -27,6 +27,10 @@ auth in infrastructure; no agent ever decides what a tier may see.
    `<name>.workers.dev` subdomain). Run `eddic.py stage` — it writes
    the two corpora beside worker.js, refusing if the projection is
    missing (the player tier only ever comes from `eddic project`).
+   Add `worker/corpus_*.mjs` to the campaign's `.gitignore`: the
+   corpora are derived artifacts (regenerate with `eddic stage`), and
+   corpus_dm.mjs concentrates every DM secret into one file — it
+   belongs in the deployed Worker, not in history.
 
 3. Generate two tokens and set them as secrets (never in files, never
    in the repo):
