@@ -17,6 +17,7 @@ REPORTER = HERE.parent / "scripts" / "eddic_lint.py"
 EXPECTED = Counter({
     "broken-link": 1,        # sunken-city -> ghost-quarter.md
     "broken-anchor": 1,      # sunken-city -> warden.md#no-such-heading
+    "absolute-link": 1,      # sunken-city -> /maps/atlas.html
     "missing-h1": 1,         # lost-shrine
     "firewall-breach": 2,    # index and warden link the DM-only vault
     "log-malformed": 2,      # unknown type 'conjure'; freeform ## header

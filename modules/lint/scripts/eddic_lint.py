@@ -126,6 +126,12 @@ def lint(root, log_name):
         for line, target in page.links:
             if re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*:", target):
                 continue  # external scheme
+            if target.startswith("/"):
+                add("absolute-link", "error", rel,
+                    f"site-rooted link: {target} — resolves on no Eddic "
+                    "surface (projection, corpus, rendered mirror); use a "
+                    "page-relative path", line)
+                continue
             raw, _, frag = target.partition("#")
             if not raw:  # same-page anchor
                 if frag and slugify(frag) not in page.anchors:

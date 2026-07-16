@@ -34,6 +34,11 @@ script never edits anything; judgment about findings is your half.
      was renamed — repoint the link. If the target never existed,
      create a stub page (H1, any known facts, final line `STUB`)
      rather than deleting the link.
+   - `absolute-link` — a site-rooted path (`/maps/...`) resolving on
+     no Eddic surface. If the target is a static asset, migrate it
+     under `wiki/assets/` and rewrite the link page-relative (see the
+     wiki pattern's adoption steps); if it names a wiki page, make
+     the link relative.
    - `missing-h1` — add the title the filename and content imply.
    - `unreachable` / `orphan` — weave the page in: add it to the
      catalog/index and link it from at least one related page.

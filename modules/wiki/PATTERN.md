@@ -35,7 +35,17 @@ on — and the schema you (the agent) maintain across sessions.
    prose, `transcript` for session captures). Read the authorship
    rules in the stamped AGENTS.md — they bind you from now on.
 
-4. **Adoption only.** Walk the existing pages and mark visibility.
+4. **Adoption only.** If the campaign's old pipeline had a static
+   asset directory (maps, images, standalone HTML), migrate the
+   player-safe assets into `<wiki>/assets/` (DM-only assets under a
+   path containing `.dm`, which never projects) and rewrite the
+   pages' site-rooted links (`/maps/...`) to page-relative ones —
+   lint flags these as `absolute-link`; they resolve on no Eddic
+   surface. Check migrated HTML for internal absolute references
+   too. Site chrome (stylesheets, templates) stays behind: the
+   render module brings its own.
+
+5. **Adoption only.** Walk the existing pages and mark visibility.
    Fail closed: mark `visibility: player` only on pages whose entire
    content the table has seen in play; leave everything else
    unmarked (DM-only). Where a page mixes revealed and secret
@@ -43,7 +53,7 @@ on — and the schema you (the agent) maintain across sessions.
    name, `.dm.md` for the rest). This marking is judgment about
    spoilers — do it page by page with the owner, never in bulk.
 
-5. Project and check the loop:
+6. Project and check the loop:
 
        uv run <campaign>/.eddic/eddic.py lint
        uv run <campaign>/.eddic/eddic.py project
@@ -52,7 +62,7 @@ on — and the schema you (the agent) maintain across sessions.
    breaches by fixing pages (or splitting twins), never by weakening
    a marker without the owner's say.
 
-6. Log a `schema` entry (new campaign) or `ingest` entry (adoption)
+7. Log a `schema` entry (new campaign) or `ingest` entry (adoption)
    and commit.
 
 ## Decision points
@@ -66,7 +76,7 @@ on — and the schema you (the agent) maintain across sessions.
   `visibility: player`, wholly-secret pages get nothing. Do not
   pre-create empty twins.
 - **Adoption bulk-marking.** Default: no. Visibility marking on an
-  existing wiki is per-page judgment with the owner (step 4); the
+  existing wiki is per-page judgment with the owner (step 5); the
   only safe bulk operation is leaving pages unmarked (DM-only).
 
 ## Verify
