@@ -147,6 +147,20 @@ DM wiki, run lint (links, orphans, catalog, stubs, firewall), rebuild
 projections and sites, redeploy, and log — idempotent, safe to miss a
 run, safe to run twice.
 
+**Freshness is part of the derivation contract.** Every derived surface
+(published site, bot corpus, connector) must state how it tracks the
+master; "someone remembers to run the refresh command" is not a
+mechanism. The default shape is self-refresh: the surface observes its
+substrate (a cheap version check — e.g. the source repo's HEAD — on a
+poll) and rebuilds when it moves. This beats publisher-side chaining,
+which couples credentials across repos and misses every write path that
+bypasses the publisher, and beats webhook listeners, which add serving
+surface to things that otherwise need none. Manual refresh commands stay
+as escape hatches, never as the mechanism. (Lesson learned in the source
+stack: the lore bot loaded its corpus at process start — restart and
+reload were equivalent — but its deploys were disconnected from the
+wiki's, so every wiki publish left the bot stale until a human noticed.)
+
 ## The eddic CLI
 
 `eddic` is the contractual locus for deterministic workflows — the

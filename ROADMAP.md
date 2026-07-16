@@ -32,9 +32,11 @@ need them.
    Later: the `witness` write tool and inbox (bidirectionality).
 7. **lore-bot** — snorri absorbed and parameterized: corpus-in-cached-
    prompt Discord Q&A over the player projection, forum CLI, session
-   announce. Must close the stale-corpus gap observed in the source
-   stack (`notes/observation-wiki-publish-snorri-reload.md`); the
-   self-refreshing HEAD-SHA poll is the favored shape.
+   announce. Must satisfy DESIGN.md's freshness contract from day one:
+   the bot self-refreshes by watching the projection's version (HEAD
+   poll) rather than relying on deploy chaining, webhooks, or an
+   owner-gated reload command — the source stack's bot went stale on
+   every wiki publish for lack of exactly this.
 8. **transcriber** — local session transcription (whisper.cpp) from
    recorded audio; the free path that replaces paid transcript services.
    Likely the first binary-bearing module.
