@@ -1,0 +1,21 @@
+name: wiki
+version: 0.1.0
+summary: >
+  The campaign knowledge architecture: a DM-master wiki schema with
+  fail-closed page-level visibility, twin pages for progressive
+  reveal, authorship-marked sources, a typed operation log, and the
+  deterministic player projection (the `project` verb) that refuses
+  to ship a firewall breach.
+touches:
+  - AGENTS.md
+  - CLAUDE.md
+  - wiki/
+  - sources/
+  - .eddic/lib/project.py
+depends:
+  - cli
+  - lint
+cost_posture:
+  free: Entirely local and free (markdown files + stdlib projection).
+  paid: none
+  heuristic: n/a
