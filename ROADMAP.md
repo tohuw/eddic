@@ -48,9 +48,12 @@ need them.
     to miss, safe to double-run) with the preference chain: hosted
     agent routines → GitHub Actions → local cron-esque. Adapters stated
     as contracts, not how-tos (no egg-sucking).
-12. **orlog** — guidance for driving Ørlǫg's headless CLI (M5, being
-    implemented in the orlog project): reconciler skill, mutation
-    schema, `validate` as a story test suite. Blocked on M5 landing.
+12. **orlog** — guidance for driving Ørlǫg's headless CLI (M5, shipped
+    2026-07-16: `orlog apply/dump/query/fork/validate/schema`,
+    constraint-checked all-or-nothing writes, JSON Schema of the
+    Mutation union, zero build step on Node ≥ 24): the reconciler
+    skill (wiki facts → validated mutations on a fork), and `validate`
+    as the story's test suite. Unblocked.
 
 **Contributable thereafter:** VTT modules (Roll20, Foundry, …) by
 community PR under the contract.
