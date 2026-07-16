@@ -1,0 +1,18 @@
+name: transcriber
+version: 0.1.0
+summary: >
+  Local session transcription with whisper.cpp: single recordings or
+  per-speaker track exports (Craig-style) merged by timestamp into a
+  speaker-labeled sources/ transcript. The free path that replaces
+  paid transcript services — take the free audio, transcribe it
+  yourself.
+touches:
+  - sources/
+depends: []
+cost_posture:
+  free: >
+    Entirely local and free: whisper.cpp + an open model file. This
+    module exists specifically so nobody pays a recording bot for
+    transcripts it derived from audio it gives away.
+  paid: none
+  heuristic: n/a
