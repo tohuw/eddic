@@ -61,11 +61,11 @@ auth in infrastructure; no agent ever decides what a tier may see.
   just never sets TOKEN_PLAYER (unset token = tier off).
 - **Auth style.** Default: capability URL for phone connectors,
   header auth for desktop agents. Same tokens either way.
-- **Voice mode.** Before the DM relies on car-voice retrieval, spike
-  it: configure the connector, then actually ask a question in voice
-  mode. Connector availability in voice contexts varies by app
-  version; if it fails there, retrieval still works in the normal
-  app chat. Report what you find to the owner.
+- **Voice mode.** Default: spike before relying — configure the
+  connector, then actually ask a question in voice mode before the
+  DM depends on car-voice retrieval. Connector availability in voice
+  contexts varies by app version; if it fails there, retrieval still
+  works in normal app chat. Report what you find to the owner.
 
 ## Verify
 

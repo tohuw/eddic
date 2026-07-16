@@ -55,7 +55,9 @@ newer version against the manifest.
 
 ## Decision points
 
-- **Site name.** No default — ask; it is the campaign's public name.
+- **Site name.** Default: the campaign directory's name, titleized.
+  Worth asking when the user is present — it is the campaign's public
+  name — but never a blocker.
 - **Directory layout.** Default: `wiki/` for the DM master,
   `dist/player` for the projection, `dist/site` for rendered HTML,
   `log.md` inside the wiki. Deviate only for an existing campaign
