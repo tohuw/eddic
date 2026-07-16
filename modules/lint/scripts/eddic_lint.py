@@ -165,19 +165,22 @@ def lint(root, log_name):
         add("firewall-skipped", "info", ".",
             "no visibility frontmatter anywhere; firewall check skipped")
 
-    # Reachability from root index, and orphans.
-    index = "index.md"
-    if index in pages:
-        seen, stack = {index}, [index]
+    # Reachability and orphans. Roots are the catalogs: index.md and,
+    # where the campaign keeps a DM catalog, index.dm.md — the player
+    # catalog can never link DM pages (firewall), so DM pages are
+    # legitimately reachable only via the DM catalog.
+    roots = {r for r in ("index.md", "index.dm.md") if r in pages}
+    if roots:
+        seen, stack = set(roots), list(roots)
         while stack:
             seen.update(nxt := graph[stack.pop()] - seen)
             stack.extend(nxt)
         for rel in pages:
             if rel not in seen:
                 add("unreachable", "warning", rel,
-                    "not reachable by links from index.md")
+                    f"not reachable by links from {' or '.join(sorted(roots))}")
     for rel in pages:
-        if inbound[rel] == 0 and rel != index:
+        if inbound[rel] == 0 and rel not in roots:
             add("orphan", "warning", rel, "no inbound links from any page")
 
     # Operation log format.

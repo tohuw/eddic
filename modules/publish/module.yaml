@@ -1,0 +1,25 @@
+name: publish
+version: 0.1.0
+summary: >
+  Deploys the player site to Cloudflare Pages behind a safety
+  pipeline: strict lint, firewall projection, render, then wrangler.
+  Any stage failing refuses the deploy. Only the player site ever
+  deploys from here.
+touches:
+  - .eddic/lib/publish.py
+depends:
+  - cli
+  - lint
+  - wiki
+  - render
+cost_posture:
+  free: >
+    Cloudflare Pages free tier covers a campaign site comfortably
+    (unlimited static requests, 500 builds/mo not even used since
+    builds are local). wrangler via npm/npx is free.
+  paid: >
+    None required. A custom domain is the only optional cost (domain
+    registration).
+  heuristic: >
+    Stay on the free tier; revisit only if a campaign somehow needs
+    per-request logic on the site itself.

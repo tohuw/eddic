@@ -148,8 +148,12 @@ def main(argv):
               f"{', '.join(lib_verbs()) or 'none'})", file=sys.stderr)
         return 2
     env = dict(os.environ, EDDIC_CONFIG=str(CONFIG), EDDIC_ROOT=str(ROOT))
-    return subprocess.run([sys.executable, str(script)] + rest,
-                          env=env, shell=False).returncode
+    # Prefer uv so a verb's inline (PEP 723) dependencies resolve;
+    # stdlib-only verbs work either way.
+    import shutil
+    runner = (["uv", "run", str(script)] if shutil.which("uv")
+              else [sys.executable, str(script)])
+    return subprocess.run(runner + rest, env=env, shell=False).returncode
 
 
 if __name__ == "__main__":
