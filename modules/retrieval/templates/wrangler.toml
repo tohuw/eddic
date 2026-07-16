@@ -1,0 +1,8 @@
+# eddic retrieval worker — deploy with `wrangler deploy` from this dir.
+# Tokens are secrets, never in this file:
+#   wrangler secret put TOKEN_DM
+#   wrangler secret put TOKEN_PLAYER
+name = "{{WORKER_NAME}}"
+main = "worker.js"
+compatibility_date = "2026-07-01"
+workers_dev = true
