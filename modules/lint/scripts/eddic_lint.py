@@ -26,6 +26,7 @@ of the reporter/model-triage seam. It never edits anything.
 """
 
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -203,6 +204,13 @@ def main(argv):
     if "--log" in argv:
         log_name = argv[argv.index("--log") + 1]
         args = [a for a in args if a != log_name]
+    if not args and os.environ.get("EDDIC_CONFIG"):
+        # Running as a vendored eddic verb: take the wiki from config.
+        cfg_path = Path(os.environ["EDDIC_CONFIG"])
+        cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
+        args = [str(cfg_path.parent.parent / cfg.get("wiki_dir", "wiki"))]
+        if "--log" not in argv:
+            log_name = cfg.get("log", "log.md")
     if len(args) != 1:
         print(__doc__.strip(), file=sys.stderr)
         return 2
