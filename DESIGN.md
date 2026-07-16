@@ -171,6 +171,41 @@ touching any pattern. Planned verb families: `doctor` (preflight),
 (drain the inbox), `manifest`. Verbs land with the modules that need
 them; none exists until its module does.
 
+## Authorship and rights
+
+Every table eventually asks a version of the same worried question:
+"what if I want to write a book about this world one day — should an
+LLM be seeing my material?" It deserves a straight answer, not
+reassurance. Eddic's posture, the rationale behind principles 6 and 10:
+
+- **Feeding your prose to a model neither transfers nor dilutes your
+  copyright.** Ownership comes from creation. And copyright protects
+  *expression*, not ideas — the book you might write is your
+  expression; nothing in this pipeline touches it.
+- **Purely machine-generated output cannot be copyrighted under US law
+  as it stands** (the human-authorship requirement; probabilistic
+  output is a non-starter). This cuts protectively: no entity gains a
+  claim over your world through a model's output. It also means the
+  derived layer is not where original art should live — which is
+  principle 6's job: human art stays in human-authored files, marked
+  as such, and agents never rewrite it.
+- **Human selection, arrangement, and substantive revision of machine
+  output can carry protection; bare prompts generally do not.** The
+  authorship frontmatter marks exactly the seam a rights question
+  would ask about — who made what, on which side of the line.
+- **Training exposure is a settings matter.** Provider APIs do not
+  train on inputs by default, and consumer products expose opt-outs;
+  Eddic patterns assume accounts configured accordingly. That is trust
+  in a black box — say so plainly — but it is a bounded, acceptable
+  risk given the points above.
+- **Provenance is the working defense, in both directions.** Authorship
+  frontmatter, git history, and the typed log form a dated corpus
+  proving your material existed before it ever met the pipeline — and,
+  inversely, that everything in the derived layer traces to your
+  sources via ingest entries, so nothing entered canon unattributed.
+- This is recorded consideration, not legal advice, and it is
+  US-centric. Tables elsewhere should check their jurisdiction.
+
 ## Token economics
 
 Maintenance routines are token-heavy by nature (multi-thousand-line
