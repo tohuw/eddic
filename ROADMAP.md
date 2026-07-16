@@ -4,6 +4,13 @@ Order chosen so each step exercises what the previous one built. The
 first module proves the contract; the CLI grows verbs only as modules
 need them.
 
+**Status 2026-07-16:** items 1–8 shipped at 0.1.0 (see
+`modules/README.md`), plus repo CI enforcing the contract floor and
+running every module verify on ubuntu/macos/windows. Live deploys
+(Pages, the Worker) and the voice-mode spike await the owner.
+Remaining: recorder (9, needs the owner's brief), discord-setup (10),
+routines (11), orlog (12).
+
 ## Module queue
 
 1. **lint** — the wiki health check, generalized from the DitD
