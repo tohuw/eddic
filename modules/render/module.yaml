@@ -1,0 +1,20 @@
+name: render
+version: 0.1.0
+summary: >
+  Purpose-built static renderer for campaign wikis: markdown tree in,
+  HTML mirror out, relative .md links rewritten to .html, heading
+  slug ids, one self-contained template (inlined CSS, light/dark,
+  noindex). Exactly a wiki renderer and nothing more.
+touches:
+  - dist/site
+  - .eddic/lib/build.py
+  - .eddic/page.html
+depends:
+  - cli
+  - wiki
+cost_posture:
+  free: >
+    Entirely local and free. One Python dependency (markdown-it-py),
+    declared inline (PEP 723) and resolved by uv on first run.
+  paid: none
+  heuristic: n/a
