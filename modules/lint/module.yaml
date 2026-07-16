@@ -1,0 +1,16 @@
+name: lint
+version: 0.1.0
+summary: >
+  Wiki health check: deterministic reporter for broken links and anchors,
+  missing titles, stub drift, orphaned/unreachable pages, malformed
+  operation logs, and spoiler-firewall breaches (player-visible pages
+  referencing DM-only pages).
+touches:
+  - wiki
+depends: []
+cost_posture:
+  free: >
+    Entirely local and free: a stdlib-only Python reporter run via uv.
+    No paid path exists or is needed.
+  paid: none
+  heuristic: n/a

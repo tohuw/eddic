@@ -1,8 +1,8 @@
 # Modules
 
-The index of shippable modules. Empty at bootstrap — modules land in
-`ROADMAP.md` order, each conforming to `CONTRACT.md`.
+The index of shippable modules. Modules land in `ROADMAP.md` order,
+each conforming to `CONTRACT.md`.
 
 | module | facility | status |
 |---|---|---|
-| — | — | none yet |
+| [lint](lint/) | wiki health check: links, anchors, stubs, orphans, log format, spoiler firewall | 0.1.0 |
