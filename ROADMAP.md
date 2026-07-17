@@ -6,10 +6,13 @@ need them.
 
 **Status 2026-07-16:** items 1–8 shipped at 0.1.0 (see
 `modules/README.md`), plus repo CI enforcing the contract floor and
-running every module verify on ubuntu/macos/windows. Live deploys
-(Pages, the Worker) and the voice-mode spike await the owner.
-Remaining: recorder (9, needs the owner's brief), discord-setup (10),
-routines (11), orlog (12).
+running every module verify on ubuntu/macos/windows. Retrieval is
+proven live end-to-end on a Land of Song test absorption: Worker
+deployed, tier isolation wire-verified, and the voice spike passed —
+push-to-talk dictation on the phone app reached connector tools and
+answered from a cold context in ~10 s. The Pages live deploy awaits
+the owner. Remaining: recorder (9, needs the owner's brief),
+discord-setup (10), routines (11), orlog (12).
 
 ## Module queue
 

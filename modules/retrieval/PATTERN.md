@@ -108,6 +108,17 @@ auth in infrastructure; no agent ever decides what a tier may see.
    plan, mobile availability of the add flow, and whether
    connector tools reach ChatGPT voice mode at all.
 
+   Tier hygiene on each account: one connector, one tier. An account
+   holding both URLs will sooner or later route a question through
+   the DM tier — the model has no reason not to use the better
+   token. Swapping a connector's tier means remove-and-re-add (the
+   ⋮ menu has no edit; only "Refresh tools list" and "Remove"). Two
+   claude.ai quirks seen live: the Add step sometimes lands on a
+   "not connected yet" page — click **Connect**; and Connect can
+   flash a "couldn't register with sign-in service / add an OAuth
+   Client ID" toast even as the connector connects fine — check the
+   connectors list for the checkmark before debugging anything.
+
 6. **Rotation is the panic procedure**: `wrangler secret put
    TOKEN_DM` with a fresh value, update the connector config, done —
    old token dead in seconds, no republish. If a DM-token leak is
@@ -120,11 +131,13 @@ auth in infrastructure; no agent ever decides what a tier may see.
   just never sets TOKEN_PLAYER (unset token = tier off).
 - **Auth style.** Default: capability URL for phone connectors,
   header auth for desktop agents. Same tokens either way.
-- **Voice mode.** Default: spike before relying — configure the
-  connector, then actually ask a question in voice mode before the
-  DM depends on car-voice retrieval. Connector availability in voice
-  contexts varies by app version; if it fails there, retrieval still
-  works in normal app chat. Report what you find to the owner.
+- **Voice mode.** Default: push-to-talk voice transcription into a
+  normal chat — verified 2026-07 on the Claude phone app, where a
+  cold-context "what can you tell me about the stones of saudient"
+  triggered search immediately and answered in ~10 s on the full
+  model. That dictation path is the car interface. The dedicated
+  conversational voice mode (its own smaller model) is separately
+  unverified; don't promise it.
 
 ## Verify
 
