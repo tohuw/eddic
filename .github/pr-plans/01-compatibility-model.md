@@ -36,4 +36,11 @@ Define Eddic's provider/surface model, establish a dated compatibility ledger, a
 
 ## Implementation status
 
-Planning draft only. Replace this section with implementation and verification evidence before ready-for-review.
+Implemented 2026-07-17. `docs/compatibility.md` carries the role
+definitions, the four evidence states, the dated ledger (Claude
+verified rows from the 2026-07-16 live tests; ChatGPT rows documented
+from official help-center articles; ChatGPT Voice recorded
+unsupported), and the provider-honest cost story. DESIGN.md gained the
+three-role vocabulary entry and the baseline-build principle now
+points at the ledger instead of implying route parity. No runtime
+changes; no Claude capability touched.
