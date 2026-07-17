@@ -7,7 +7,10 @@ Eddic is a system of patterns: modular, proven procedures where the agent
 is the reader and does as much of the setup, deployment, and upkeep for
 the user as possible, using deterministic processes wherever possible.
 You tell your agent (Claude, Codex, or any capable peer) what you want;
-it reads the relevant Eddic module and manifests working stuff.
+it reads the relevant Eddic module and manifests working stuff. Codex
+users can also install the repo as a plugin (`codex plugin install
+tohuw/eddic`) — its bundled skill just routes to the same canonical
+instructions.
 
 The name is from the Eddas — the source-books the Norse myths were
 compiled from. Eddic is source material for agents.

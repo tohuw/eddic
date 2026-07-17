@@ -37,4 +37,16 @@ Package Eddic for OpenAI discovery while keeping AGENTS.md, patterns, and CLI ca
 
 ## Implementation status
 
-Planning draft only. Replace this section with implementation and verification evidence before ready-for-review.
+Implemented 2026-07-17 against the real plugin spec
+(learn.chatgpt.com/docs/build-plugins, verified live — the format
+launched with the Codex marketplace 2026-03; initial skepticism
+withdrawn). The repo root is the plugin: .codex-plugin/plugin.json
+(name/version/description/skills only) plus skills/eddic/SKILL.md, a
+thin router to AGENTS.md and modules/README.md that duplicates
+nothing — Eddic works identically without it, satisfying both
+acceptance gates by construction. Deliberately NOT shipped: an
+.app.json (its plugin_asdk_app ID is minted per-user in dev-mode
+ChatGPT — a live acceptance step, not a truthful template) and any
+bundled mcpServers entry (the worker URL is per-campaign). Ledger
+rows added: plugin format documented; the install itself unverified
+until one live `codex plugin install tohuw/eddic` + removal test.

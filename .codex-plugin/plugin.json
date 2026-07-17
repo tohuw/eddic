@@ -1,0 +1,8 @@
+{
+  "name": "eddic",
+  "version": "0.1.0",
+  "description": "Campaign toolkit for online-hosted D&D: wiki with a spoiler firewall, published player site, agentic retrieval, lore bot, transcription. The skill routes to the repo's canonical agent instructions; nothing is duplicated here.",
+  "skills": "./skills/",
+  "keywords": ["dnd", "ttrpg", "campaign", "wiki", "mcp"],
+  "repository": "https://github.com/tohuw/eddic"
+}
