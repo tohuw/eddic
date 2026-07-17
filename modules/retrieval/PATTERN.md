@@ -103,19 +103,26 @@ like the lore bot.
    did. Route A is the fallback whenever the extension isn't there.
 
    **ChatGPT — UNVERIFIED, written from documentation 2026-07;
-   validate against a real ChatGPT before leaning on it.** Custom
-   MCP servers sit behind **Developer mode**, paid plans only
-   (Plus/Pro; workspace plans need an admin to allow it). The
-   user's list: Settings → **Security and login** → enable
-   **Developer mode** (some UIs: Settings → Apps & Connectors →
-   Advanced settings); then Settings → **Apps** ("connectors" were
-   renamed "apps" in Dec 2025 — older UIs say Connectors) → create
-   a new developer-mode app → Name, Description (the model reads
-   it — say "lore lookup for our D&D campaign"), MCP server URL =
-   the capability URL, no OAuth → create, confirm the four tools
-   list, enable them. Unknowns to verify: exact menu wording by
-   plan, mobile availability of the add flow, and whether
-   connector tools reach ChatGPT voice mode at all.
+   the live test is `verify/chatgpt-acceptance.md`, and nothing
+   here becomes a promise until it passes.** Custom MCP apps are
+   **web-only** and sit behind **Developer mode**; scope is
+   plan-gated (Pro gets read/fetch-style MCP in developer mode;
+   full custom MCP is Business/Enterprise/Edu, where an admin must
+   allow it — document the user's plan before promising the route).
+   Mobile apps and ChatGPT Voice do not run custom MCP at all; for
+   mobile text on Plus, use the Custom GPT Actions route instead.
+
+   Route A, the user clicks (web): Settings → enable **Developer
+   mode** (under Security-and-login or Apps & Connectors →
+   Advanced, wording varies); then Settings → **Apps** ("connectors"
+   were renamed "apps" Dec 2025) → create app → Name, Description
+   (the model reads it — say what the corpus answers), MCP server
+   URL. Auth: prefer **bearer app auth** if the dialog offers a
+   token/header field — the token stays out of the endpoint URL —
+   and fall back to the capability URL when it doesn't. Create,
+   confirm the four tools, enable them. Route B, you drive it via
+   the user's browser with their consent, same path, same caveat as
+   the Claude route B.
 
    Tier hygiene on each account: one connector, one tier. An account
    holding both URLs will sooner or later route a question through
