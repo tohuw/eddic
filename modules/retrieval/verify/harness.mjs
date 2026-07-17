@@ -53,7 +53,11 @@ check(note.status === 202, "notification accepted 202");
 // tools/list
 const tools = await rpc("dm-secret",
   { jsonrpc: "2.0", id: 2, method: "tools/list" });
-check(tools.body?.result?.tools?.length === 3, "three tools listed");
+check(tools.body?.result?.tools?.length === 4, "four tools listed");
+check(tools.body?.result?.tools?.every(
+        (t) => t.annotations?.readOnlyHint === true &&
+               t.annotations?.openWorldHint === false),
+      "every tool annotated read-only, closed-world");
 
 function callBody(id, name, args) {
   return { jsonrpc: "2.0", id, method: "tools/call",
@@ -91,5 +95,97 @@ const plList = textOf(await rpc("player-secret",
                                 callBody(9, "list_pages", {})));
 check(dmList.split("\n").length > plList.split("\n").length,
       "dm lists more pages than player");
+
+// fetch: canonical search+fetch counterpart, same tier walls
+const dmFetch = await rpc("dm-secret",
+  callBody(10, "fetch", { id: "keep.dm.md" }));
+check(textOf(dmFetch).includes("midpoint twist"),
+      "dm fetch reads DM page");
+check(dmFetch.body?.result?.structuredContent?.id === "keep.dm.md" &&
+      typeof dmFetch.body?.result?.structuredContent?.text === "string",
+      "fetch returns structured document");
+const plFetch = await rpc("player-secret",
+  callBody(11, "fetch", { id: "keep.dm.md" }));
+check(textOf(plFetch).startsWith("no such page"),
+      "player fetch blind to DM page, indistinguishable from absent");
+check(plFetch.body?.result?.structuredContent === undefined,
+      "blind fetch leaks no structured document");
+
+// search carries structured results beside the portable text
+const dmSearchS = await rpc("dm-secret",
+  callBody(12, "search", { query: "midpoint twist" }));
+check(dmSearchS.body?.result?.structuredContent?.results?.[0]?.id
+        === "keep.dm.md",
+      "search structured results carry ids");
+const plSearchS = await rpc("player-secret",
+  callBody(13, "search", { query: "midpoint twist" }));
+check(plSearchS.body?.result?.structuredContent?.results?.length === 0,
+      "player structured results empty for DM-only term");
+
+// argument validation is isError, not a silent guess
+for (const [name, args] of
+     [["read_page", {}], ["fetch", {}], ["search", { query: "  " }]]) {
+  const r = await rpc("dm-secret", callBody(14, name, args));
+  check(r.body?.result?.isError === true,
+        `${name} with bad arguments returns isError`);
+}
+const unknown = await rpc("dm-secret", callBody(15, "write_page", {}));
+check(unknown.body?.result?.isError === true,
+      "unknown tool returns isError");
+
+// cross-client request forms
+const getRes = await worker.fetch(
+  new Request("https://w.example/mcp", {
+    method: "GET",
+    headers: { Authorization: "Bearer dm-secret" } }), env);
+check(getRes.status === 405, "GET answers 405 (no SSE stream offered)");
+const sseAccept = await worker.fetch(
+  new Request("https://w.example/mcp", {
+    method: "POST",
+    headers: { "content-type": "application/json",
+               Accept: "application/json, text/event-stream",
+               Authorization: "Bearer dm-secret" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 16,
+                           method: "tools/list" }) }), env);
+check(sseAccept.status === 200 &&
+      (sseAccept.headers.get("content-type") || "").includes("json"),
+      "event-stream-accepting client still gets JSON");
+
+// REST facade (Custom GPT Actions): same tiers, same walls
+async function restGet(token, path, viaPath = false) {
+  const url = viaPath
+    ? `https://w.example/${token}${path}`
+    : `https://w.example${path}`;
+  const headers = {};
+  if (!viaPath && token) headers.Authorization = `Bearer ${token}`;
+  const res = await worker.fetch(
+    new Request(url, { method: "GET", headers }), env);
+  const isJson = (res.headers.get("content-type") || "").includes("json");
+  return { status: res.status, body: isJson ? await res.json() : null };
+}
+
+const restNoAuth = await restGet(null, "/api/pages");
+check(restNoAuth.status === 401, "REST without token rejected 401");
+const dmPages = await restGet("dm-secret", "/api/pages");
+const plPages = await restGet("player-secret", "/api/pages", true);
+check(dmPages.body?.pages?.length > plPages.body?.pages?.length,
+      "REST: dm lists more pages than player (capability path works)");
+const dmPage = await restGet("dm-secret", "/api/page?id=keep.dm.md");
+check(dmPage.status === 200 && dmPage.body?.text?.includes("midpoint"),
+      "REST: dm reads DM page");
+const plPage = await restGet("player-secret", "/api/page?id=keep.dm.md");
+check(plPage.status === 404, "REST: DM page is 404 for player tier");
+const dmRest = await restGet("dm-secret", "/api/search?q=midpoint%20twist");
+check(dmRest.body?.results?.[0]?.id === "keep.dm.md",
+      "REST: dm search finds DM-only term");
+const plRest = await restGet("player-secret",
+                             "/api/search?q=midpoint%20twist");
+check(plRest.body?.results?.length === 0,
+      "REST: player search blind to DM-only term");
+const restPost = await worker.fetch(
+  new Request("https://w.example/api/pages", {
+    method: "POST",
+    headers: { Authorization: "Bearer dm-secret" } }), env);
+check(restPost.status === 405, "REST refuses non-GET (read-only)");
 
 process.exit(failures ? 1 : 0);
