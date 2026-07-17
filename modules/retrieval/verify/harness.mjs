@@ -151,4 +151,41 @@ check(sseAccept.status === 200 &&
       (sseAccept.headers.get("content-type") || "").includes("json"),
       "event-stream-accepting client still gets JSON");
 
+// REST facade (Custom GPT Actions): same tiers, same walls
+async function restGet(token, path, viaPath = false) {
+  const url = viaPath
+    ? `https://w.example/${token}${path}`
+    : `https://w.example${path}`;
+  const headers = {};
+  if (!viaPath && token) headers.Authorization = `Bearer ${token}`;
+  const res = await worker.fetch(
+    new Request(url, { method: "GET", headers }), env);
+  const isJson = (res.headers.get("content-type") || "").includes("json");
+  return { status: res.status, body: isJson ? await res.json() : null };
+}
+
+const restNoAuth = await restGet(null, "/api/pages");
+check(restNoAuth.status === 401, "REST without token rejected 401");
+const dmPages = await restGet("dm-secret", "/api/pages");
+const plPages = await restGet("player-secret", "/api/pages", true);
+check(dmPages.body?.pages?.length > plPages.body?.pages?.length,
+      "REST: dm lists more pages than player (capability path works)");
+const dmPage = await restGet("dm-secret", "/api/page?id=keep.dm.md");
+check(dmPage.status === 200 && dmPage.body?.text?.includes("midpoint"),
+      "REST: dm reads DM page");
+const plPage = await restGet("player-secret", "/api/page?id=keep.dm.md");
+check(plPage.status === 404, "REST: DM page is 404 for player tier");
+const dmRest = await restGet("dm-secret", "/api/search?q=midpoint%20twist");
+check(dmRest.body?.results?.[0]?.id === "keep.dm.md",
+      "REST: dm search finds DM-only term");
+const plRest = await restGet("player-secret",
+                             "/api/search?q=midpoint%20twist");
+check(plRest.body?.results?.length === 0,
+      "REST: player search blind to DM-only term");
+const restPost = await worker.fetch(
+  new Request("https://w.example/api/pages", {
+    method: "POST",
+    headers: { Authorization: "Bearer dm-secret" } }), env);
+check(restPost.status === 405, "REST refuses non-GET (read-only)");
+
 process.exit(failures ? 1 : 0);

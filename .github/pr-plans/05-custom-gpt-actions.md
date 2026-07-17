@@ -39,4 +39,15 @@ Add REST/OpenAPI and generated Custom GPT artifacts for web and mobile text retr
 
 ## Implementation status
 
-Planning draft only. Replace this section with implementation and verification evidence before ready-for-review.
+Implemented 2026-07-17. worker.js grew a read-only REST facade
+(/api/pages, /api/page?id=, /api/search?q=) sharing the MCP tools'
+search logic, tier walls, and 404-parity for hidden pages; non-GET is
+405. templates/openapi.json carries the three actions (listPages,
+readPage, searchWiki) with bearer security; instruction templates for
+player and DM GPTs are voice-neutral per DESIGN principle 11 with
+persona explicitly the owner's add-on. PATTERN documents the
+per-tier-GPT rule, bearer keys out of URLs, and no-Voice limit.
+Harness: 8 new REST checks (auth, tier counts via capability path,
+DM-page 404 for player, search blindness, GET-only); run.py validates
+the OpenAPI actions. Live web+mobile use remains UNVERIFIED pending
+verify/chatgpt-acceptance.md. Module 0.3.0.
