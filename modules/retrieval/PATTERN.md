@@ -136,8 +136,11 @@ auth in infrastructure; no agent ever decides what a tier may see.
   cold-context lore question about a term only the wiki defines,
   the model reached for search unprompted and answered in ~10 s on
   the full model. That dictation path is the car interface. The
-  dedicated conversational voice mode (its own smaller model) is
-  separately unverified; don't promise it.
+  dedicated conversational voice mode does NOT reach custom
+  connectors (verified 2026-07 — it says so itself if asked); set
+  that expectation up front so nobody blames the worker. Small-model
+  chat tiers handle the tools well, so retrieval quality doesn't
+  hinge on the top model.
 
 ## Verify
 
@@ -149,3 +152,9 @@ auth in infrastructure; no agent ever decides what a tier may see.
 - After a real deploy: from an MCP client (or curl), initialize with
   each token; `search` for a DM-only term with the player token and
   confirm blindness; rotate a token and confirm the old one dies.
+- The player-tier experience test: ask, as a player would, for a
+  secret the projection withholds. What good looks like: the model
+  can't see that the secret exists, so it presents the gap as the
+  campaign's intended mystery and encourages play — no refusal, no
+  leak-pressure. If the answer instead reads as "I'm not allowed to
+  say," something DM-tier is reaching the surface; investigate.
