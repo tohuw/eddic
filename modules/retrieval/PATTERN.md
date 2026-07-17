@@ -124,6 +124,21 @@ like the lore bot.
    the user's browser with their consent, same path, same caveat as
    the Claude route B.
 
+   **ChatGPT on Plus / mobile text — Custom GPT Actions
+   (UNVERIFIED, same acceptance rig).** The worker also serves a
+   read-only REST facade (`/api/pages`, `/api/page?id=`,
+   `/api/search?q=`) so a Custom GPT can retrieve where custom MCP
+   is unavailable. Build one GPT per tier, never both in one: create
+   a GPT (Plus or above) → Configure → Actions → import
+   `templates/openapi.json` (fill `{{WORKER_URL}}`) → Authentication
+   = API key, **Bearer**, paste that tier's token (the token stays
+   out of URLs here) → paste the matching instructions template
+   (`chatgpt-player-instructions.md` or `chatgpt-dm-instructions.md`,
+   fill `{{SITE_NAME}}`). The player GPT can be link-shared with the
+   table; the DM GPT must never be shared — its key unlocks the
+   master. Works in web and mobile **text**; Actions do not run in
+   ChatGPT Voice — say so up front.
+
    Tier hygiene on each account: one connector, one tier. An account
    holding both URLs will sooner or later route a question through
    the DM tier — the model has no reason not to use the better

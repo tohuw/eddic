@@ -1,0 +1,112 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Campaign wiki retrieval",
+    "description": "Read-only lookup over a campaign wiki. Search first, then read pages by id. Every answer should come from these endpoints.",
+    "version": "0.3.0"
+  },
+  "servers": [
+    { "url": "https://{{WORKER_URL}}" }
+  ],
+  "paths": {
+    "/api/pages": {
+      "get": {
+        "operationId": "listPages",
+        "summary": "List every page: id and title.",
+        "responses": {
+          "200": {
+            "description": "All pages",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "pages": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "string" },
+                          "title": { "type": "string" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/page": {
+      "get": {
+        "operationId": "readPage",
+        "summary": "Read one page in full by id (from listPages or searchWiki).",
+        "parameters": [
+          { "name": "id", "in": "query", "required": true,
+            "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "The page",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "string" },
+                    "title": { "type": "string" },
+                    "text": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "description": "No such page" }
+        }
+      }
+    },
+    "/api/search": {
+      "get": {
+        "operationId": "searchWiki",
+        "summary": "Search the wiki; returns best matches with snippets.",
+        "parameters": [
+          { "name": "q", "in": "query", "required": true,
+            "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Matches",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "results": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "string" },
+                          "title": { "type": "string" },
+                          "snippet": { "type": "string" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearer": { "type": "http", "scheme": "bearer" }
+    }
+  },
+  "security": [ { "bearer": [] } ]
+}

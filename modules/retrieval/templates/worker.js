@@ -63,6 +63,31 @@ const TOOLS = [
     annotations: READ_ONLY },
 ];
 
+function searchHits(pages, q) {
+  const terms = q.split(/\s+/);
+  const scored = [];
+  for (const [path, entry] of Object.entries(pages)) {
+    const hay = (entry.title + "\n" + entry.text).toLowerCase();
+    let score = 0;
+    for (const t of terms) {
+      let i = hay.indexOf(t);
+      while (i !== -1) { score++; i = hay.indexOf(t, i + t.length); }
+      if (entry.title.toLowerCase().includes(t)) score += 3;
+    }
+    if (score > 0) scored.push({ path, entry, score });
+  }
+  scored.sort((a, b) => b.score - a.score);
+  return scored.slice(0, MAX_HITS).map(({ path, entry }) => {
+    const hay = entry.text.toLowerCase();
+    let i = -1;
+    for (const t of terms) { i = hay.indexOf(t); if (i !== -1) break; }
+    const start = Math.max(0, i - SNIPPET / 2);
+    const snip = entry.text.slice(start, start + SNIPPET)
+      .replace(/\s+/g, " ").trim();
+    return { path, title: entry.title, snippet: snip };
+  });
+}
+
 function text(s) { return { content: [{ type: "text", text: s }] }; }
 
 function structured(s, obj) {
@@ -104,31 +129,10 @@ function callTool(corpus, name, args) {
       return argError("search requires 'query' (non-empty string)");
     }
     const q = args.query.toLowerCase().trim();
-    const terms = q.split(/\s+/);
-    const scored = [];
-    for (const [path, entry] of Object.entries(pages)) {
-      const hay = (entry.title + "\n" + entry.text).toLowerCase();
-      let score = 0;
-      for (const t of terms) {
-        let i = hay.indexOf(t);
-        while (i !== -1) { score++; i = hay.indexOf(t, i + t.length); }
-        if (entry.title.toLowerCase().includes(t)) score += 3;
-      }
-      if (score > 0) scored.push({ path, entry, score });
-    }
-    scored.sort((a, b) => b.score - a.score);
-    if (!scored.length) {
+    const hits = searchHits(pages, q);
+    if (!hits.length) {
       return structured(`nothing found for: ${q}`, { results: [] });
     }
-    const hits = scored.slice(0, MAX_HITS).map(({ path, entry }) => {
-      const hay = entry.text.toLowerCase();
-      let i = -1;
-      for (const t of terms) { i = hay.indexOf(t); if (i !== -1) break; }
-      const start = Math.max(0, i - SNIPPET / 2);
-      const snip = entry.text.slice(start, start + SNIPPET)
-        .replace(/\s+/g, " ").trim();
-      return { path, title: entry.title, snippet: snip };
-    });
     const out = hits.map((h) => `${h.path} — ${h.title}\n  …${h.snippet}…`);
     return structured(out.join("\n\n"), {
       results: hits.map((h) => ({ id: h.path, title: h.title,
@@ -149,10 +153,47 @@ function rpcError(id, code, message, status = 200) {
     { jsonrpc: "2.0", id, error: { code, message } }, { status });
 }
 
+// REST facade for clients that speak OpenAPI, not MCP (Custom GPT
+// Actions). Read-only GETs, same tiers, same walls, same corpus.
+function rest(corpus, url) {
+  const p = url.pathname;
+  const route = p.slice(p.indexOf("/api/") + 4);
+  if (route === "/pages") {
+    return Response.json({ pages: Object.entries(corpus.pages)
+      .map(([id, e]) => ({ id, title: e.title })) });
+  }
+  if (route === "/page") {
+    const id = url.searchParams.get("id") || "";
+    const entry = corpus.pages[id];
+    if (!entry) {
+      return Response.json({ error: `no such page: ${id}` },
+                           { status: 404 });
+    }
+    return Response.json({ id, title: entry.title, text: entry.text });
+  }
+  if (route === "/search") {
+    const q = (url.searchParams.get("q") || "").toLowerCase().trim();
+    if (!q) {
+      return Response.json({ error: "q required" }, { status: 400 });
+    }
+    return Response.json({ results: searchHits(corpus.pages, q)
+      .map((h) => ({ id: h.path, title: h.title, snippet: h.snippet })) });
+  }
+  return Response.json({ error: "no such endpoint" }, { status: 404 });
+}
+
 export default {
   async fetch(request, env) {
     const t = tier(request, env);
     if (!t) return new Response("unauthorized", { status: 401 });
+    const url = new URL(request.url);
+    if (url.pathname.includes("/api/")) {
+      if (request.method !== "GET") {
+        return new Response("read-only API: GET only",
+                            { status: 405, headers: { Allow: "GET" } });
+      }
+      return rest(t === "dm" ? CORPUS_DM : CORPUS_PLAYER, url);
+    }
     if (request.method !== "POST") {
       return new Response("MCP endpoint: POST JSON-RPC here",
                           { status: 405, headers: { Allow: "POST" } });
