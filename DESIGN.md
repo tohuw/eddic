@@ -100,6 +100,17 @@ never hot-edited into canon. Chronology belongs to Ørlǫg; the wiki
 states time in plain prose; reconciliation between them is owner-directed
 and logged.
 
+**11. Personality lives at owned surfaces, never in the data layer.**
+A shared surface the DM owns — the table's lore bot — is a character;
+persona there is a feature, part of the fiction. A data layer that
+agents consume (the retrieval worker, corpora, tool results) stays
+voice-neutral: plain content, no flavor, no styling, no instructions
+to the consuming model. This is not taste. The consuming agent belongs
+to the user, and users tune their agents to respond in the specific
+ways they need — accessibility and neurodivergence needs included. A
+data layer with a personality overrides that tuning and serves no one.
+Let the user's agent answer.
+
 ## Vocabulary
 
 - **module** — the shippable unit: a directory holding a pattern,

@@ -6,6 +6,11 @@ Reavers' patron?" becomes a tool call against the DM tier, no login
 flow anywhere in the chain. One Worker, two tokens: TOKEN_DM serves
 the master wiki, TOKEN_PLAYER serves the projection. Deterministic
 auth in infrastructure; no agent ever decides what a tier may see.
+The worker serves plain content and nothing else — no persona, no
+styling, no instructions to the consuming model (DESIGN principle
+11): the agent on the other end belongs to the user and answers in
+whatever way its user needs. Personality belongs to owned surfaces
+like the lore bot.
 
 ## Preflight
 
