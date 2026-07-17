@@ -66,22 +66,47 @@ auth in infrastructure; no agent ever decides what a tier may see.
      their own devices only; the player URL can be shared with the
      table.
 
-   The claude.ai add flow (verified 2026-07 on web; drive it via the
-   user's browser, or walk them through — it syncs account-wide, so
-   doing it once on web puts it on their phone):
-   Settings → Connectors (currently under the **Customize** section)
-   → **Add ▾** → **Add custom connector**. The trap: the same menu's
-   "Browse connectors" opens a directory of commercial vendors, and
-   a user told to "add a connector" lands there and finds nothing —
-   searching it for terms like "remote" surfaces Remote.com. Steer
-   past it by the exact menu-item name. The dialog itself is just
-   **Name** (free text) and **Remote MCP server URL** (paste the
-   capability URL); Advanced settings holds OAuth fields — leave
-   them empty, auth is the token in the URL. **Add** connects
-   immediately and lands on the connector's page. There, set the
-   tool-permission dropdown from "Needs approval" to **Always
-   allow** — the tools are read-only, and hands-free voice use dies
-   at an approval tap the driver can't make.
+   **Claude, route A — the user clicks it themselves** (verified
+   2026-07 on claude.ai web; adding once on web syncs account-wide,
+   phone included). Give them exactly this, no prose around it:
+
+   1. Go to claude.ai → Settings → **Connectors** (it lives under
+      the *Customize* section).
+   2. Click **Add ▾**, then **Add custom connector**. Not "Browse
+      connectors" — that is a directory of commercial vendors, and
+      searching it for words like "remote" strands you at
+      Remote.com.
+   3. **Name**: anything ("Land of Song DM"). **Remote MCP server
+      URL**: paste the capability URL. Leave Advanced settings'
+      OAuth fields empty — the token in the URL is the auth.
+   4. Click **Add**. It connects immediately and opens the
+      connector's page.
+   5. On that page, change the tool-permission dropdown from
+      "Needs approval" to **Always allow** (the tools are
+      read-only; approval taps kill hands-free voice use).
+
+   **Claude, route B — you drive it for them.** Needs the Claude in
+   Chrome extension installed and the user's consent to browser
+   control — say that cost out loud; some users would rather make
+   five clicks than install an extension. With it: open
+   claude.ai settings in their browser, follow route A's path, fill
+   the two fields, Add, set Always allow, and tell them what you
+   did. Route A is the fallback whenever the extension isn't there.
+
+   **ChatGPT — UNVERIFIED, written from documentation 2026-07;
+   validate against a real ChatGPT before leaning on it.** Custom
+   MCP servers sit behind **Developer mode**, paid plans only
+   (Plus/Pro; workspace plans need an admin to allow it). The
+   user's list: Settings → **Security and login** → enable
+   **Developer mode** (some UIs: Settings → Apps & Connectors →
+   Advanced settings); then Settings → **Apps** ("connectors" were
+   renamed "apps" in Dec 2025 — older UIs say Connectors) → create
+   a new developer-mode app → Name, Description (the model reads
+   it — say "lore lookup for our D&D campaign"), MCP server URL =
+   the capability URL, no OAuth → create, confirm the three tools
+   list, enable them. Unknowns to verify: exact menu wording by
+   plan, mobile availability of the add flow, and whether
+   connector tools reach ChatGPT voice mode at all.
 
 6. **Rotation is the panic procedure**: `wrangler secret put
    TOKEN_DM` with a fresh value, update the connector config, done —
