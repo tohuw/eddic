@@ -21,3 +21,14 @@ cost_posture:
     Free tier until a wiki's corpus nears the 1 MB bundle limit
     (stage warns); the growth path is a KV-backed corpus, still
     within free tier for any plausible campaign.
+compatibility:
+  claude:
+    role: answer client
+    status: verified
+    date: 2026-07-16
+    evidence: owner live tests (cold-context chat, phone dictation, tier isolation); docs/compatibility.md ledger
+  chatgpt:
+    role: answer client
+    status: documented
+    date: 2026-07
+    evidence: help.openai.com 12584461 (web-only custom MCP, plan-gated); connect flow drafted UNVERIFIED in PATTERN.md

@@ -11,6 +11,8 @@ Checks every modules/<name>/ against CONTRACT.md's floor:
   - verify/run.py present
   - no symlinks anywhere in the module
   - no obvious committed secrets anywhere in the repo
+  - vendor names in PATTERN.md are backed by compatibility metadata
+    in module.yaml (status/date; verified additionally needs evidence)
 
 Exit 0 clean, 1 violations (listed)."""
 
@@ -26,6 +28,30 @@ PARTS = ("## Preflight", "## Procedure", "## Decision points", "## Verify")
 SECRET_PATTERNS = re.compile(
     r"sk-ant-[A-Za-z0-9-]{10,}|ghp_[A-Za-z0-9]{20,}|gho_[A-Za-z0-9]{20,}"
     r"|AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY-----")
+COMPAT_NAMES = ("claude", "chatgpt", "codex", "anthropic", "openai")
+COMPAT_STATES = ("verified", "documented", "unverified", "unsupported")
+
+
+def compat_entries(yaml_text):
+    """Parse the flat compatibility: block — entry names at two-space
+    indent, fields at four. Naive on purpose; module.yaml is ours."""
+    entries, current, in_block = {}, None, False
+    for ln in yaml_text.splitlines():
+        if re.match(r"^compatibility:\s*$", ln):
+            in_block = True
+            continue
+        if in_block:
+            if ln.strip() and not ln.startswith(" "):
+                break
+            m = re.match(r"^  ([\w-]+):\s*$", ln)
+            if m:
+                current = m.group(1).lower()
+                entries[current] = {}
+                continue
+            f = re.match(r"^    ([\w-]+):\s*(.+?)\s*$", ln)
+            if f and current:
+                entries[current][f.group(1)] = f.group(2)
+    return entries
 
 
 def main():
@@ -72,6 +98,25 @@ def main():
                                   text):
                 if not (mod / ref).exists():
                     bad(f"{name}: PATTERN.md references missing file {ref}")
+
+            # vendor claims need compatibility metadata (see CONTRACT.md)
+            if yaml.is_file():
+                entries = compat_entries(yaml.read_text(encoding="utf-8"))
+                mentioned = {n for n in COMPAT_NAMES
+                             if re.search(rf"\b{n}\b", text, re.I)}
+                for n in sorted(mentioned - set(entries)):
+                    bad(f"{name}: PATTERN.md mentions '{n}' but module.yaml "
+                        f"has no compatibility entry for it")
+                for n, fields in entries.items():
+                    status = fields.get("status", "")
+                    if status not in COMPAT_STATES:
+                        bad(f"{name}: compatibility.{n} status "
+                            f"'{status}' not one of {COMPAT_STATES}")
+                    if "date" not in fields:
+                        bad(f"{name}: compatibility.{n} missing date")
+                    if status == "verified" and "evidence" not in fields:
+                        bad(f"{name}: compatibility.{n} is verified "
+                            f"but cites no evidence")
 
         if not (mod / "verify" / "run.py").is_file():
             bad(f"{name}: verify/run.py missing")

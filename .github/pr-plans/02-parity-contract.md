@@ -34,4 +34,14 @@ Extend the module contract and CI floor so provider-neutral claims require expli
 
 ## Implementation status
 
-Planning draft only. Replace this section with implementation and verification evidence before ready-for-review.
+Implemented 2026-07-17. floor.py parses a flat `compatibility:` block
+in module.yaml and fails when a PATTERN mentions a vendor without an
+entry, when a status is not one of the four evidence states, when an
+entry is undated, or when `verified` cites no evidence. CONTRACT.md
+records the rule in the deterministic-floor list. Truthful metadata
+populated for the three modules that name vendors today: wiki
+(claude, verified — the stub convention), retrieval (claude verified
+2026-07-16 live tests; chatgpt documented, connect flow UNVERIFIED),
+lore-bot (anthropic verified — production-proven design, CI-verified
+core). Checked live: the floor failed on all three before the
+metadata landed and passes after. No fixtures carry credentials.

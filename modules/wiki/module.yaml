@@ -19,3 +19,9 @@ cost_posture:
   free: Entirely local and free (markdown files + stdlib projection).
   paid: none
   heuristic: n/a
+compatibility:
+  claude:
+    role: maintaining agent
+    status: verified
+    date: 2026-07-16
+    evidence: CLAUDE.md stub-import convention verified against code.claude.com docs July 2026; campaigns maintained by Claude Code
