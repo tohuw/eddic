@@ -23,7 +23,8 @@ Replace speculative ChatGPT prose with a plan-aware, bearer-authenticated route 
 
 ## Acceptance criteria
 
-- [ ] Cold ChatGPT context retrieves Stones of Saudient automatically.
+- [ ] Cold ChatGPT context retrieves a wiki-only term automatically
+      (generalized per AGENTS.md: no campaign-specific examples in docs).
 - [ ] Player app cannot discover DM-only lore.
 - [ ] Token stays out of endpoint URL.
 - [ ] Status becomes verified only after live test.
@@ -35,4 +36,14 @@ Replace speculative ChatGPT prose with a plan-aware, bearer-authenticated route 
 
 ## Implementation status
 
-Planning draft only. Replace this section with implementation and verification evidence before ready-for-review.
+Implemented 2026-07-17 as documentation plus a live-test rig; the
+route itself remains UNVERIFIED by design. retrieval PATTERN's
+ChatGPT section now separates plan scopes (Pro developer-mode vs
+managed workspace), states web-only/no-mobile/no-Voice plainly,
+prefers bearer app auth with capability URL as fallback, and offers
+click-through and consented agent-driven routes.
+verify/chatgpt-acceptance.md is the fill-in acceptance record that
+mirrors the Claude cold-context test (cold context, consumer-side
+tier isolation, tool scan, surface limits); passing it is the only
+way the ledger and module.yaml chatgpt rows get promoted to
+verified. Compatibility ledger rows were seeded in #2.
