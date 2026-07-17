@@ -38,6 +38,10 @@ like the lore bot.
    `<name>.workers.dev` subdomain). Run `eddic.py stage` — it writes
    the two corpora beside worker.js, refusing if the projection is
    missing (the player tier only ever comes from `eddic project`).
+   The worker serves four read-only tools — list_pages, read_page,
+   search, and fetch (the canonical search+fetch counterpart some
+   clients expect) — all annotated read-only and closed-world, with
+   portable text plus structured results.
    Add `worker/corpus_*.mjs` to the campaign's `.gitignore`: the
    corpora are derived artifacts (regenerate with `eddic stage`), and
    corpus_dm.mjs concentrates every DM secret into one file — it
@@ -108,7 +112,7 @@ like the lore bot.
    renamed "apps" in Dec 2025 — older UIs say Connectors) → create
    a new developer-mode app → Name, Description (the model reads
    it — say "lore lookup for our D&D campaign"), MCP server URL =
-   the capability URL, no OAuth → create, confirm the three tools
+   the capability URL, no OAuth → create, confirm the four tools
    list, enable them. Unknowns to verify: exact menu wording by
    plan, mobile availability of the add flow, and whether
    connector tools reach ChatGPT voice mode at all.

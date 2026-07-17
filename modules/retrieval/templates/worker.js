@@ -10,7 +10,11 @@
  * TOKEN_PLAYER sees the projection. Rotation = `wrangler secret put`.
  *
  * MCP: streamable HTTP, JSON-RPC 2.0, tools only
- * (list_pages / read_page / search).
+ * (list_pages / read_page / search / fetch). All tools are
+ * read-only and closed-world, and say so via annotations; results
+ * carry portable text plus structuredContent for clients that
+ * prefer it. `fetch` is the cross-client canonical reader (some
+ * clients expect a search+fetch pair); `read_page` remains.
  */
 
 import CORPUS_DM from "./corpus_dm.mjs";
@@ -31,23 +35,43 @@ function tier(request, env) {
   return null;
 }
 
+const READ_ONLY = { readOnlyHint: true, destructiveHint: false,
+                    idempotentHint: true, openWorldHint: false };
+
 const TOOLS = [
-  { name: "list_pages",
+  { name: "list_pages", title: "List wiki pages",
     description: "List every page in the campaign wiki: path and title.",
-    inputSchema: { type: "object", properties: {} } },
-  { name: "read_page",
+    inputSchema: { type: "object", properties: {} },
+    annotations: READ_ONLY },
+  { name: "read_page", title: "Read a wiki page",
     description: "Read one wiki page in full, by path (as returned by " +
                  "list_pages or search).",
     inputSchema: { type: "object", required: ["path"],
-                   properties: { path: { type: "string" } } } },
-  { name: "search",
+                   properties: { path: { type: "string" } } },
+    annotations: READ_ONLY },
+  { name: "search", title: "Search the wiki",
     description: "Search the wiki. Returns the best-matching pages " +
-                 "with snippets; follow up with read_page.",
+                 "with snippets; follow up with read_page or fetch.",
     inputSchema: { type: "object", required: ["query"],
-                   properties: { query: { type: "string" } } } },
+                   properties: { query: { type: "string" } } },
+    annotations: READ_ONLY },
+  { name: "fetch", title: "Fetch a document",
+    description: "Fetch one wiki document by id (a path from search " +
+                 "or list_pages). Canonical search+fetch counterpart.",
+    inputSchema: { type: "object", required: ["id"],
+                   properties: { id: { type: "string" } } },
+    annotations: READ_ONLY },
 ];
 
 function text(s) { return { content: [{ type: "text", text: s }] }; }
+
+function structured(s, obj) {
+  return { content: [{ type: "text", text: s }], structuredContent: obj };
+}
+
+function argError(msg) {
+  return { isError: true, content: [{ type: "text", text: msg }] };
+}
 
 function callTool(corpus, name, args) {
   const pages = corpus.pages;
@@ -57,13 +81,29 @@ function callTool(corpus, name, args) {
     return text(lines.join("\n") || "no pages");
   }
   if (name === "read_page") {
-    const entry = pages[(args && args.path) || ""];
-    if (!entry) return text(`no such page: ${args && args.path}`);
+    if (typeof (args && args.path) !== "string" || !args.path) {
+      return argError("read_page requires 'path' (string)");
+    }
+    const entry = pages[args.path];
+    if (!entry) return text(`no such page: ${args.path}`);
     return text(`# ${entry.title}\n(${args.path})\n\n${entry.text}`);
   }
+  if (name === "fetch") {
+    if (typeof (args && args.id) !== "string" || !args.id) {
+      return argError("fetch requires 'id' (string)");
+    }
+    const entry = pages[args.id];
+    if (!entry) return text(`no such page: ${args.id}`);
+    return structured(
+      `# ${entry.title}\n(${args.id})\n\n${entry.text}`,
+      { id: args.id, title: entry.title, text: entry.text,
+        url: `eddic:${args.id}`, metadata: {} });
+  }
   if (name === "search") {
-    const q = ((args && args.query) || "").toLowerCase().trim();
-    if (!q) return text("empty query");
+    if (typeof (args && args.query) !== "string" || !args.query.trim()) {
+      return argError("search requires 'query' (non-empty string)");
+    }
+    const q = args.query.toLowerCase().trim();
     const terms = q.split(/\s+/);
     const scored = [];
     for (const [path, entry] of Object.entries(pages)) {
@@ -77,17 +117,24 @@ function callTool(corpus, name, args) {
       if (score > 0) scored.push({ path, entry, score });
     }
     scored.sort((a, b) => b.score - a.score);
-    if (!scored.length) return text(`nothing found for: ${q}`);
-    const out = scored.slice(0, MAX_HITS).map(({ path, entry }) => {
+    if (!scored.length) {
+      return structured(`nothing found for: ${q}`, { results: [] });
+    }
+    const hits = scored.slice(0, MAX_HITS).map(({ path, entry }) => {
       const hay = entry.text.toLowerCase();
       let i = -1;
       for (const t of terms) { i = hay.indexOf(t); if (i !== -1) break; }
       const start = Math.max(0, i - SNIPPET / 2);
       const snip = entry.text.slice(start, start + SNIPPET)
         .replace(/\s+/g, " ").trim();
-      return `${path} — ${entry.title}\n  …${snip}…`;
+      return { path, title: entry.title, snippet: snip };
     });
-    return text(out.join("\n\n"));
+    const out = hits.map((h) => `${h.path} — ${h.title}\n  …${h.snippet}…`);
+    return structured(out.join("\n\n"), {
+      results: hits.map((h) => ({ id: h.path, title: h.title,
+                                  url: `eddic:${h.path}`,
+                                  snippet: h.snippet })),
+    });
   }
   return { isError: true,
            content: [{ type: "text", text: `unknown tool: ${name}` }] };
