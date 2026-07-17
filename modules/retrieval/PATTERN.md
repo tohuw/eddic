@@ -38,6 +38,10 @@ like the lore bot.
    `<name>.workers.dev` subdomain). Run `eddic.py stage` — it writes
    the two corpora beside worker.js, refusing if the projection is
    missing (the player tier only ever comes from `eddic project`).
+   The worker serves four read-only tools — list_pages, read_page,
+   search, and fetch (the canonical search+fetch counterpart some
+   clients expect) — all annotated read-only and closed-world, with
+   portable text plus structured results.
    Add `worker/corpus_*.mjs` to the campaign's `.gitignore`: the
    corpora are derived artifacts (regenerate with `eddic stage`), and
    corpus_dm.mjs concentrates every DM secret into one file — it
@@ -50,12 +54,17 @@ like the lore bot.
        printf %s "$T" | wrangler secret put TOKEN_DM
        # repeat with a fresh value for TOKEN_PLAYER
 
-   Show the user their two capability URLs once, labeled (DM URL to
-   the DM's own devices only; player URL shareable with the table).
-   Each `secret put` cuts a new Worker version that takes a few
-   seconds to reach the edge — a 401 immediately after setting a
-   token is propagation, not misconfiguration; retry before
-   diagnosing.
+   Token hygiene (`docs/data-controls.md` has the full profile):
+   when you can configure the consuming client directly (a
+   consented browser session, a config file you write), do that and
+   never print the token at all; when the user must paste, show each
+   URL once, labeled (DM URL to the DM's own devices only; player
+   URL shareable with the table), and refer to tokens afterward by
+   fingerprint (first 8 characters). Anything that lands a token in
+   a transcript, screenshot, or log gets rotated on sight. Each
+   `secret put` cuts a new Worker version that takes a few seconds
+   to reach the edge — a 401 immediately after setting a token is
+   propagation, not misconfiguration; retry before diagnosing.
 
 4. Deploy: `wrangler deploy` from `worker/`. Re-publish cadence: any
    time the wiki changes, `eddic.py project && eddic.py stage &&
@@ -99,19 +108,41 @@ like the lore bot.
    did. Route A is the fallback whenever the extension isn't there.
 
    **ChatGPT — UNVERIFIED, written from documentation 2026-07;
-   validate against a real ChatGPT before leaning on it.** Custom
-   MCP servers sit behind **Developer mode**, paid plans only
-   (Plus/Pro; workspace plans need an admin to allow it). The
-   user's list: Settings → **Security and login** → enable
-   **Developer mode** (some UIs: Settings → Apps & Connectors →
-   Advanced settings); then Settings → **Apps** ("connectors" were
-   renamed "apps" in Dec 2025 — older UIs say Connectors) → create
-   a new developer-mode app → Name, Description (the model reads
-   it — say "lore lookup for our D&D campaign"), MCP server URL =
-   the capability URL, no OAuth → create, confirm the three tools
-   list, enable them. Unknowns to verify: exact menu wording by
-   plan, mobile availability of the add flow, and whether
-   connector tools reach ChatGPT voice mode at all.
+   the live test is `verify/chatgpt-acceptance.md`, and nothing
+   here becomes a promise until it passes.** Custom MCP apps are
+   **web-only** and sit behind **Developer mode**; scope is
+   plan-gated (Pro gets read/fetch-style MCP in developer mode;
+   full custom MCP is Business/Enterprise/Edu, where an admin must
+   allow it — document the user's plan before promising the route).
+   Mobile apps and ChatGPT Voice do not run custom MCP at all; for
+   mobile text on Plus, use the Custom GPT Actions route instead.
+
+   Route A, the user clicks (web): Settings → enable **Developer
+   mode** (under Security-and-login or Apps & Connectors →
+   Advanced, wording varies); then Settings → **Apps** ("connectors"
+   were renamed "apps" Dec 2025) → create app → Name, Description
+   (the model reads it — say what the corpus answers), MCP server
+   URL. Auth: prefer **bearer app auth** if the dialog offers a
+   token/header field — the token stays out of the endpoint URL —
+   and fall back to the capability URL when it doesn't. Create,
+   confirm the four tools, enable them. Route B, you drive it via
+   the user's browser with their consent, same path, same caveat as
+   the Claude route B.
+
+   **ChatGPT on Plus / mobile text — Custom GPT Actions
+   (UNVERIFIED, same acceptance rig).** The worker also serves a
+   read-only REST facade (`/api/pages`, `/api/page?id=`,
+   `/api/search?q=`) so a Custom GPT can retrieve where custom MCP
+   is unavailable. Build one GPT per tier, never both in one: create
+   a GPT (Plus or above) → Configure → Actions → import
+   `templates/openapi.json` (fill `{{WORKER_URL}}`) → Authentication
+   = API key, **Bearer**, paste that tier's token (the token stays
+   out of URLs here) → paste the matching instructions template
+   (`chatgpt-player-instructions.md` or `chatgpt-dm-instructions.md`,
+   fill `{{SITE_NAME}}`). The player GPT can be link-shared with the
+   table; the DM GPT must never be shared — its key unlocks the
+   master. Works in web and mobile **text**; Actions do not run in
+   ChatGPT Voice — say so up front.
 
    Tier hygiene on each account: one connector, one tier. An account
    holding both URLs will sooner or later route a question through

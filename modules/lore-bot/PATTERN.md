@@ -52,15 +52,21 @@ file injected after the cache breakpoint, never in the corpus.
 - **Where it runs.** Default: local if a machine is reliably awake
   during play; otherwise a worker host (see cost posture). The bot
   is one process with no inbound ports either way.
-- **Provider.** Default: Anthropic API with prompt caching (the
-  corpus block is cache-marked; caching is what keeps per-question
-  cost trivial). Swapping providers is one function in bot.py, but
-  mind losing the cache semantics.
+- **Provider.** Default: Anthropic API (`PROVIDER=anthropic`,
+  production-proven) with an explicit prompt-cache breakpoint on the
+  corpus block — caching is what keeps per-question cost trivial.
+  `PROVIDER=openai` selects the OpenAI Responses adapter: same
+  corpus-first discipline, caching happens automatically on the
+  stable prefix. Both adapters' request shapes are golden-tested in
+  CI; the OpenAI path is unverified in live deployment until someone
+  runs one. Either way the roster stays behind the cached region and
+  only the chosen provider's package needs installing.
 - **Auto-answer channels.** Default: none — @mention only. Add
   `AUTO_CHANNEL_IDS` for a dedicated ask-the-archivist channel if
   the table wants one.
 - **Roster.** Default: no roster file. If the table wants the bot to
-  know who plays whom, `PLAYERS_FILE` holds it — real names never
+  know who plays whom, `PLAYERS_FILE` holds it (privacy profile:
+  `docs/data-controls.md`) — real names never
   enter the corpus, the repo, or the wiki.
 
 ## Verify

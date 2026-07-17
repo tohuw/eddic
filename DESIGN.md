@@ -40,7 +40,9 @@ work runs under the CLI so Windows is covered by construction.
 **4. Cost pragmatism.** Cloud has advantages and cloud has a price, and
 not every DM has $33/mo to toss at their playing habit. The **baseline
 build** is a named reference architecture: a complete Eddic campaign on
-nothing but a $20/mo Claude or ChatGPT subscription — Cloudflare free
+nothing but a $20/mo Claude or ChatGPT subscription (each by the route
+its surfaces permit — the dated ledger in `docs/compatibility.md` keeps
+this claim honest per vendor) — Cloudflare free
 tier for sites and retrieval, GitHub Actions free tier (or
 in-subscription routines) for maintenance, local transcription instead
 of paid services, Discord free. Everything above baseline is an upgrade
@@ -130,6 +132,12 @@ Let the user's agent answer.
   reconciliation.
 - **baseline build** — the named $20/mo-subscription-only reference
   architecture (principle 4).
+- **maintaining agent / answer client / model provider** — the three
+  roles "agent" hides: the coding agent that applies patterns (Claude
+  Code, Codex), the chat product humans ask (Claude, ChatGPT), and
+  the API a resident service bills against (Anthropic, OpenAI). Every
+  compatibility claim names its role and carries a dated evidence
+  state; the ledger is `docs/compatibility.md`.
 
 ## Campaign architecture
 
@@ -208,7 +216,9 @@ reassurance. Eddic's posture, the rationale behind principles 6 and 10:
   train on inputs by default, and consumer products expose opt-outs;
   Eddic patterns assume accounts configured accordingly. That is trust
   in a black box — say so plainly — but it is a bounded, acceptable
-  risk given the points above.
+  risk given the points above. The per-vendor switches, what content
+  reaches whom, and token-handling doctrine live dated in
+  `docs/data-controls.md`.
 - **Provenance is the working defense, in both directions.** Authorship
   frontmatter, git history, and the typed log form a dated corpus
   proving your material existed before it ever met the pipeline — and,
