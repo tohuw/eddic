@@ -8,11 +8,13 @@ refetches the tarball on change. `!lore reload` exists as the owner's
 escape hatch, never the mechanism.
 
 Config (variables.txt beside this file, or real env, env wins):
-  DISCORD_TOKEN, ANTHROPIC_API_KEY            required
+  DISCORD_TOKEN                                required
+  PROVIDER=anthropic|openai                    default anthropic
+  ANTHROPIC_API_KEY / OPENAI_API_KEY           whichever PROVIDER needs
   CORPUS_DIR=dist/player                       local mode (default)
   GITHUB_REPO=owner/repo CORPUS_SUBDIR=dist/player GITHUB_TOKEN=...
                                                cloud mode (tarball)
-  MODEL=claude-sonnet-5  MAX_TOKENS=800  REFRESH_MINUTES=5
+  MODEL=  (defaults per provider)  MAX_TOKENS=800  REFRESH_MINUTES=5
   AUTO_CHANNEL_IDS=1,2   OWNER_ID=...  COOLDOWN_SECONDS=15
   PERSONA_FILE=persona.md  PLAYERS_FILE=       (optional roster,
                                                injected after the
@@ -26,16 +28,17 @@ import os
 import time
 from pathlib import Path
 
-import anthropic
 import discord
 
 import botlib
+import providers
 
 HERE = Path(__file__).resolve().parent
 botlib.load_variables(HERE / "variables.txt")
 
 TOKEN = os.environ["DISCORD_TOKEN"]
-MODEL = os.environ.get("MODEL", "claude-sonnet-5")
+PROVIDER = os.environ.get("PROVIDER", "anthropic")
+MODEL = os.environ.get("MODEL") or providers.DEFAULT_MODELS[PROVIDER]
 MAX_TOKENS = int(os.environ.get("MAX_TOKENS", "800"))
 REFRESH = int(os.environ.get("REFRESH_MINUTES", "5"))
 AUTO_CHANNELS = {int(c) for c in
@@ -51,7 +54,7 @@ players = ""
 if os.environ.get("PLAYERS_FILE"):
     players = (HERE / os.environ["PLAYERS_FILE"]).read_text(encoding="utf-8")
 
-llm = anthropic.Anthropic()
+llm = providers.get_provider(PROVIDER)
 intents = discord.Intents.default()
 intents.message_content = True          # enable in the dev portal too,
 client = discord.Client(intents=intents)  # or the bot is online but deaf
@@ -95,16 +98,9 @@ async def freshness_poll():
             print(f"freshness poll error: {e}")
 
 
-def system_blocks():
-    blocks = [{"type": "text",
-               "text": f"CAMPAIGN WIKI (site: {SITE_URL or 'unpublished'})"
-                       f"\n\n{state['corpus']}",
-               "cache_control": {"type": "ephemeral"}},
-              {"type": "text", "text": persona}]
-    if players:
-        blocks.append({"type": "text",
-                       "text": f"TABLE ROSTER (private):\n{players}"})
-    return blocks
+def corpus_text():
+    return (f"CAMPAIGN WIKI (site: {SITE_URL or 'unpublished'})"
+            f"\n\n{state['corpus']}")
 
 
 async def answer(message):
@@ -121,11 +117,11 @@ async def answer(message):
               + f"\n\nAnswer this question from the wiki:\n{question}")
     async with message.channel.typing():
         try:
-            res = await asyncio.to_thread(
-                llm.messages.create, model=MODEL, max_tokens=MAX_TOKENS,
-                system=system_blocks(),
-                messages=[{"role": "user", "content": prompt}])
-            for chunk in botlib.split_message(res.content[0].text):
+            reply = await asyncio.to_thread(
+                llm.complete, model=MODEL, max_tokens=MAX_TOKENS,
+                corpus_text=corpus_text(), persona=persona,
+                roster=players, prompt=prompt)
+            for chunk in botlib.split_message(reply):
                 await message.reply(chunk, mention_author=False)
         except Exception as e:
             print(f"answer error: {e}")

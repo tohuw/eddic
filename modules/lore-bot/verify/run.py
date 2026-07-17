@@ -68,12 +68,86 @@ def main():
                                             12345) == "who is the warden?",
                    "mention stripped"))
 
-    # bot.py compiles (deps not required to parse)
+    # bot.py and providers compile (deps not required to parse)
+    for src in [TEMPLATES / "bot.py",
+                *sorted((TEMPLATES / "providers").glob("*.py"))]:
+        try:
+            py_compile.compile(str(src), doraise=True)
+            checks.append((True, f"{src.name} compiles"))
+        except py_compile.PyCompileError as e:
+            checks.append((False, f"{src.name} compile error: {e}"))
+
+    # golden tests: pin each provider's request shape with fake SDKs,
+    # so a refactor cannot silently change what the APIs receive
+    import types
+
+    captured = {}
+
+    fake_anthropic = types.ModuleType("anthropic")
+
+    class _FakeAnthropicClient:
+        class messages:
+            @staticmethod
+            def create(**kw):
+                captured["anthropic"] = kw
+                return types.SimpleNamespace(
+                    content=[types.SimpleNamespace(text="ok")])
+    fake_anthropic.Anthropic = _FakeAnthropicClient
+    sys.modules["anthropic"] = fake_anthropic
+
+    fake_openai = types.ModuleType("openai")
+
+    class _FakeOpenAIClient:
+        class responses:
+            @staticmethod
+            def create(**kw):
+                captured["openai"] = kw
+                return types.SimpleNamespace(output_text="ok")
+    fake_openai.OpenAI = _FakeOpenAIClient
+    sys.modules["openai"] = fake_openai
+
+    import providers
+    kwargs = dict(model="m", max_tokens=7, corpus_text="CORPUS",
+                  persona="PERSONA", roster="ROSTER", prompt="Q")
+
+    out = providers.get_provider("anthropic").complete(**kwargs)
+    a = captured["anthropic"]
+    sysb = a["system"]
+    checks.append((out == "ok" and a["model"] == "m"
+                   and a["max_tokens"] == 7,
+                   "anthropic: model/max_tokens pass through"))
+    checks.append((sysb[0]["text"] == "CORPUS" and
+                   sysb[0].get("cache_control") == {"type": "ephemeral"},
+                   "anthropic: corpus is the cached system block"))
+    checks.append((sysb[1]["text"] == "PERSONA" and
+                   "cache_control" not in sysb[1],
+                   "anthropic: persona after the cache breakpoint"))
+    checks.append((len(sysb) == 3 and "ROSTER" in sysb[2]["text"],
+                   "anthropic: roster last, behind the breakpoint"))
+    checks.append((a["messages"] == [{"role": "user", "content": "Q"}],
+                   "anthropic: prompt is the user message"))
+
+    out = providers.get_provider("openai").complete(**kwargs)
+    o = captured["openai"]
+    checks.append((out == "ok" and o["model"] == "m"
+                   and o["max_output_tokens"] == 7,
+                   "openai: model/max_output_tokens pass through"))
+    checks.append((o["instructions"].startswith("CORPUS"),
+                   "openai: corpus leads the stable cacheable prefix"))
+    checks.append((o["instructions"].rfind("ROSTER") >
+                   o["instructions"].rfind("PERSONA"),
+                   "openai: roster rides behind persona, never in front"))
+    checks.append((o["input"] == "Q", "openai: prompt is the input"))
+
+    no_roster = dict(kwargs, roster="")
+    providers.get_provider("anthropic").complete(**no_roster)
+    checks.append((len(captured["anthropic"]["system"]) == 2,
+                   "anthropic: no roster block when roster empty"))
     try:
-        py_compile.compile(str(TEMPLATES / "bot.py"), doraise=True)
-        checks.append((True, "bot.py compiles"))
-    except py_compile.PyCompileError as e:
-        checks.append((False, f"bot.py compile error: {e}"))
+        providers.get_provider("gemini")
+        checks.append((False, "unknown provider rejected"))
+    except ValueError:
+        checks.append((True, "unknown provider rejected"))
 
     failed = [msg for ok, msg in checks if not ok]
     for ok, msg in checks:

@@ -42,4 +42,14 @@ Add a provider interface and OpenAI Responses adapter while golden-testing exist
 
 ## Implementation status
 
-Planning draft only. Replace this section with implementation and verification evidence before ready-for-review.
+Implemented 2026-07-17. templates/providers/ holds the duck-typed
+answer interface with lazy imports: anthropic_provider (the original
+request shape moved verbatim — corpus block cache-marked ephemeral,
+persona after the breakpoint, roster last) and openai_provider
+(Responses API, corpus-first stable prefix for automatic caching).
+bot.py selects via PROVIDER (default anthropic, unchanged defaults;
+MODEL defaults per provider). Golden tests in verify/run.py pin both
+request shapes with fake SDK modules — CI needs no provider packages
+and fails if a refactor changes what either API receives. OpenAI is
+recorded unverified in module.yaml until a live deployment. Module
+0.2.0.
