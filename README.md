@@ -15,11 +15,11 @@ compiled from. Eddic is source material for agents.
 ## The pitch, brutally true
 
 Your players are not going to read thirty wiki pages. They absolutely
-won't. What they *will* do is ask an agent "what the hell is a Celeste"
-and be happy to get a helpful answer — and what they *might* do, much to
-your delight, is rabbithole from there into reading for an hour about the
-Schism at Saudient, because you gave them a facility that made immersion
-easy. The agent-answer surface is the product; the wiki is the substrate
+won't. What they *will* do is ask an agent "what the hell is the Sunken
+City" and be happy to get a helpful answer — and what they *might* do,
+much to your delight, is rabbithole from there into reading for an hour
+about the Warden's oath, because you gave them a facility that made
+immersion easy. The agent-answer surface is the product; the wiki is the substrate
 that makes the answers good. Your worldbuilding finally has a delivery
 mechanism.
 

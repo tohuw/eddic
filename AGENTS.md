@@ -50,3 +50,8 @@ Repo conventions:
   must run on Windows and macOS via the `eddic` CLI (uv-run Python,
   PEP 723). See the installation principle in `DESIGN.md`.
 - Write docs in dense prose. No padding.
+- Keep module docs campaign-agnostic: no examples from any real
+  campaign (including the one Eddic grew out of). Generalize to what
+  the reader ought to try; when an example needs a concrete term,
+  use the verify fixtures' invented world (the Warden, the Sunken
+  City).

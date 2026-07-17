@@ -76,7 +76,7 @@ auth in infrastructure; no agent ever decides what a tier may see.
       connectors" — that is a directory of commercial vendors, and
       searching it for words like "remote" strands you at
       Remote.com.
-   3. **Name**: anything ("Land of Song DM"). **Remote MCP server
+   3. **Name**: anything ("<campaign> DM"). **Remote MCP server
       URL**: paste the capability URL. Leave Advanced settings'
       OAuth fields empty — the token in the URL is the auth.
    4. Click **Add**. It connects immediately and opens the
@@ -132,12 +132,12 @@ auth in infrastructure; no agent ever decides what a tier may see.
 - **Auth style.** Default: capability URL for phone connectors,
   header auth for desktop agents. Same tokens either way.
 - **Voice mode.** Default: push-to-talk voice transcription into a
-  normal chat — verified 2026-07 on the Claude phone app, where a
-  cold-context "what can you tell me about the stones of saudient"
-  triggered search immediately and answered in ~10 s on the full
-  model. That dictation path is the car interface. The dedicated
-  conversational voice mode (its own smaller model) is separately
-  unverified; don't promise it.
+  normal chat — verified 2026-07 on the Claude phone app: asked a
+  cold-context lore question about a term only the wiki defines,
+  the model reached for search unprompted and answered in ~10 s on
+  the full model. That dictation path is the car interface. The
+  dedicated conversational voice mode (its own smaller model) is
+  separately unverified; don't promise it.
 
 ## Verify
 
