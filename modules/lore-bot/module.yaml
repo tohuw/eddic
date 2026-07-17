@@ -23,3 +23,9 @@ cost_posture:
     Local while a machine is reliably on during play sessions; a
     host when the table expects answers at 2am or the DM's laptop
     sleeps.
+compatibility:
+  anthropic:
+    role: model provider
+    status: verified
+    date: 2026-07-16
+    evidence: design proven by predecessor bot in production; pure core verified in CI
