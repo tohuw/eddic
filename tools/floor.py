@@ -27,7 +27,10 @@ YAML_KEYS = ("name:", "version:", "summary:", "touches:", "depends:",
 PARTS = ("## Preflight", "## Procedure", "## Decision points", "## Verify")
 SECRET_PATTERNS = re.compile(
     r"sk-ant-[A-Za-z0-9-]{10,}|ghp_[A-Za-z0-9]{20,}|gho_[A-Za-z0-9]{20,}"
-    r"|AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY-----")
+    r"|AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY-----"
+    # OpenAI key shapes: project-scoped and long legacy; the length
+    # floors keep prose like "sk-ant-" examples from false-firing
+    r"|sk-proj-[A-Za-z0-9_-]{20,}|sk-[A-Za-z0-9]{40,}")
 COMPAT_NAMES = ("claude", "chatgpt", "codex", "anthropic", "openai")
 COMPAT_STATES = ("verified", "documented", "unverified", "unsupported")
 

@@ -216,7 +216,9 @@ reassurance. Eddic's posture, the rationale behind principles 6 and 10:
   train on inputs by default, and consumer products expose opt-outs;
   Eddic patterns assume accounts configured accordingly. That is trust
   in a black box — say so plainly — but it is a bounded, acceptable
-  risk given the points above.
+  risk given the points above. The per-vendor switches, what content
+  reaches whom, and token-handling doctrine live dated in
+  `docs/data-controls.md`.
 - **Provenance is the working defense, in both directions.** Authorship
   frontmatter, git history, and the typed log form a dated corpus
   proving your material existed before it ever met the pipeline — and,

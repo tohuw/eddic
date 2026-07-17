@@ -54,12 +54,17 @@ like the lore bot.
        printf %s "$T" | wrangler secret put TOKEN_DM
        # repeat with a fresh value for TOKEN_PLAYER
 
-   Show the user their two capability URLs once, labeled (DM URL to
-   the DM's own devices only; player URL shareable with the table).
-   Each `secret put` cuts a new Worker version that takes a few
-   seconds to reach the edge — a 401 immediately after setting a
-   token is propagation, not misconfiguration; retry before
-   diagnosing.
+   Token hygiene (`docs/data-controls.md` has the full profile):
+   when you can configure the consuming client directly (a
+   consented browser session, a config file you write), do that and
+   never print the token at all; when the user must paste, show each
+   URL once, labeled (DM URL to the DM's own devices only; player
+   URL shareable with the table), and refer to tokens afterward by
+   fingerprint (first 8 characters). Anything that lands a token in
+   a transcript, screenshot, or log gets rotated on sight. Each
+   `secret put` cuts a new Worker version that takes a few seconds
+   to reach the edge — a 401 immediately after setting a token is
+   propagation, not misconfiguration; retry before diagnosing.
 
 4. Deploy: `wrangler deploy` from `worker/`. Re-publish cadence: any
    time the wiki changes, `eddic.py project && eddic.py stage &&

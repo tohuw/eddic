@@ -39,4 +39,15 @@ Operationalize provider privacy guidance and safer secret handling without remov
 
 ## Implementation status
 
-Planning draft only. Replace this section with implementation and verification evidence before ready-for-review.
+Implemented 2026-07-17. docs/data-controls.md: dated privacy profiles
+for both vendors (consumer switches incl. ChatGPT Temporary Chat ~30d
+retention and thumbs-feedback sharing; API no-training defaults),
+what-content-reaches-whom, and token-handling doctrine (bearer
+preferred where the UI allows, capability URL where Claude needs it;
+fingerprints for reference; exposure means rotation). floor.py secret
+scan now catches sk-proj- and long legacy sk- OpenAI keys — length
+floors keep prose placeholders from false-firing (self-tested).
+retrieval PATTERN prefers direct configuration over printing tokens;
+DESIGN's rights section and lore-bot's roster line link the profile.
+No keychain framework: rotation stayed a one-sentence operation, so
+none was needed. Claude capability URLs untouched.
