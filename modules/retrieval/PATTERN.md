@@ -10,9 +10,15 @@ auth in infrastructure; no agent ever decides what a tier may see.
 ## Preflight
 
 - cli and wiki patterns applied; `eddic project` succeeds.
-- A Cloudflare account with wrangler authenticated (`wrangler
-  whoami`); node available. Account login is the user's interactive
-  step — direct them, don't drive it.
+- Node and wrangler available — install them yourself (npx works).
+- Wrangler authenticated (`wrangler whoami`). Fresh Cloudflare
+  account: the human's complete list is sign up (free, no card),
+  click the verification email (deploys fail on unverified
+  accounts), and click **Allow** when you run `wrangler login` for
+  them. If the account's first deploy errors that a workers.dev
+  subdomain is needed, have them open the dashboard's Workers
+  section once — visiting auto-creates it. The publish pattern's
+  preflight carries the long-form version of this onboarding.
 
 ## Procedure
 
@@ -59,6 +65,18 @@ auth in infrastructure; no agent ever decides what a tier may see.
      connector settings take). The DM configures the DM-token URL on
      their own devices only; the player URL can be shared with the
      table.
+
+   Walk the user through claude.ai's connector screen explicitly —
+   it has a kind chooser that stalls people: Settings → Connectors →
+   Add connector → kind **Remote** (not Local command), name in
+   lowercase-and-hyphens, paste the capability URL, transport
+   **Streamable HTTP** if Advanced settings asks (the worker speaks
+   only that), OAuth fields empty (auth is the token in the URL),
+   Add, then **Connect** on the card. Then two defaults to fix for
+   hands-free use: the connector must be toggled on per conversation
+   (**+** → Connectors in a chat), and tools default to "Ask each
+   time" — set the connector to always-allow, or voice-mode use
+   dies at an approval tap the driver can't make.
 
 6. **Rotation is the panic procedure**: `wrangler secret put
    TOKEN_DM` with a fresh value, update the connector config, done —

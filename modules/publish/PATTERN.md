@@ -9,12 +9,29 @@ is one verb and not four commands in a shell history.
 
 - cli, wiki, and render patterns applied; `eddic project` and
   `eddic build` succeed.
-- A Cloudflare account exists and wrangler is authenticated
-  (`wrangler whoami`). If the user has no account or login, this is
-  an interactive step they must do themselves — direct them, don't
-  attempt it for them (`wrangler login` opens a browser).
-- Node is available for wrangler (npx works if a global install is
-  unwanted).
+- Node and wrangler available — install them yourself (npx works if
+  a global install is unwanted).
+- Wrangler authenticated (`wrangler whoami`). Fresh account: see
+  below.
+
+### Cloudflare onboarding (fresh account)
+
+The human's complete list — drive everything else yourself:
+
+1. Sign up at dash.cloudflare.com. Free plan; no card, no domain.
+2. Click the verification link Cloudflare emails. Deploys fail
+   confusingly on unverified accounts (no workers.dev subdomain can
+   be created), so don't skip this.
+3. Click **Allow** when you run `wrangler login` and their browser
+   opens. Run it yourself and wait for it to return; if no browser
+   appears, hand them the URL wrangler prints.
+4. Only if this is the account's first Worker or Pages deploy and it
+   errors that a workers.dev subdomain is needed: have them open the
+   Workers/Compute section of the dashboard once — visiting
+   auto-creates the subdomain (wrangler's own registration prompt
+   needs an interactive terminal, which you may not have). The
+   auto-picked name is fine; they can rename it in the dashboard if
+   they care.
 
 ## Procedure
 
