@@ -6,6 +6,7 @@ stage the corpora, copy the worker template beside them, then drive
 the worker's fetch handler in node (auth, both token styles, tier
 isolation, search). Skips gracefully if node is absent (CI has it)."""
 
+import json
 import shutil
 import subprocess
 import sys
@@ -57,6 +58,17 @@ def main():
         print(("ok  " if refuse.returncode == 1 else "FAIL"),
               "stage refuses without a projection")
         if refuse.returncode != 1:
+            return 1
+
+        spec = json.loads((MOD / "templates" / "openapi.json")
+                          .read_text(encoding="utf-8"))
+        ops = {op.get("operationId")
+               for methods in spec.get("paths", {}).values()
+               for op in methods.values()}
+        ok_spec = ops == {"listPages", "readPage", "searchWiki"}
+        print(("ok  " if ok_spec else "FAIL"),
+              "openapi.json parses with the three actions")
+        if not ok_spec:
             return 1
 
         shutil.copyfile(MOD / "templates" / "worker.js", wdir / "worker.js")

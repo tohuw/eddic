@@ -66,6 +66,13 @@ mechanical rot — a broken script reads fine:
 - A verify section exists and its checks execute.
 - No secrets or credentials committed.
 - No symlinks; no bash-required machinery.
+- Vendor claims are metadata-backed: if a PATTERN names a vendor
+  (claude, chatgpt, codex, anthropic, openai), `module.yaml` carries a
+  `compatibility:` entry for it — `role` (maintaining agent / answer
+  client / model provider), `status` (one of the evidence states in
+  `docs/compatibility.md`), `date`, and, for `verified`, `evidence`.
+  Nothing below `verified` may be a decision point's default path.
+  Truth decays: re-date on re-test, demote when a vendor moves.
 
 ## The semantic rubric (review-enforced)
 
