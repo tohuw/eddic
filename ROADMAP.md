@@ -14,6 +14,16 @@ answered from a cold context in ~10 s. The Pages live deploy awaits
 the owner. Remaining: recorder (9, needs the owner's brief),
 discord-setup (10), routines (11), orlog (12).
 
+**Provider parity 2026-07-17** (issue #1, PRs #2–#9 merged): the
+compatibility ledger (`docs/compatibility.md`) with floor-enforced
+evidence-backed vendor claims; worker 0.3.0 (cross-client MCP
+hardening + Custom GPT Actions REST facade); lore-bot 0.2.0 (OpenAI
+Responses adapter behind a provider seam, Anthropic default
+unchanged); data-control profiles; Codex plugin routing to AGENTS.md.
+Awaiting live vendor sessions: the ChatGPT acceptance rig
+(`modules/retrieval/verify/chatgpt-acceptance.md`), a Codex
+plugin-install test, an OpenAI-provider bot deployment.
+
 ## Module queue
 
 1. **lint** — the wiki health check, generalized from the DitD
