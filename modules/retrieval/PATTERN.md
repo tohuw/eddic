@@ -66,17 +66,22 @@ auth in infrastructure; no agent ever decides what a tier may see.
      their own devices only; the player URL can be shared with the
      table.
 
-   Walk the user through claude.ai's connector screen explicitly —
-   it has a kind chooser that stalls people: Settings → Connectors →
-   Add connector → kind **Remote** (not Local command), name in
-   lowercase-and-hyphens, paste the capability URL, transport
-   **Streamable HTTP** if Advanced settings asks (the worker speaks
-   only that), OAuth fields empty (auth is the token in the URL),
-   Add, then **Connect** on the card. Then two defaults to fix for
-   hands-free use: the connector must be toggled on per conversation
-   (**+** → Connectors in a chat), and tools default to "Ask each
-   time" — set the connector to always-allow, or voice-mode use
-   dies at an approval tap the driver can't make.
+   The claude.ai add flow (verified 2026-07 on web; drive it via the
+   user's browser, or walk them through — it syncs account-wide, so
+   doing it once on web puts it on their phone):
+   Settings → Connectors (currently under the **Customize** section)
+   → **Add ▾** → **Add custom connector**. The trap: the same menu's
+   "Browse connectors" opens a directory of commercial vendors, and
+   a user told to "add a connector" lands there and finds nothing —
+   searching it for terms like "remote" surfaces Remote.com. Steer
+   past it by the exact menu-item name. The dialog itself is just
+   **Name** (free text) and **Remote MCP server URL** (paste the
+   capability URL); Advanced settings holds OAuth fields — leave
+   them empty, auth is the token in the URL. **Add** connects
+   immediately and lands on the connector's page. There, set the
+   tool-permission dropdown from "Needs approval" to **Always
+   allow** — the tools are read-only, and hands-free voice use dies
+   at an approval tap the driver can't make.
 
 6. **Rotation is the panic procedure**: `wrangler secret put
    TOKEN_DM` with a fresh value, update the connector config, done —
