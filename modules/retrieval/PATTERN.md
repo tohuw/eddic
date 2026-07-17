@@ -33,11 +33,18 @@ auth in infrastructure; no agent ever decides what a tier may see.
    belongs in the deployed Worker, not in history.
 
 3. Generate two tokens and set them as secrets (never in files, never
-   in the repo):
+   in the repo). Non-interactive, so you can drive it for the user:
 
-       python3 -c "import secrets; print(secrets.token_urlsafe(24))"
-       wrangler secret put TOKEN_DM      # paste one
-       wrangler secret put TOKEN_PLAYER  # paste the other
+       T=$(python3 -c "import secrets; print(secrets.token_urlsafe(24))")
+       printf %s "$T" | wrangler secret put TOKEN_DM
+       # repeat with a fresh value for TOKEN_PLAYER
+
+   Show the user their two capability URLs once, labeled (DM URL to
+   the DM's own devices only; player URL shareable with the table).
+   Each `secret put` cuts a new Worker version that takes a few
+   seconds to reach the edge — a 401 immediately after setting a
+   token is propagation, not misconfiguration; retry before
+   diagnosing.
 
 4. Deploy: `wrangler deploy` from `worker/`. Re-publish cadence: any
    time the wiki changes, `eddic.py project && eddic.py stage &&
