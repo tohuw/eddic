@@ -1,0 +1,18 @@
+name: discord-setup
+version: 0.1.0
+summary: >
+  The server's standing spec: roles, channels, topics, and
+  role-privacy versioned in the campaign repo, reconciled by a
+  deterministic REST verb — drift reported lint-style, creation
+  additive-only, removal always a human act. Curated third-party
+  bots ride guided invite flows, not the spec.
+touches:
+  - lore-bot
+depends:
+  - cli
+cost_posture:
+  free: >
+    Entirely free: stdlib REST against the API with the campaign
+    bot's existing token; no gateway, no hosting.
+  paid: none
+  heuristic: n/a

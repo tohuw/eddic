@@ -136,7 +136,11 @@ the payment-gateway decision.
    remembered across sessions with visible opt-out. Doctrine:
    consent-to-record is not consent-to-sell — the transaction arc's
    full-table sign-off remains its own later act.
-10. **discord-setup** — server scaffolding (owner's spec, 2026-07-18):
+10. **discord-setup** — SHIPPED 0.1.0 (2026-07-18, same-day from
+    spec to live-proven: mock-verified in CI, then dumped, drift-
+    reported, 403-refused-with-advice, re-invited, applied, and
+    converged against a real server — privacy overwrites round-trip
+    in the dump). The spec:
     a deterministic REST script as an eddic verb, using the campaign
     bot's existing token (no gateway, no second bot) against a
     **standing server spec** versioned in the campaign repo —

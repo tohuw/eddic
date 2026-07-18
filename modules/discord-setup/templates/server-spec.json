@@ -1,0 +1,18 @@
+{
+  "guild_id": "FILL_ME",
+  "roles": [
+    { "name": "DM", "hoist": true },
+    { "name": "Player" }
+  ],
+  "channels": [
+    { "name": "ask-the-archivist", "type": "text",
+      "topic": "Ask the campaign's lore-keeper anything the archive knows." },
+    { "name": "session-recaps", "type": "text",
+      "topic": "One thread per session; the archivist announces new recaps here." },
+    { "name": "botspam", "type": "text",
+      "topic": "Try any bot freely here — nothing in this channel is canon." },
+    { "name": "session-table", "type": "voice" },
+    { "name": "dm-notes", "type": "text", "private_to": "DM",
+      "topic": "DM eyes only." }
+  ]
+}
