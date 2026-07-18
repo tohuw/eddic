@@ -19,6 +19,9 @@ class AnthropicProvider:
                            "text": f"TABLE ROSTER (private):\n{roster}"})
         res = self.client.messages.create(
             model=model, max_tokens=max_tokens, system=blocks,
+            # thinking off: it spends the token budget and the table's
+            # patience; a lore answer needs recall, not deliberation
+            thinking={"type": "disabled"},
             messages=[{"role": "user", "content": prompt}])
         # content may lead with thinking blocks; answer = the text block
         return next(b.text for b in res.content

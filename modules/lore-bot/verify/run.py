@@ -129,6 +129,8 @@ def main():
                    "anthropic: roster last, behind the breakpoint"))
     checks.append((a["messages"] == [{"role": "user", "content": "Q"}],
                    "anthropic: prompt is the user message"))
+    checks.append((a.get("thinking") == {"type": "disabled"},
+                   "anthropic: thinking disabled (budget and latency)"))
 
     out = providers.get_provider("openai").complete(**kwargs)
     o = captured["openai"]
