@@ -44,10 +44,24 @@ the transcript body.
 
 ## Decision points
 
-- **Model.** Default: `medium` — the quality floor worth having for
-  multi-hour session audio. Heuristic: `small` on weak hardware or
-  for a fast draft; `large-v3` when the machine has a GPU or Apple
-  Silicon and the session is worth the minutes.
+- **Model.** Default: **ask the owner interactively** — present the
+  ladder with sizes and your recommendation for their machine and
+  patience, then download their pick to a cache dir (e.g.
+  `~/.cache/whisper-cpp/`) from the whisper.cpp model repository:
+
+  | model | download | character |
+  |---|---|---|
+  | `base.en` | ~148 MB | fast draft; misses crosstalk |
+  | `small.en` | ~466 MB | good on clear single voices |
+  | `medium.en` | ~1.5 GB | the quality floor for session audio |
+  | `large-v3-turbo` | ~1.6 GB | near-best quality, much faster |
+  | `large-v3` | ~3.1 GB | best transcription available |
+
+  Recommend from what you can see — hardware, disk, session length,
+  how much the table cares about exact words. You know how to weigh
+  these; the table's answer is the decision. When the owner says
+  "just pick," take `large-v3-turbo` on capable hardware, `medium.en`
+  otherwise.
 - **Mixed vs per-speaker.** Default: per-speaker tracks whenever the
   recording offers them; exact attribution is the difference between
   a transcript and a guess. Mixed audio still transcribes, unlabeled.
