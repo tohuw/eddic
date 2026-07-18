@@ -158,20 +158,41 @@ def main(argv):
             mismatched.append((c["name"], "topic", "differs"))
 
     if "--apply" not in flags:
+        # the default run is the PLAN: what apply will do, what is
+        # re-used as-is, and what it deliberately will not decide
+        mismatch_names = {name for name, _, _ in mismatched}
+        for r in spec.get("roles", []):
+            if r["name"] in roles:
+                print(f"re-use    role     {r['name']} (exists)")
+        for c in spec.get("channels", []):
+            if c["name"] in chans and c["name"] not in mismatch_names:
+                print(f"re-use    channel  {c['name']} (matches spec)")
         for r in missing_roles:
-            print(f"missing   role     {r['name']}")
+            print(f"create    role     {r['name']}")
         for c in missing_chans:
-            print(f"missing   channel  {c['name']} ({c['type']})")
+            priv = (f", private to {c['private_to']}"
+                    if c.get("private_to") else "")
+            print(f"create    channel  {c['name']} ({c['type']}{priv})")
         for name, what, detail in mismatched:
-            print(f"mismatch  {what:8} {name} — {detail}")
+            print(f"mismatch  {what:8} {name} — {detail} "
+                  f"(owner decides; never auto-repaired)")
         for n in extra_chans:
-            print(f"extra     channel  {n} (not in spec; report only —"
-                  f" removal is a human act)")
+            print(f"leave     channel  {n} (not in spec; untouched — "
+                  f"removal is a human act)")
         drift = bool(missing_roles or missing_chans or mismatched)
-        print(f"\n{'DRIFT' if drift else 'in sync'}: "
-              f"{len(missing_roles)} role(s) and {len(missing_chans)} "
-              f"channel(s) missing, {len(mismatched)} mismatch(es), "
-              f"{len(extra_chans)} extra (informational)")
+        reused = (sum(1 for r in spec.get("roles", [])
+                      if r["name"] in roles)
+                  + sum(1 for c in spec.get("channels", [])
+                        if c["name"] in chans
+                        and c["name"] not in mismatch_names))
+        print(f"\nPLAN: --apply will create "
+              f"{len(missing_roles) + len(missing_chans)} item(s) and "
+              f"change nothing else; {reused} re-used as-is, "
+              f"{len(mismatched)} mismatch(es) for the owner, "
+              f"{len(extra_chans)} extra(s) untouched."
+              if drift else
+              f"\nin sync: nothing to create; {reused} item(s) "
+              f"re-used as-is, {len(extra_chans)} extra(s) untouched.")
         return 1 if drift else 0
 
     created = []

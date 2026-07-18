@@ -101,14 +101,20 @@ def main():
     checks = [
         (p.returncode == 1, f"drift exits 1 (got {p.returncode}: "
                             f"{p.stderr.strip()[:120]})"),
-        ("missing   role     Player" in p.stdout, "missing role found"),
+        ("create    role     Player" in p.stdout, "plan: missing role -> create"),
+        ("re-use    role     DM (exists)" in p.stdout,
+         "plan: existing role shown as re-used"),
+        ("re-use    channel  ask-the-archivist" in p.stdout,
+         "plan: matching channel shown as re-used"),
+        ("PLAN: --apply will create" in p.stdout,
+         "plan: summary states apply scope"),
         ("botspam" in p.stdout and "session-table" in p.stdout,
          "missing channels found"),
-        ("mismatch  privacy  dm-notes" in p.stdout,
-         "privacy mismatch detected"),
-        ("extra     channel  off-topic" in p.stdout and
+        ("mismatch  privacy  dm-notes" in p.stdout and
+         "owner decides" in p.stdout, "privacy mismatch flagged for owner"),
+        ("leave     channel  off-topic" in p.stdout and
          "human act" in p.stdout,
-         "extra channel reported, removal deferred to humans"),
+         "extra channel left alone, removal deferred to humans"),
     ]
 
     p = run("--apply")

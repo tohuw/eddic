@@ -31,11 +31,15 @@ anything, because removal is a human act in the client.
    sandbox, a session voice channel, a DM-private channel, DM and
    Player roles) and fill the guild id.
 
-2. Reconcile: `eddic discord-setup` reports drift (exit 1 when found);
-   `eddic discord-setup --apply` creates what is missing — private
-   channels get their deny-@everyone/allow-role overwrites at birth.
-   Mismatches on existing channels and extra channels are reported,
-   never auto-repaired: judgment stays with the owner.
+2. **Plan first, always.** The bare verb IS the plan: what `--apply`
+   would create, what already exists and will be **re-used as-is**,
+   which mismatches wait on the owner, and which extras stay
+   untouched. Walk the owner through that plan in their terms — what
+   appears on their server, what of theirs is being kept — and only
+   then run `eddic discord-setup --apply`, which creates exactly the
+   planned items (private channels get their deny-@everyone/
+   allow-role overwrites at birth) and changes nothing else.
+   Never apply a plan the owner hasn't seen.
 
 3. Third-party bots are invited, not specced — each is an OAuth
    flow on its own site (the agent-driven browser route). Curated
