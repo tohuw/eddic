@@ -1,13 +1,11 @@
-# Recorder — live-test learnings (2026-07-18, module unshipped)
+# Recorder — live-test learnings (2026-07-18)
 
-The recorder module is NOT shipped: Discord voice **receive** is
-broken Python-ecosystem-wide by DAVE E2EE enforcement (2026-03-02).
-Watch trigger: Pycord-Development/pycord#3139 (their 2.8 rewrite
-shipped DAVE send only; the receive fix PR is pending; the discord.py
-voice-recv extension is equally dead). Modules hold what is proven to
-work; this file holds what we proved anyway, so the build restarts
-warm when the trigger fires. A working draft lives in the test
-campaign's bot/ directory (recorder.py, py-cord edition).
+RESOLVED same day: the DAVE spike (davey + five import-time patches
+to py-cord 2.8.0) made receive work, a live capture + transcription
+proved it, and the module SHIPPED at 0.1.0 (modules/recorder/).
+Residual trigger: when Pycord-Development/pycord#3139 lands upstream,
+dave_recv.py retires and the version pin lifts. This file remains
+the operational history and the sink-contract notes.
 
 Proven live, owner in the loop:
 - One-bot architecture: recording as a capability the deployed lore
