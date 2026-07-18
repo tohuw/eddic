@@ -1,0 +1,24 @@
+name: recorder
+version: 0.1.0
+summary: >
+  The campaign's own session-recording Discord bot: react-gated
+  per-microphone consent enforced in the audio sink, per-speaker
+  tracks staged straight into the transcriber's layout on the DM's
+  machine, and DAVE (E2EE) voice receive made to work via davey plus
+  import-time patches to py-cord 2.8.0 — live-proven end to end.
+touches:
+  - capture
+  - transcriber
+depends:
+  - cli
+cost_posture:
+  free: >
+    Entirely free: runs locally at session time on the DM's machine,
+    recordings land on the disk the transcriber reads. No hosting.
+  paid: >
+    A cloud host plus object storage is a possible future mode for
+    tables that want it; deliberately not built (see the pattern).
+  heuristic: >
+    The recording's destination is the DM's disk because that is
+    where transcription lives; pay for cloud only if that stops
+    being true for your table.

@@ -94,13 +94,12 @@ the payment-gateway decision.
    needs is the audio; transcription is local; premium Craig with
    its own transcripts equally fine), with deterministic staging
    (`eddic stage-craig`, incl. the folder-named-.flac quirk) and a
-   no-folder-navigation agent handoff. The **Eddic recorder bot**
-   remains the consent-gated, no-third-party option, experimental
-   until upstream voice-receive lands — DAVE receive was SOLVED here
-   2026-07-18 (davey + five py-cord patches, live capture and
-   transcription proven; see notes/recorder-learnings.md and the
-   test campaign's dave-recv-spike branch) but rides alpha patches
-   until pycord#3139 merges. Prior blocked-status context: Discord voice
+   no-folder-navigation agent handoff. The **recorder module**
+   (SHIPPED 0.1.0 same day) is the consent-gated no-third-party
+   option: DAVE receive was SOLVED here 2026-07-18 — davey + five
+   import-time patches to py-cord 2.8.0 (approach shared with
+   upstream's in-progress PR), live capture and transcription
+   proven; the patch module retires when pycord#3139 merges. Prior blocked-status context: Discord voice
    receive is broken Python-ecosystem-wide by DAVE E2EE enforcement;
    the module ships when Pycord-Development/pycord#3139 lands and a
    live capture passes. Everything human-facing was proven live

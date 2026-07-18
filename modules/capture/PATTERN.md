@@ -52,9 +52,10 @@ capture source is a genuine choice, not a doctrine.
 - **Capture source.** Default: **free Craig** — proven for years,
   per-speaker tracks, zero hosting, and all we truly need is the
   audio since transcription is local. Alternatives: the **Eddic
-  recorder bot** (experimental until upstream voice-receive lands;
-  structural react-gated consent, no third party in the audio path,
-  runs locally at session time) or **premium Craig with its own
+  recorder bot** (the recorder module: structural react-gated
+  consent, no third party in the audio path, runs locally at
+  session time; live-proven, riding pinned py-cord patches until
+  upstream lands voice receive) or **premium Craig with its own
   transcripts** (then skip the transcriber entirely). No wrong
   answer; the consent-machinery difference is the real trade.
 - **Raw audio retention.** Default: keep until the session's wiki
