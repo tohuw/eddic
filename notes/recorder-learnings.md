@@ -30,9 +30,21 @@ Proven live, owner in the loop:
   page carries the same commitment.
 - Message edits must rebuild content from live state — Message
   objects hold stale cached content.
-- Ops discipline: restart = stop, **verify dead** (pgrep), start.
-  Two gateway sessions of one bot race slash acks and voice
-  connects into unreproducible chaos. Run unbuffered.
+- Ops discipline: restart = stop, **verify dead**, start — and the
+  verification must match what actually runs: `uv run bot.py`
+  spawns a child whose argv is just `python bot.py`, so full-path
+  pgrep patterns match only the wrapper and orphan the bot itself.
+  Match on `bot\.py$` (or ps and read with your eyes). Killing the
+  wrapper does not reliably kill the child. We accumulated SIX
+  zombie gateway sessions this way; N sessions of one bot race
+  every slash ack — the loser gets 10062 "Unknown interaction"
+  while a winner's defer sticks as a forever-"thinking" ephemeral —
+  and race voice connects into unreproducible chaos. If slash
+  commands 10062 with fresh interactions and instant handlers,
+  count your processes before blaming the library. Run unbuffered.
+  Also: a SIGKILLed voice connection leaves the bot's ghost
+  standing in the channel until Discord times it out or a human
+  disconnects it — Discord-side state is part of process hygiene.
 
 Sink contract for py-cord 2.8's new engine (what the fix will land
 on): router calls `sink.write(data, user)` where `data.pcm` is
