@@ -17,3 +17,4 @@ contribs and companion layer on once the campaign is live.
 | [transcriber](transcriber/) | local whisper.cpp session transcription, per-speaker merge | 0.1.0 |
 | [contribs](contribs/) | the transaction arc: overlays, hash-pinned consent, derivation-graph rights, the sale-build fence | 0.1.0 |
 | [companion](companion/) | at-the-table companions under the knowledge-parity doctrine; backstory interviewer | 0.1.0 |
+| [orlog](orlog/) | fork-first timeline reconciliation and the time-question query cookbook | 0.1.0 |

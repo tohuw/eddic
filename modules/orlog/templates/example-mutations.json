@@ -1,0 +1,11 @@
+[
+  {
+    "kind": "event.create",
+    "event": {
+      "id": "example-event",
+      "label": "An example floating event",
+      "precision": "day",
+      "anchor": { "kind": "floating" }
+    }
+  }
+]

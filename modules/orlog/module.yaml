@@ -1,0 +1,18 @@
+name: orlog
+version: 0.1.0
+summary: >
+  Drive an Ørlǫg story from the campaign: the fork-first reconcile
+  discipline (wiki facts become validated mutations on an isolated
+  fork, merging stays the owner's act) and the query cookbook for
+  answering time questions from the timeline instead of inventing
+  date syntax in prose.
+touches:
+  - wiki
+depends:
+  - cli
+cost_posture:
+  free: >
+    Entirely local and free: Ørlǫg's headless CLI on Node 24+, driven
+    by a stdlib Python wrapper. No services, no spend.
+  paid: none
+  heuristic: n/a
