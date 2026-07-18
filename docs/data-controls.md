@@ -38,6 +38,29 @@ frame lives in `DESIGN.md`.
   An OpenAI-provider lore bot is API traffic, billed and governed
   separately from anyone's ChatGPT subscription.
 
+## Token intake — how an owner hands the agent a secret
+
+Never through the conversation. Four routes, in preference order:
+
+1. **OAuth the agent drives, the human approves** (`wrangler login`,
+   `gh auth login`): the agent runs it, the browser opens, the human
+   clicks Allow. No token is ever visible to anyone.
+2. **Tokens the agent mints** (retrieval tiers): generated and bound
+   as secrets in one motion; the owner supplies nothing and receives
+   capability URLs once, labeled.
+3. **Vendor-portal tokens** (Discord bots, API keys): the agent
+   drives the portal with consent and moves the token straight into
+   the gitignored config file — clipboard relay, wiped after,
+   fingerprint only in chat — or, self-serve, the agent prepares the
+   file with named empty slots and the human pastes into the *file*.
+4. **Already-resident secrets**: the owner says where a key already
+   lives (an env file, a shell profile); the agent points the
+   process at it and never re-echoes it. Environment beats config
+   file by design, so this route copies nothing.
+
+A secret that transits the conversation is exposed, and exposure
+means rotation — route 3's discipline exists so it never has to.
+
 ## Token handling
 
 - Tokens live in Worker secrets and connector configs — never in
