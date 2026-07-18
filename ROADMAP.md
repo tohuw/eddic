@@ -117,9 +117,22 @@ the payment-gateway decision.
    remembered across sessions with visible opt-out. Doctrine:
    consent-to-record is not consent-to-sell — the transaction arc's
    full-table sign-off remains its own later act.
-10. **discord-setup** — server scaffolding: Discord template for
-    structure, deterministic setup bot for what templates can't do
-    (integrations, webhooks, permissions).
+10. **discord-setup** — server scaffolding (owner's spec, 2026-07-18):
+    a deterministic REST script as an eddic verb, using the campaign
+    bot's existing token (no gateway, no second bot) against a
+    **standing server spec** versioned in the campaign repo —
+    re-running reconciles the live server to spec and reports drift,
+    lint-style. Default scaffold generalizes the reference table's
+    server: an ask-the-archivist channel, threaded session-recaps, a
+    botspam sandbox, a session voice channel with its text chat, a
+    DM-private channel, DM/player roles with sane overwrites. Ships a
+    **curated third-party set** (drafted from the reference server,
+    owner to confirm: dice = Avrae, scheduling = Apollo, music =
+    Jockie; recording deliberately absent — the recorder capability
+    replaces it) with the agent-driven invite-URL flow for each and
+    per-bot config notes. Decision points: adopt-vs-scaffold on an
+    existing server; which curated bots to take; spec-drift policy
+    (report-only vs repair).
 11. **routines** — the maintenance routine contract (idempotent, safe
     to miss, safe to double-run) with the preference chain: hosted
     agent routines → GitHub Actions → local cron-esque. Adapters stated
