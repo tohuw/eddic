@@ -88,7 +88,19 @@ the payment-gateway decision.
 8. **transcriber** — local session transcription (whisper.cpp) from
    recorded audio; the free path that replaces paid transcript services.
    Likely the first binary-bearing module.
-9. **recorder** — **BLOCKED UPSTREAM (2026-07-18)**: Discord voice
+9. **capture** — SHIPPED 0.1.0 (2026-07-18, reframed from
+   "recorder" at the owner's direction): session audio by the
+   table's chosen route — **free Craig by default** (all Eddic truly
+   needs is the audio; transcription is local; premium Craig with
+   its own transcripts equally fine), with deterministic staging
+   (`eddic stage-craig`, incl. the folder-named-.flac quirk) and a
+   no-folder-navigation agent handoff. The **Eddic recorder bot**
+   remains the consent-gated, no-third-party option, experimental
+   until upstream voice-receive lands — DAVE receive was SOLVED here
+   2026-07-18 (davey + five py-cord patches, live capture and
+   transcription proven; see notes/recorder-learnings.md and the
+   test campaign's dave-recv-spike branch) but rides alpha patches
+   until pycord#3139 merges. Prior blocked-status context: Discord voice
    receive is broken Python-ecosystem-wide by DAVE E2EE enforcement;
    the module ships when Pycord-Development/pycord#3139 lands and a
    live capture passes. Everything human-facing was proven live

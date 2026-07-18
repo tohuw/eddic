@@ -1,0 +1,21 @@
+name: capture
+version: 0.1.0
+summary: >
+  Session audio into the campaign by the table's choice of route —
+  free Craig (default), the Eddic recorder bot (experimental), or
+  premium Craig with its own transcripts — with deterministic staging
+  into the transcriber's layout and a no-folder-navigation handoff.
+touches:
+  - transcriber
+depends:
+  - cli
+cost_posture:
+  free: >
+    Free Craig plus local transcription: the default route costs
+    nothing and needs no hosting.
+  paid: >
+    Premium Craig if the table wants Craig's cloud transcripts or
+    higher-tier features; never required.
+  heuristic: >
+    All Eddic truly needs is the audio file; pay only for
+    convenience you actually feel.
