@@ -50,6 +50,13 @@ SITE_URL = os.environ.get("SITE_URL", "").rstrip("/")
 
 persona = (HERE / os.environ.get("PERSONA_FILE", "persona.md")).read_text(
     encoding="utf-8")
+if SITE_URL:
+    # the citation rule needs the URL beside it, not 60 KB away in
+    # the corpus header — models bind adjacent facts, not distant ones
+    persona += (f"\n\nThe published site root is {SITE_URL} — cite "
+                f"pages exactly like "
+                f"[Page Title]({SITE_URL}/path/to/page) "
+                f"(the page's wiki path with `.md` stripped).")
 players = ""
 if os.environ.get("PLAYERS_FILE"):
     players = (HERE / os.environ["PLAYERS_FILE"]).read_text(encoding="utf-8")
