@@ -30,7 +30,12 @@ from pathlib import Path
 
 
 def orlog(args):
-    cmd = shlex.split(os.environ.get("ORLOG_CMD", "orlog")) + args
+    raw = os.environ.get("ORLOG_CMD", "orlog")
+    # posix=False on Windows keeps backslashed paths intact; it also
+    # keeps quotes on tokens, so strip them
+    parts = [t.strip('"') for t in shlex.split(raw,
+                                               posix=(os.name != "nt"))]
+    cmd = parts + args
     p = subprocess.run(cmd, capture_output=True, text=True)
     try:
         body = json.loads(p.stdout)

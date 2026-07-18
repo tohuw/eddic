@@ -48,7 +48,8 @@ def main():
     bad = tmp / "bad.json"
     bad.write_text('[{"kind": "REFUSE-me"}]', encoding="utf-8")
     env = dict(os.environ,
-               ORLOG_CMD=f'"{sys.executable}" "{fake}"')
+               ORLOG_CMD=f'"{Path(sys.executable).as_posix()}" '
+                         f'"{fake.as_posix()}"')
 
     def run(*args):
         return subprocess.run([sys.executable, str(SCRIPT), *args],
