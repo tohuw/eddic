@@ -96,10 +96,17 @@ the payment-gateway decision.
    `notes/recorder-learnings.md`; cloud/R2 design in
    `notes/cloud-recorder-plan.md`); no module ships non-working
    capture, because modules hold only what is proven to work.
-   The brief: session recording as a capability of the campaign's
-   existing lore bot (owner's brief, 2026-07-18): one application, one
-   token, one process — the recorder module vendors a capability the
-   deployed bot loads, not a second bot. Audio arrives over the
+   The brief (owner, 2026-07-18; **revised same day: the recorder is
+   its own bot**, reversing the earlier one-bot call): the lore bot
+   is always-on and cloud-cheap; the recorder is session-time-only
+   and voice-heavy, wants to run beside the disk the transcriber
+   reads, and cloud voice-UDP is unverified — different lifecycles,
+   different hosts, so separate applications and tokens. The
+   capability code shape, consent machinery, and staging layout are
+   unchanged; the driven portal flow makes the second app cheap.
+   Local, session-time execution is the default; the R2/cloud design
+   (notes/cloud-recorder-plan.md) becomes this bot's optional cloud
+   mode. Audio arrives over the
    Discord voice gateway (no OS mic permission); the voice sink runs
    on its own thread writing straight to disk so answer latency can
    never drop frames. Summon/dismiss via slash commands
