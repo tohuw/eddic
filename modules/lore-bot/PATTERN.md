@@ -68,7 +68,13 @@ file injected after the cache breakpoint, never in the corpus.
 
 4. Edit `persona.md` to the campaign's register — it is the
    campaign's file now. Keep the hard rules (corpus-only, cite
-   pages, no invention, no future-speculation).
+   pages, no invention, no future-speculation). Know the seam: the
+   persona file is the owner's voice and nothing else; config-derived
+   facts are appended by bot.py at runtime (with `SITE_URL` set, a
+   citation line carrying the live site root and a worked example
+   joins the persona block every startup). Change the config, not
+   the prose, when plumbing moves — and expect the running system
+   prompt to be persona + that line.
 
 5. Confirm freshness: publish a wiki change, wait out
    `REFRESH_MINUTES`, ask the bot about the new fact. `!lore status`
