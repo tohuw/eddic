@@ -46,6 +46,9 @@ def main():
     index = (out / "index.html").read_text(encoding="utf-8")
     warden = (out / "characters/warden.html").read_text(encoding="utf-8")
     checks = [
+        ((out / "404.html").exists() and "Not found" in
+         (out / "404.html").read_text(encoding="utf-8"),
+         "404.html emitted (disables SPA fallback on static hosts)"),
         ((out / "index.html").exists(), "index.html rendered"),
         ((out / "characters/warden.html").exists(), "nested mirror path"),
         ('href="characters/warden.html#the-oath"' in index,

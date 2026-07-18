@@ -125,6 +125,18 @@ def main(argv):
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text(page, encoding="utf-8")
         pages += 1
+
+    # A real 404 page: without one, static hosts with an SPA fallback
+    # (Cloudflare Pages) answer every absent path 200-with-homepage —
+    # and an absent path must stay indistinguishable from a withheld
+    # one, as a 404, on the live site too.
+    not_found = (template.replace("{{TITLE}}", "Not found")
+                         .replace("{{SITE_NAME}}", site)
+                         .replace("{{BODY}}",
+                                  "<h1>Not found</h1>\n<p>No such page "
+                                  "in this archive.</p>"))
+    (out / "404.html").write_text(not_found, encoding="utf-8")
+
     print(f"rendered {pages} page(s), copied {assets} asset(s) to {out}")
     return 0
 

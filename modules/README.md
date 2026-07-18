@@ -10,7 +10,7 @@ contribs and companion layer on once the campaign is live.
 | [cli](cli/) | the vendored `.eddic/` CLI: dispatcher, config, author declaration, applied-patterns manifest | 0.2.0 |
 | [lint](lint/) | wiki health check: links, anchors, absolute links, stubs, orphans, log format, spoiler firewall, contrib overlays | 0.3.0 |
 | [wiki](wiki/) | campaign knowledge architecture: schema, fail-closed visibility, twin pages, contributor attribution, overlays, player projection | 0.3.0 |
-| [render](render/) | purpose-built md→html renderer with a self-contained template | 0.1.0 |
+| [render](render/) | purpose-built md→html renderer with a self-contained template and real 404 | 0.2.0 |
 | [publish](publish/) | Cloudflare Pages deploy behind the lint→project→build safety pipeline | 0.1.0 |
 | [retrieval](retrieval/) | Worker MCP + Actions REST facade, two bearer tokens: DM tier = master, player tier = projection | 0.4.0 |
 | [lore-bot](lore-bot/) | Discord lore-keeper over the projection, self-refreshing corpus, Anthropic/OpenAI providers | 0.2.0 |
