@@ -21,10 +21,13 @@ instances.)
 
 ## The session recorder
 
-- **It records you only after you opt in.** When recording starts,
-  the bot posts in the voice channel's text chat; your audio enters
-  the recording only after you react to that post. No react, no
-  capture — that's enforced by the code, not by policy.
+- **Your microphone is recorded only after you opt in.** When
+  recording starts, the bot posts in the voice channel's text chat;
+  your mic's audio enters the recording only after you react to that
+  post. No react, no capture of your mic — enforced by the code, not
+  by policy. (One honest limit: if your voice is audible through
+  someone else's open microphone, it can appear on their track, as
+  in any recording of a shared room.)
 - Recording is per-speaker and lands on the DM's own machine, in the
   campaign's files. It exists to make session transcripts — the
   table's shared memory.

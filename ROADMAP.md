@@ -88,7 +88,15 @@ the payment-gateway decision.
 8. **transcriber** — local session transcription (whisper.cpp) from
    recorded audio; the free path that replaces paid transcript services.
    Likely the first binary-bearing module.
-9. **recorder** — session recording as a capability of the campaign's
+9. **recorder** — **BLOCKED UPSTREAM (2026-07-18)**: Discord voice
+   receive is broken Python-ecosystem-wide by DAVE E2EE enforcement;
+   the module ships when Pycord-Development/pycord#3139 lands and a
+   live capture passes. Everything human-facing was proven live
+   (consent flow, commands, staging — see
+   `notes/recorder-learnings.md`; cloud/R2 design in
+   `notes/cloud-recorder-plan.md`); no module ships non-working
+   capture, because modules hold only what is proven to work.
+   The brief: session recording as a capability of the campaign's
    existing lore bot (owner's brief, 2026-07-18): one application, one
    token, one process — the recorder module vendors a capability the
    deployed bot loads, not a second bot. Audio arrives over the
