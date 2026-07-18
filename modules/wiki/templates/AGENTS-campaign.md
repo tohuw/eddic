@@ -10,10 +10,12 @@ this file, CLAUDE.md, and README.md; they are never published.
 
 - `sources/` — raw material: the DM's and players' own writing,
   shared documents, session transcripts. Each file carries
-  `authorship:` frontmatter (`human`, `transcript`, or `agent`).
-  **Authorship preservation is absolute**: never stylistically
-  rewrite a human-authored file. Owner-directed *mechanical*
-  transforms (a rename propagated everywhere) are fine and are logged.
+  `authorship:` frontmatter: a **contributor id** for human writing
+  (preferred — see below), or `human` (unattributed), `transcript`,
+  `agent`. **Authorship preservation is absolute**: never
+  stylistically rewrite a human-authored file. Owner-directed
+  *mechanical* transforms (a rename propagated everywhere) are fine
+  and are logged.
 - `wiki/` — the DM wiki, the single maintained master. Facts compiled
   from sources, interlinked, in encyclopedia tone. Holds the full
   table truth, DM secrets included.
@@ -46,6 +48,22 @@ player pages only); `index.dm.md` is the DM catalog and lists
 everything. Update both when pages are added or removed. Assets under
 `wiki/assets/` project wholesale — never put a spoiler map there; DM
 assets live under paths containing `.dm`, which never project.
+
+## Attribution — capture it at write time
+
+Who wrote a thing cannot be reconstructed later; a year of growth
+under anonymous markings turns who-wrote-what into archaeology. So
+attribution is recorded the moment human writing enters the
+campaign: `authorship: <contributor-id>` — a short pseudonymous id
+per person. The roster mapping ids to people is DM-only: keep it in
+`contributors.dm.md` (the `.dm` suffix keeps it off every player
+surface; real names still never enter the wiki — the roster maps ids
+to table identities, e.g. "kestrel — plays the Warden"). Bare
+`human` remains valid for legacy and for the owner's own hand where
+the owner doesn't care to distinguish; prefer ids whenever more than
+one person writes. Attribution tracks expression, not ideas — a
+page you wrote about another player's invention is your expression —
+and that limit is doctrine, not a defect.
 
 ## What to record, and in whose voice
 

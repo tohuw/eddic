@@ -77,6 +77,24 @@ plugin-install test, an OpenAI-provider bot deployment.
     skill (wiki facts → validated mutations on a fork), and `validate`
     as the story's test suite. Unblocked.
 
+13. **companion** — the at-the-table module family under the
+    knowledge-parity conduct doctrine (DESIGN: "Companions at the
+    table"): player and DM companions on their respective retrieval
+    tiers, and the backstory interviewer with its scribe/drafter
+    authorship dial. Conduct claims verified adversarially per
+    answer client before any default.
+14. **contribs** — the transaction arc's machinery (DESIGN: "The
+    transaction arc"), landing as wiki/lint/publish extensions:
+    contributor overlays with `replaces:` shadowing, `derived-from:`
+    derivation graph, the pure-corpus projection with its
+    full = pure + attribution-log invariant, the transactability
+    frontmatter axis and sale-build fence, consent receipts.
+    Attribution *capture* ships earlier in the wiki schema — it
+    cannot wait, because attribution is unrecoverable after the fact.
+15. **marketplace** — transactable campaigns as products: the author
+    role, base and deluxe (session-log) offerings, packaging and
+    refusal machinery. Payment gateway is a deferred decision below.
+
 **Contributable thereafter:** VTT modules (Roll20, Foundry, …) by
 community PR under the contract.
 
@@ -97,3 +115,7 @@ community PR under the contract.
 - **Compression accelerators.** headroom/thlibo guidance lands inside
   the routines and transcriber modules as decision points with
   heuristics, per DESIGN.md — never as dependencies.
+- **Payment gateway.** Choose when the marketplace module (15) starts:
+  a gateway with checkout-and-download and no inventory overhead;
+  cost posture per principle 4. Until then the transaction arc is
+  rights machinery, not commerce.

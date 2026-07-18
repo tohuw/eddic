@@ -158,7 +158,14 @@ like the lore bot.
 6. **Rotation is the panic procedure**: `wrangler secret put
    TOKEN_DM` with a fresh value, update the connector config, done —
    old token dead in seconds, no republish. If a DM-token leak is
-   suspected, rotate first and investigate second.
+   suspected, rotate first and investigate second. Doctrine: treat a
+   tier token as **semi-public from the moment it reaches a device**
+   — path-borne tokens leak more readily than header-borne ones
+   (logs, screenshots, pasted links, share sheets). The player
+   token's blast radius is only the projection, by construction —
+   that is the architecture doing its job. The DM token's is the
+   master, so it gets the narrower distribution: the DM's own
+   devices, nothing else, ever.
 
 ## Decision points
 

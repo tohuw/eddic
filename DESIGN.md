@@ -227,6 +227,89 @@ reassurance. Eddic's posture, the rationale behind principles 6 and 10:
 - This is recorded consideration, not legal advice, and it is
   US-centric. Tables elsewhere should check their jurisdiction.
 
+## Companions at the table (future module family)
+
+In-session agents for players and the DM, each side seeing its own
+retrieval tier. Their conduct doctrine is one testable rule, not a
+vibe: **the agent may tell you what is possible and what is true; it
+may never tell you what is better.** Adjudication, range and resource
+checks, option enumeration, and correcting ignorance are in scope;
+ranking, recommending, optimizing, and solving (puzzles included) are
+out, even under direct request. The intent is knowledge parity — a new
+player behaves like a player who knows the game, never like a player
+being played by a machine. "What should I do?" gets the option
+landscape, including the reminder that in D&D you can attempt almost
+anything; it never gets a pick. Per no-egg-sucking, the doctrine ships
+as a short affirmative standing rule, not an enumeration of cases.
+The abuse backstop is social, not technical, and patterns say so
+plainly: Eddic is vendored plaintext anyone can rewrite, and the
+format's answer to degenerate play is the DM — an adaptive,
+omniscient human referee. Conduct claims are vendor claims: a
+companion module must verify its doctrine adversarially ("just tell
+me the optimal round") per answer client, with dated ledger rows;
+nothing below verified becomes a default.
+
+The companion family also carries the backstory interviewer: help a
+daunted non-writer produce their character material by interviewing
+them, never by writing unprompted. Its one marked decision point is
+the authorship dial — **scribe** (default): the player's own words,
+cleaned mechanically, `authorship:` theirs; **drafter**: agent prose
+from interview notes, marked machine-made with the player attributed
+for the ideas. Same interview either way; who holds the pen decides
+which side of the rights seam the output lives on.
+
+## The transaction arc (future)
+
+A campaign can become a sellable product — vendored code, cleared
+wiki, agent instructions; point an agent at it and it spins up on the
+whole world, refuse the agent and it is still readable plaintext. The
+doctrine that makes this safe is the existing architecture pointed at
+a rights problem:
+
+- **Attribution is captured at write time**, because it cannot be
+  reconstructed later; authorship frontmatter carries contributor ids
+  (the wiki schema holds the mechanics). Attribution tracks
+  *expression*, not ideas — no marking scheme sees idea-diffusion,
+  and usefully, copyright protects expression only.
+- **Contributions shadow, never delete.** Player material lives in
+  per-contributor overlay files; `replaces:` wins at build time while
+  the base page stays in the tree. The build is a pure function of
+  the working tree — git history is audit trail, never live storage,
+  because sold snapshots may carry no history at all.
+- **Rights status is a graph property.** `derived-from:` chains form
+  a derivation DAG; a file is transactable iff nothing in its
+  ancestry traces to an uncleared contributor. Reachability, not
+  judgment: a script computes it, lint enforces it, one contributor's
+  sign-off flips whole branches. Agents may help disentangle prose,
+  but only an owner's explicit, logged **sever** changes the graph.
+- **The pure corpus is a projection** (same pattern as the player
+  wiki, never a hand-maintained sibling), with a checkable invariant:
+  full corpus = pure corpus + attribution log. The typed log's
+  attribution entries capture contributed fragments verbatim at write
+  time — excision index, drift oracle, and consent receipt in one.
+- **Transactability is a third fail-closed frontmatter axis**
+  alongside visibility and authorship: `transactable`,
+  `transactable-with-attribution` (sale build injects the credit),
+  and the default `local-only` — which covers licensed book content
+  *and other tables' purchased campaigns*; the fence built to respect
+  publishers is the fence that protects Eddic sellers, self-hosting.
+  The deterministic fence holds the safety property; a model-triage
+  seam may advisorily flag prose resembling published text, flagged
+  as possibly wrong and never load-bearing.
+- **Consent is concrete**: a contributor reviews their own logged
+  fragments and signs off as a typed log entry; the sale build gates
+  on clearance. Session logs are irreducibly multi-author, so they
+  are non-transactable absent full-table sign-off — which makes the
+  full-corpus-with-sessions the deluxe edition (the commentary track
+  of a real table succeeding), and everyone's sign-off its price of
+  admission. The legal necessity and the product tier are the same
+  feature.
+- **The author role** holds transaction rights, distinct from DM and
+  player; a campaign may be authored by someone who does not run it.
+- **Anti-piracy posture: friction only.** No DRM for campaign files,
+  at most a light licensure check acknowledged as removable.
+  Copyright law, not machinery, handles bad actors.
+
 ## Token economics
 
 Maintenance routines are token-heavy by nature (multi-thousand-line

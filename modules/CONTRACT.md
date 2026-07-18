@@ -72,7 +72,10 @@ mechanical rot — a broken script reads fine:
   client / model provider), `status` (one of the evidence states in
   `docs/compatibility.md`), `date`, and, for `verified`, `evidence`.
   Nothing below `verified` may be a decision point's default path.
-  Truth decays: re-date on re-test, demote when a vendor moves.
+  Truth decays: re-date on re-test, demote when a vendor moves. This
+  covers *behavioral* claims too: a module that promises how an
+  answer client will conduct itself (a companion's "never recommends")
+  verifies that adversarially, per client, before claiming it.
 
 ## The semantic rubric (review-enforced)
 

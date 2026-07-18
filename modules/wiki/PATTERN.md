@@ -31,9 +31,12 @@ on — and the schema you (the agent) maintain across sessions.
            --module wiki --version 0.1.0 --verbs project
 
 3. Create `sources/` and move raw material there, adding
-   `authorship:` frontmatter (`human` for the DM's and players' own
-   prose, `transcript` for session captures). Read the authorship
-   rules in the stamped AGENTS.md — they bind you from now on.
+   `authorship:` frontmatter (a contributor id for each person's own
+   prose — set up the DM-only roster per the stamped schema —
+   `transcript` for session captures). Read the authorship rules in
+   the stamped AGENTS.md — they bind you from now on. Attribution is
+   captured at write time or lost; adopting an existing wiki is the
+   last cheap moment to ask "who wrote this?" page by page.
 
 4. **Adoption only.** If the campaign's old pipeline had a static
    asset directory (maps, images, standalone HTML), migrate the
