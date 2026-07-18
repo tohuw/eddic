@@ -1,0 +1,42 @@
+# Freshness routine — GitHub Actions adapter.
+# Implements templates/routine-freshness.md for a cloud-mode campaign
+# whose repo lives on GitHub. Secrets to set in the repo:
+#   CLOUDFLARE_API_TOKEN  (Pages + Workers deploy rights)
+#   CLOUDFLARE_ACCOUNT_ID
+# Fill PAGES_PROJECT below. Triggers on wiki pushes (event-driven
+# cadence per the contract; no schedule needed).
+
+name: freshness
+on:
+  push:
+    branches: [master, main]
+    paths: ["wiki/**", "contribs/**"]
+
+env:
+  PAGES_PROJECT: your-pages-project
+
+jobs:
+  freshen:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Lint (strict)
+        run: uv run .eddic/eddic.py lint --strict
+      - name: Project (firewall)
+        run: uv run .eddic/eddic.py project
+      - name: Build
+        run: uv run .eddic/eddic.py build
+      - name: Deploy site
+        run: npx wrangler pages deploy dist/site --project-name "$PAGES_PROJECT"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - name: Stage corpora
+        run: uv run .eddic/eddic.py stage
+      - name: Deploy worker
+        run: npx wrangler deploy
+        working-directory: worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

@@ -18,3 +18,4 @@ contribs and companion layer on once the campaign is live.
 | [contribs](contribs/) | the transaction arc: overlays, hash-pinned consent, derivation-graph rights, the sale-build fence | 0.1.0 |
 | [companion](companion/) | at-the-table companions under the knowledge-parity doctrine; backstory interviewer | 0.1.0 |
 | [orlog](orlog/) | fork-first timeline reconciliation and the time-question query cookbook | 0.1.0 |
+| [routines](routines/) | the maintenance-routine contract and runner chain; freshness loop as the first routine | 0.1.0 |

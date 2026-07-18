@@ -1,0 +1,29 @@
+name: routines
+version: 0.1.0
+summary: >
+  The maintenance-routine contract (idempotent, safe to miss, safe to
+  double-run) with the runner preference chain — hosted agent
+  routines, GitHub Actions, local cron-esque — stated as contracts
+  plus one worked adapter; the freshness loop is the first standard
+  routine.
+touches:
+  - publish
+  - retrieval
+depends:
+  - cli
+cost_posture:
+  free: >
+    The freshness routine is deterministic and spends zero model
+    tokens; GitHub Actions free tier or a local scheduler runs it.
+  paid: >
+    Hosted agent routines ride an existing agent subscription; never
+    add a paid service just to host a routine.
+  heuristic: >
+    Take the first rung of the preference chain the owner already
+    pays for or owns.
+compatibility:
+  claude:
+    role: maintaining agent
+    status: documented
+    date: 2026-07-18
+    evidence: hosted-routine rung named per the owner's preference chain; no live routine run yet on any rung
