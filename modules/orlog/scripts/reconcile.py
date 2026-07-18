@@ -28,6 +28,12 @@ import sys
 from datetime import date
 from pathlib import Path
 
+# Windows consoles default to legacy codepages that lack Ø and ǫ —
+# and this script says Ørlǫg out loud. UTF-8, everywhere, always.
+for stream in (sys.stdout, sys.stderr):
+    if hasattr(stream, "reconfigure"):
+        stream.reconfigure(encoding="utf-8", errors="replace")
+
 
 def orlog(args):
     raw = os.environ.get("ORLOG_CMD", "orlog")
