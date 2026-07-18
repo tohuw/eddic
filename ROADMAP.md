@@ -31,6 +31,16 @@ live Pages site, projection blindness holding conversationally, and
 the freshness poll observed reloading unprompted after a wiki edit.
 Four live finds shipped back into the module during the test.
 
+**Overnight 2026-07-18:** orlog (12) and routines (11) shipped at
+0.1.0 — twelve modules in the tree, queue items 1–12 all built. The
+Eddic site is live at eddic-site.pages.dev (pitch, how-it-works,
+modules, principles, and the privacy posture the recorder's consent
+post links — its trigger, fired), dogfooded through the render
+module. Windows CI caught two real portability bugs in orlog before
+any user could (shlex path mangling; cp1252 unable to print "Ørlǫg").
+Recorder build deliberately deferred to a session with the owner
+awake: voice capture needs live testing, lore-bot-style.
+
 **Transaction arc 2026-07-18:** contribs (14) and companion (13)
 shipped at 0.1.0; the author role is declared config (may differ from
 the DM — DESIGN records the consequences); wiki 0.3.0 applies
@@ -151,11 +161,11 @@ community PR under the contract.
 - **Compression accelerators.** headroom/thlibo guidance lands inside
   the routines and transcriber modules as decision points with
   heuristics, per DESIGN.md — never as dependencies.
-- **Eddic website.** Coming, for many reasons (owner, 2026-07-18);
-  the first concrete trigger is the recorder's consent post, which
-  links a privacy posture page Eddic must host. Also the natural home
-  for docs and the eventual marketplace face. Scope and stack decided
-  when the first trigger fires.
+- **Eddic website.** First trigger fired 2026-07-18: live at
+  eddic-site.pages.dev (source in `site/`, rendered by the render
+  module), carrying the privacy posture the recorder's consent post
+  links. Remaining owner calls: a real domain, and whether the site
+  grows a docs/marketplace face beyond the current five pages.
 - **Payment gateway.** Choose when the marketplace module (15) starts:
   a gateway with checkout-and-download and no inventory overhead;
   cost posture per principle 4. Until then the transaction arc is
