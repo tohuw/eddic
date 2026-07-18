@@ -63,7 +63,8 @@ def main():
     seq = [json.loads(l)[0] for l in calls.read_text().splitlines()]
     branch_args = [json.loads(l) for l in calls.read_text().splitlines()]
     checks = [
-        (p.returncode == 0, f"clean reconcile exits 0 (got {p.returncode})"),
+        (p.returncode == 0, f"clean reconcile exits 0 (got {p.returncode}"
+                            f"; stderr: {p.stderr.strip()[:200]})"),
         (seq == ["fork", "apply", "validate"],
          f"fork before apply before validate (got {seq})"),
         (all("--branch" in a and "fake-fork-1" in a
