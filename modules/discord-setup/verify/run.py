@@ -7,6 +7,7 @@ privacy overwrites and never deletes, dump round-trips the live
 server, and privacy-to-unknown-role refuses."""
 
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -90,7 +91,9 @@ def main():
             {"name": "dm-vault", "type": "text",
              "private_to": "DM"},
         ]}), encoding="utf-8")
-    env = {"DISCORD_TOKEN": "test-token", "PATH": "/usr/bin:/bin"}
+    # inherit the real environment: a hand-stripped one loses
+    # SYSTEMROOT on Windows, which kills the socket stack
+    env = dict(os.environ, DISCORD_TOKEN="test-token")
 
     def run(*args):
         return subprocess.run(
@@ -138,7 +141,12 @@ def main():
                    "existing-channel privacy drift persists as report"))
 
     p = run("--dump")
-    dump = json.loads(p.stdout)
+    try:
+        dump = json.loads(p.stdout)
+    except json.JSONDecodeError:
+        print(f"FAIL dump produced no JSON (exit {p.returncode}): "
+              f"{p.stderr.strip()[:200]}")
+        return 1
     names = {c["name"] for c in dump["channels"]}
     checks += [
         (p.returncode == 0 and "off-topic" in names
