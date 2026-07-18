@@ -12,13 +12,41 @@ file injected after the cache breakpoint, never in the corpus.
 - cli and wiki patterns applied; the projection exists and, for
   cloud mode, is committed to the campaign repo (generated output,
   but it is exactly what the freshness poll needs to see move).
-- A Discord application with a bot token exists, invited to the
-  server with the **Message Content intent enabled in the developer
-  portal** — without it the bot connects but hears nothing ("online
-  but deaf"; hard-won). Creating the app is the owner's interactive
-  step; direct them.
+- A Discord application with a bot token, invited to the server.
+  Assume the owner has never made a Discord bot. The flow (portal
+  layout verified 2026-07): sign in at
+  discord.com/developers/applications, then —
+
+  1. **New Application** → name it (the table sees this name) →
+     Create.
+  2. Left nav **Bot** → **Reset Token** → the token shows **once**;
+     it goes straight into `variables.txt`, nowhere else. Lost or
+     leaked token = Reset Token again (that is also the rotation
+     procedure — old token dies instantly).
+  3. Same Bot page: enable **MESSAGE CONTENT INTENT** and save.
+     This is the trap: it is a privileged toggle, off by default,
+     and without it the bot connects but hears nothing — "online
+     but deaf" (hard-won). Check this FIRST when the bot ignores
+     everyone.
+  4. Left nav **OAuth2** → URL Generator: scope `bot`; permissions
+     View Channels, Send Messages, Read Message History, Add
+     Reactions. Open the generated URL, pick the server, Authorize.
+
+  You can drive steps 1–4 through the owner's browser with their
+  consent (the connector playbook in the retrieval pattern):
+  everything is clickable except their Discord login and the final
+  Authorize confirmation, which are theirs. When you drive, read
+  the token off the portal page directly into `variables.txt` and
+  never echo it into the conversation (data-controls doctrine).
+  Self-serve fallback: hand them the four steps above verbatim,
+  and have them paste the token into `variables.txt` themselves.
 - An Anthropic API key (or the owner's chosen provider — see
-  decision points).
+  decision points). Same handling: into `variables.txt`, never into
+  chat.
+- A server to test in before the table's real one: a throwaway
+  Discord server is one click (the **+** at the bottom of the
+  server list → Create My Own) and lets the whole loop run without
+  an audience.
 
 ## Procedure
 
