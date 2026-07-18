@@ -305,7 +305,15 @@ a rights problem:
   admission. The legal necessity and the product tier are the same
   feature.
 - **The author role** holds transaction rights, distinct from DM and
-  player; a campaign may be authored by someone who does not run it.
+  player; a campaign may be authored by someone who does not run it,
+  and the role is declared in campaign config, never inferred. The
+  two marked axes have different governors — visibility is the DM's
+  (spoiler management), transactability the author's (rights
+  management) — and when the roles diverge, the DM's own writing is
+  a contribution needing clearance like anyone else's; the author's
+  id is the cleared-by-definition root of the graph. A sale ships
+  the full truth, DM pages included: visibility never filters a
+  sale, because the buyer becomes their own table's DM.
 - **Anti-piracy posture: friction only.** No DRM for campaign files,
   at most a light licensure check acknowledged as removable.
   Copyright law, not machinery, handles bad actors.

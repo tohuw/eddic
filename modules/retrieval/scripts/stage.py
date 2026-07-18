@@ -36,24 +36,51 @@ def split_frontmatter(text):
     return text
 
 
-def corpus(root, log_name, site):
+def frontmatter_field(text, key):
+    lines = text.splitlines()
+    if len(lines) >= 3 and lines[0].strip() == "---":
+        for i in range(1, len(lines)):
+            if lines[i].strip() == "---":
+                break
+            if lines[i].startswith(f"{key}:"):
+                return lines[i].partition(":")[2].strip()
+    return ""
+
+
+def page_entry(path, rel, pages):
+    body = split_frontmatter(path.read_text(encoding="utf-8",
+                                            errors="replace")).strip()
+    m = re.search(r"^# (.+)$", body, re.M)
+    title = (m.group(1).strip() if m
+             else Path(rel).stem.replace("-", " ").title())
+    pages[rel] = {"title": title, "text": body}
+
+
+def corpus(root, log_name, site, contribs=None):
+    """Effective corpus: base pages, then contributor overlays applied
+    at their targets (a broken overlay set is a build error upstream —
+    lint and project refuse it; here the last consistent write wins
+    the same way project.py resolved it)."""
     pages = {}
     for p in sorted(root.rglob("*.md")):
         if p.name in NON_CONTENT or p.name == log_name:
             continue
-        body = split_frontmatter(p.read_text(encoding="utf-8",
-                                             errors="replace")).strip()
-        m = re.search(r"^# (.+)$", body, re.M)
-        title = (m.group(1).strip() if m
-                 else p.stem.replace("-", " ").title())
-        pages[p.relative_to(root).as_posix()] = {"title": title,
-                                                 "text": body}
+        page_entry(p, p.relative_to(root).as_posix(), pages)
+    if contribs and contribs.is_dir():
+        for cdir in sorted(d for d in contribs.iterdir() if d.is_dir()):
+            for p in sorted(cdir.rglob("*.md")):
+                if p.name in NON_CONTENT or p.name == log_name:
+                    continue
+                text = p.read_text(encoding="utf-8", errors="replace")
+                target = (frontmatter_field(text, "replaces")
+                          or p.relative_to(cdir).as_posix())
+                page_entry(p, target, pages)
     return {"site": site, "pages": pages}
 
 
 def main(argv):
     opts = dict(zip(argv, argv[1:]))
-    src = projection = out = None
+    src = projection = out = contribs = None
     site, log_name = "campaign", "log.md"
     if os.environ.get("EDDIC_CONFIG") and "--src" not in opts:
         cfg_path = Path(os.environ["EDDIC_CONFIG"])
@@ -61,11 +88,16 @@ def main(argv):
         root = cfg_path.parent.parent
         src = root / cfg.get("wiki_dir", "wiki")
         projection = root / cfg.get("projection_dir", "dist/player")
+        contribs = root / cfg.get("contribs_dir", "contribs")
         out = root / "worker"
         site = cfg.get("site_name", site)
         log_name = cfg.get("log", log_name)
     if "--src" in opts:
         src = Path(opts["--src"])
+        if contribs is None:
+            contribs = src.parent / "contribs"
+    if "--contribs" in opts:
+        contribs = Path(opts["--contribs"])
     if "--projection" in opts:
         projection = Path(opts["--projection"])
     if "--out" in opts:
@@ -83,9 +115,11 @@ def main(argv):
         return 1
 
     out.mkdir(parents=True, exist_ok=True)
-    for name, tree in (("corpus_dm.mjs", src),
-                       ("corpus_player.mjs", projection)):
-        data = corpus(tree, log_name, site)
+    # DM corpus sees the effective wiki (overlays applied); the player
+    # corpus comes from the projection, which already applied them.
+    for name, tree, cdir in (("corpus_dm.mjs", src, contribs),
+                             ("corpus_player.mjs", projection, None)):
+        data = corpus(tree, log_name, site, cdir)
         (out / name).write_text(
             "export default " + json.dumps(data, ensure_ascii=False,
                                            indent=1) + ";\n",

@@ -12,3 +12,8 @@ Should be flagged.
 
 Not a `##` header in the required form? Actually it is a ## header,
 so it must be flagged as malformed.
+
+## [2026-07-18] attribution | kestrel contributed the vault rewrite
+
+Fragment hashes pinned; a valid entry of a new type, expecting no
+finding.

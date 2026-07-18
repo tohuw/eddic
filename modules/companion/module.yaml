@@ -1,0 +1,29 @@
+name: companion
+version: 0.1.0
+summary: >
+  At-the-table companions under the knowledge-parity conduct doctrine
+  (possible and true, never better): player and DM companions on their
+  retrieval tiers, and the backstory interviewer with its
+  scribe/drafter authorship dial.
+touches:
+  - retrieval
+depends:
+  - retrieval
+cost_posture:
+  free: >
+    Instruction templates pasted into the chat products the table
+    already uses; retrieval rides the existing worker. No new
+    services, no new spend.
+  paid: none
+  heuristic: n/a
+compatibility:
+  claude:
+    role: answer client
+    status: unverified
+    date: 2026-07-18
+    evidence: conduct doctrine untested live; rig is verify/conduct-acceptance.md
+  chatgpt:
+    role: answer client
+    status: unverified
+    date: 2026-07-18
+    evidence: conduct doctrine untested live; rig is verify/conduct-acceptance.md

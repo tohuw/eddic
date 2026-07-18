@@ -24,6 +24,17 @@ Awaiting live vendor sessions: the ChatGPT acceptance rig
 (`modules/retrieval/verify/chatgpt-acceptance.md`), a Codex
 plugin-install test, an OpenAI-provider bot deployment.
 
+**Transaction arc 2026-07-18:** contribs (14) and companion (13)
+shipped at 0.1.0; the author role is declared config (may differ from
+the DM — DESIGN records the consequences); wiki 0.3.0 applies
+contributor overlays across every surface, lint 0.3.0 checks them,
+retrieval 0.4.0 stages the effective corpus; `eddic bundle` is the
+sale-build fence (hash-pinned consent, derivation-graph rights,
+stale-clearance refusal). `tools/verify_e2e.py` proves the full
+composition in CI on all three OSes. Companion conduct claims are
+unverified until live adversarial passes; marketplace (15) waits on
+the payment-gateway decision.
+
 ## Module queue
 
 1. **lint** — the wiki health check, generalized from the DitD

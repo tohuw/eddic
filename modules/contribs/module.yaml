@@ -1,0 +1,20 @@
+name: contribs
+version: 0.1.0
+summary: >
+  The transaction arc's machinery: contributor overlays applied across
+  every surface, hash-pinned attribution and consent in the operation
+  log, derivation-graph rights computation, and the sale-build fence
+  (eddic bundle) that refuses anything uncleared, all-or-nothing.
+touches:
+  - wiki
+  - lint
+depends:
+  - cli
+  - wiki
+  - lint
+cost_posture:
+  free: >
+    Entirely local and free: stdlib Python via uv. The fence is a
+    build refusal, not a service.
+  paid: none
+  heuristic: n/a

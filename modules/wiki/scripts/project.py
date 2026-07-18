@@ -12,6 +12,15 @@ the projection directory, preserving the tree. Visibility fails
 closed: a page without frontmatter, or without the marker, is DM-only
 and never projects.
 
+Contributor overlays (`contribs/<id>/...`) are applied first: a
+contrib file occupies its relative path in the wiki, or the page
+named by its `replaces:` frontmatter — shadowing the base page on
+every built surface while the base stays in the tree. Two contribs
+claiming one target, or a contrib landing on a base page without
+declaring `replaces:`, refuses the projection. An overlay's own
+frontmatter governs its visibility (fail-closed like any page);
+its links resolve as if the file sat at its effective wiki path.
+
 The firewall is checked before a single byte is written, and a breach
 refuses the whole projection (all-or-nothing): a player-visible page
 that links a non-player page — or links a page that does not exist —
@@ -50,21 +59,47 @@ def split_frontmatter(text):
     return {}, text
 
 
+def load_overlays(contribs, log_name):
+    """Map effective wiki path -> (contributor, file path). Conflicts
+    are fatal to the caller; returned separately."""
+    overlays, conflicts = {}, []
+    if not contribs or not contribs.is_dir():
+        return overlays, conflicts
+    for cdir in sorted(p for p in contribs.iterdir() if p.is_dir()):
+        for p in sorted(cdir.rglob("*.md")):
+            if p.name in NON_CONTENT or p.name == log_name:
+                continue
+            fm, _ = split_frontmatter(p.read_text(encoding="utf-8",
+                                                  errors="replace"))
+            target = (fm.get("replaces") or
+                      p.relative_to(cdir).as_posix())
+            if target in overlays:
+                conflicts.append((target, overlays[target][0], cdir.name))
+                continue
+            overlays[target] = (cdir.name, p)
+    return overlays, conflicts
+
+
 def main(argv):
     opts = dict(zip(argv, argv[1:]))
     log_name = opts.get("--log", "log.md")
-    src = out = None
+    src = out = contribs = None
     if os.environ.get("EDDIC_CONFIG") and "--src" not in opts:
         cfg_path = Path(os.environ["EDDIC_CONFIG"])
         cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
         root = cfg_path.parent.parent
         src = root / cfg.get("wiki_dir", "wiki")
         out = root / cfg.get("projection_dir", "dist/player")
+        contribs = root / cfg.get("contribs_dir", "contribs")
         log_name = opts.get("--log", cfg.get("log", "log.md"))
     if "--src" in opts:
         src = Path(opts["--src"])
+        if contribs is None:
+            contribs = src.parent / "contribs"
     if "--out" in opts:
         out = Path(opts["--out"])
+    if "--contribs" in opts:
+        contribs = Path(opts["--contribs"])
     if not src or not out:
         print(__doc__.strip(), file=sys.stderr)
         return 2
@@ -81,6 +116,31 @@ def main(argv):
                                               errors="replace"))
         pages[rel] = ((fm.get("visibility") or "dm").strip(), p)
 
+    overlays, conflicts = load_overlays(contribs, log_name)
+    overlay_errors = [
+        f"contribs conflict: {t} claimed by both {a} and {b}"
+        for t, a, b in conflicts]
+    for target, (who, p) in sorted(overlays.items()):
+        fm, _ = split_frontmatter(p.read_text(encoding="utf-8",
+                                              errors="replace"))
+        if target in pages and not fm.get("replaces"):
+            overlay_errors.append(
+                f"contribs collision: {who}'s {target} lands on an "
+                f"existing base page without declaring replaces:")
+            continue
+        if fm.get("replaces") and target not in pages:
+            overlay_errors.append(
+                f"contribs: {who}'s replaces target {target} "
+                f"does not exist in the wiki")
+            continue
+        pages[target] = ((fm.get("visibility") or "dm").strip(), p)
+    if overlay_errors:
+        print("projection REFUSED — contributor overlays are "
+              "inconsistent; nothing was written:", file=sys.stderr)
+        for e in overlay_errors:
+            print(f"  {e}", file=sys.stderr)
+        return 1
+
     player = {rel for rel, (vis, _) in pages.items() if vis == "player"}
 
     breaches = []
@@ -95,7 +155,9 @@ def main(argv):
             raw = target.partition("#")[0]
             if not raw.endswith((".md", ".MD")):
                 continue
-            dest = (path.parent / raw).resolve()
+            # resolve at the page's effective wiki location — for an
+            # overlay that is the shadowed path, not the contrib file
+            dest = ((src / rel).parent / raw).resolve()
             try:
                 dest_rel = dest.relative_to(src.resolve()).as_posix()
             except ValueError:

@@ -1,5 +1,6 @@
 ---
 visibility: player
+derived-from: ghost-quarter.md
 ---
 
 # The Warden

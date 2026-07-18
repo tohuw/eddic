@@ -72,6 +72,39 @@ def main():
     checks.append((proc3.returncode == 1,
                    f"dangling player link refuses (got {proc3.returncode})"))
 
+    # Contributor overlays: shadow wins on the built surface, base
+    # stays in the tree; a second claim on the target refuses.
+    write(src, "characters/warden.md", PLAYER_FM + "# The Warden\n\n"
+          "Keeper of the gate, sworn to the [realm](../index.md).\n")
+    contribs = tmp / "contribs"
+    write(contribs, "kestrel/characters/warden.md",
+          "---\nvisibility: player\nauthorship: kestrel\n"
+          "replaces: characters/warden.md\n---\n\n# The Warden\n\n"
+          "Kestrel's retelling, sworn to the [realm](../index.md).\n")
+    proc4 = subprocess.run(
+        [sys.executable, str(PROJECT), "--src", str(src),
+         "--out", str(out), "--contribs", str(contribs)],
+        capture_output=True, text=True)
+    checks += [
+        (proc4.returncode == 0,
+         f"overlay projection exits 0 (got {proc4.returncode})"),
+        ("Kestrel's retelling" in
+         (out / "characters/warden.md").read_text(encoding="utf-8"),
+         "overlay shadows the base page on the built surface"),
+        ("Kestrel" not in
+         (src / "characters/warden.md").read_text(encoding="utf-8"),
+         "base page untouched in the tree"),
+    ]
+    write(contribs, "vagrant/characters/warden.md",
+          "---\nvisibility: player\nauthorship: vagrant\n"
+          "replaces: characters/warden.md\n---\n\n# The Warden\n\nMine.\n")
+    proc5 = subprocess.run(
+        [sys.executable, str(PROJECT), "--src", str(src),
+         "--out", str(out), "--contribs", str(contribs)],
+        capture_output=True, text=True)
+    checks.append((proc5.returncode == 1 and "conflict" in proc5.stderr,
+                   "conflicting overlay claims refuse the projection"))
+
     failed = [msg for ok, msg in checks if not ok]
     for ok, msg in checks:
         print(("ok  " if ok else "FAIL"), msg)

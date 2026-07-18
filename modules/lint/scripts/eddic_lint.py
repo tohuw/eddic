@@ -32,7 +32,11 @@ import sys
 from pathlib import Path
 
 NON_CONTENT = {"CLAUDE.md", "AGENTS.md", "README.md"}
-LOG_TYPES = {"ingest", "reconcile", "lint", "schema", "witness"}
+LOG_TYPES = {"ingest", "reconcile", "lint", "schema", "witness",
+             "attribution", "consent", "sever"}
+TRANSACTABILITY = {"transactable", "transactable-with-attribution",
+                   "local-only"}
+GENERIC_AUTHORSHIP = {"human", "agent", "machine", "transcript"}
 LOG_HEADER = re.compile(r"^## \[\d{4}-\d{2}-\d{2}\] (\S+) \| .+$")
 LINK = re.compile(r"(?<!\!)\[[^\]]*\]\(([^)\s]+)\)")
 HEADING = re.compile(r"^(#{1,6})\s+(.*?)\s*$")
@@ -49,9 +53,9 @@ def slugify(heading):
 
 
 class Page:
-    def __init__(self, path, root):
+    def __init__(self, path, root, rel=None):
         self.path = path
-        self.rel = path.relative_to(root).as_posix()
+        self.rel = rel or path.relative_to(root).as_posix()
         text = path.read_text(encoding="utf-8", errors="replace")
         self.frontmatter, body = split_frontmatter(text)
         self.body = strip_code(body)
@@ -97,7 +101,7 @@ def link_targets(body):
             for m in LINK.finditer(line)]
 
 
-def lint(root, log_name):
+def lint(root, log_name, contribs=None):
     findings = []
 
     def add(code, severity, path, detail, line=None):
@@ -109,6 +113,42 @@ def lint(root, log_name):
         if p.name in NON_CONTENT or p.name == log_name:
             continue
         pages[p.relative_to(root).as_posix()] = Page(p, root)
+
+    # Contributor overlays: each contrib file occupies its relative
+    # path (or its replaces: target) in the effective wiki. Structural
+    # problems are errors; a broken overlay is reported and withheld
+    # so the rest of the lint sees the same view a build would refuse.
+    if contribs and contribs.is_dir():
+        claimed = {}
+        for cdir in sorted(p for p in contribs.iterdir() if p.is_dir()):
+            for p in sorted(cdir.rglob("*.md")):
+                if p.name in NON_CONTENT or p.name == log_name:
+                    continue
+                pg = Page(p, cdir)
+                target = (pg.frontmatter.get("replaces") or pg.rel).strip()
+                label = f"{contribs.name}/{cdir.name}/{pg.rel}"
+                if target in claimed:
+                    add("contrib-conflict", "error", label,
+                        f"target {target} already claimed by "
+                        f"{claimed[target]}; owner must resolve")
+                    continue
+                claimed[target] = cdir.name
+                if pg.frontmatter.get("replaces") and target not in pages:
+                    add("contrib-replaces-missing", "error", label,
+                        f"replaces: {target} but no such base page")
+                    continue
+                if target in pages and not pg.frontmatter.get("replaces"):
+                    add("contrib-collision", "error", label,
+                        f"lands on existing base page {target} without "
+                        f"declaring replaces:")
+                    continue
+                auth = (pg.frontmatter.get("authorship") or "").strip()
+                if not auth or auth in GENERIC_AUTHORSHIP:
+                    add("contrib-unattributed", "error", label,
+                        "contrib file needs authorship: <contributor-id> "
+                        "— attribution is the point of the overlay")
+                pg.rel = target
+                pages[target] = pg
 
     inbound = {rel: 0 for rel in pages}
     graph = {rel: set() for rel in pages}
@@ -140,7 +180,9 @@ def lint(root, log_name):
                 continue
             if not raw.endswith((".md", ".MD")):
                 continue  # static asset or non-wiki target; not ours to judge
-            dest = (page.path.parent / raw).resolve()
+            # resolve at the page's effective wiki location — for a
+            # contrib overlay that is the shadowed path, not the file
+            dest = ((root / page.rel).parent / raw).resolve()
             try:
                 dest_rel = dest.relative_to(root.resolve()).as_posix()
             except ValueError:
@@ -203,6 +245,19 @@ def lint(root, log_name):
                         f"unknown type '{m.group(1)}' "
                         f"(allowed: {', '.join(sorted(LOG_TYPES))})", i)
 
+    # transaction-arc frontmatter: values valid, derivations resolvable
+    for rel in sorted(pages):
+        page = pages[rel]
+        t = (page.frontmatter.get("transactability") or "").strip()
+        if t and t not in TRANSACTABILITY:
+            add("invalid-transactability", "error", rel,
+                f"'{t}' is not one of {sorted(TRANSACTABILITY)} "
+                f"(no marker = local-only)")
+        d = (page.frontmatter.get("derived-from") or "").strip()
+        if d and d not in pages:
+            add("derived-from-missing", "error", rel,
+                f"derived-from: {d} names no page in the effective wiki")
+
     return findings
 
 
@@ -210,16 +265,23 @@ def main(argv):
     args = [a for a in argv if not a.startswith("--")]
     flags = {a for a in argv if a.startswith("--")}
     log_name = "log.md"
+    contribs = None
     if "--log" in argv:
         log_name = argv[argv.index("--log") + 1]
         args = [a for a in args if a != log_name]
+    if "--contribs" in argv:
+        contribs = Path(argv[argv.index("--contribs") + 1])
+        args = [a for a in args if a != str(contribs)]
     if not args and os.environ.get("EDDIC_CONFIG"):
         # Running as a vendored eddic verb: take the wiki from config.
         cfg_path = Path(os.environ["EDDIC_CONFIG"])
         cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
-        args = [str(cfg_path.parent.parent / cfg.get("wiki_dir", "wiki"))]
+        campaign = cfg_path.parent.parent
+        args = [str(campaign / cfg.get("wiki_dir", "wiki"))]
         if "--log" not in argv:
             log_name = cfg.get("log", "log.md")
+        if contribs is None:
+            contribs = campaign / cfg.get("contribs_dir", "contribs")
     if len(args) != 1:
         print(__doc__.strip(), file=sys.stderr)
         return 2
@@ -227,8 +289,10 @@ def main(argv):
     if not root.is_dir():
         print(f"not a directory: {root}", file=sys.stderr)
         return 2
+    if contribs is None:
+        contribs = root.parent / "contribs"
 
-    findings = lint(root, log_name)
+    findings = lint(root, log_name, contribs)
     sev_rank = {"error": 0, "warning": 1, "info": 2}
     findings.sort(key=lambda f: (sev_rank[f["severity"]], f["path"], f["line"] or 0))
     counts = {s: sum(1 for f in findings if f["severity"] == s) for s in sev_rank}

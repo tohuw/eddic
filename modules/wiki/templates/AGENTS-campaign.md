@@ -65,6 +65,44 @@ one person writes. Attribution tracks expression, not ideas — a
 page you wrote about another player's invention is your expression —
 and that limit is doctrine, not a defect.
 
+## Contributions — shadow, never delete
+
+Material written by someone other than the campaign's author lives
+under `contribs/<contributor-id>/`, one file per page, carrying that
+contributor's `authorship:`. A contrib file may carry
+`replaces: <wiki path>` — it then **shadows** the base page on every
+built surface (projection, site, retrieval corpora) while the base
+stays untouched in the tree. Removing a contributor is deterministic:
+stop applying their overlay; the base is standing right there. Two
+contribs claiming the same `replaces:` target is a lint error the
+owner resolves — never silent last-write-wins. Builds are a pure
+function of the working tree; git history is audit trail, never live
+storage.
+
+Work derived from a contribution — the author's improvement on a
+contributed page, a backport, a rewrite — carries
+`derived-from: <path>` pointing at what it grew from. These links
+form the derivation graph that rights status is computed from; keep
+them honest. Only the author may **sever** a derivation link
+(asserting clean-room status), and a sever is a logged act, never a
+quiet frontmatter edit.
+
+## Transactability — who may sell what
+
+The third frontmatter axis, governed by the **author** (the holder of
+transaction rights, declared in `.eddic/config.json`; may not be the
+DM — when they differ, the DM's own writing is a contribution like
+anyone else's). Fail-closed: **no marker means `local-only`** (not
+sellable): licensed book content the table has taught its campaign,
+other tables' purchased material, anything uncleared. `transactable`
+marks cleared original work; `transactable-with-attribution` marks
+content sellable under attribution-bearing licenses (the sale build
+injects the credit; put the required text in `attribution:`).
+Visibility never filters a sale — a sold campaign ships the full
+truth, DM pages included, because the buyer becomes their own
+table's DM. The sale build (`eddic bundle`) enforces all of this
+deterministically and refuses rather than guesses.
+
 ## What to record, and in whose voice
 
 Neutral, factual, encyclopedia tone. State settled facts; do not
@@ -110,8 +148,12 @@ nowhere; log it as `schema`.
 compiled into the wiki), `reconcile` (facts synced with external
 tools, e.g. the timeline), `lint` (health-check pass), `schema`
 (a change to conventions), `witness` (field notes reconciled from
-the inbox). Convert relative dates to absolute. Never rewrite an
-existing entry.
+the inbox), `attribution` (a contribution recorded: contributor id,
+paths, and content hashes pinning exactly what was contributed),
+`consent` (a contributor's sign-off over their logged fragments —
+the sale build gates on these), `sever` (the author's clean-room
+assertion cutting a derivation link; state what and why). Convert
+relative dates to absolute. Never rewrite an existing entry.
 
 ## Updating
 

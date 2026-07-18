@@ -21,15 +21,24 @@ EXPECTED = Counter({
     "missing-h1": 1,         # lost-shrine
     "firewall-breach": 2,    # index and warden link the DM-only vault
     "log-malformed": 2,      # unknown type 'conjure'; freeform ## header
-    "orphan": 1,             # lost-shrine
-    "unreachable": 1,        # lost-shrine
-    "tiny-unstubbed": 2,     # lost-shrine, secret-vault
+    "orphan": 2,             # lost-shrine; contributed field-notes
+    "unreachable": 2,        # lost-shrine; contributed field-notes
+    "tiny-unstubbed": 1,     # lost-shrine only — kestrel's overlay
+                             # replaced the tiny vault page, proving
+                             # the effective view took the overlay
+    "contrib-conflict": 1,   # vagrant's second claim on the vault
+    "contrib-collision": 1,  # kestrel/lost-shrine lands w/o replaces
+    "contrib-replaces-missing": 1,  # ghost-annex shadows nothing
+    "contrib-unattributed": 1,      # field-notes marked bare 'human'
+    "invalid-transactability": 1,   # lost-shrine 'sellable'
+    "derived-from-missing": 1,      # warden derived-from ghost-quarter
 })
 
 
 def main():
     proc = subprocess.run(
-        [sys.executable, str(REPORTER), str(HERE / "fixture"), "--json"],
+        [sys.executable, str(REPORTER), str(HERE / "fixture"), "--json",
+         "--contribs", str(HERE / "fixture-contribs")],
         capture_output=True, text=True)
     if proc.returncode not in (0, 1):
         print(f"reporter failed (exit {proc.returncode}):\n{proc.stderr}")

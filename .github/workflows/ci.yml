@@ -25,3 +25,5 @@ jobs:
       - uses: astral-sh/setup-uv@v5
       - name: Module verifies
         run: uv run tools/verify_all.py
+      - name: End-to-end composition
+        run: uv run tools/verify_e2e.py
