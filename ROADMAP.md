@@ -78,9 +78,27 @@ the payment-gateway decision.
 8. **transcriber** — local session transcription (whisper.cpp) from
    recorded audio; the free path that replaces paid transcript services.
    Likely the first binary-bearing module.
-9. **recorder** — the local Discord voice-recording bot (Craig
-   replacement; receives audio over the Discord voice gateway — no OS
-   mic permission involved). Spec brief pending from the owner.
+9. **recorder** — session recording as a capability of the campaign's
+   existing lore bot (owner's brief, 2026-07-18): one application, one
+   token, one process — the recorder module vendors a capability the
+   deployed bot loads, not a second bot. Audio arrives over the
+   Discord voice gateway (no OS mic permission); the voice sink runs
+   on its own thread writing straight to disk so answer latency can
+   never drop frames. Summon/dismiss via slash commands
+   (`/record start|stop|help`; invites need the
+   `applications.commands` scope alongside `bot`). Output:
+   per-speaker FLAC to the campaign's local disk in the transcriber's
+   expected layout; on stop, files are staged and a log entry
+   written — transcription stays a deliberate maintenance step.
+   Consent: on start, the bot posts in the voice channel's text chat —
+   announcement, privacy-posture link (hosted on the Eddic site), and
+   per-member opt-in reacts; a member's audio is captured only after
+   their react, nobody is gated on anyone else, and fail-closed means
+   un-reacted members are simply never in the recording. Decision
+   point: strict per-session reacts (default) vs standing acks
+   remembered across sessions with visible opt-out. Doctrine:
+   consent-to-record is not consent-to-sell — the transaction arc's
+   full-table sign-off remains its own later act.
 10. **discord-setup** — server scaffolding: Discord template for
     structure, deterministic setup bot for what templates can't do
     (integrations, webhooks, permissions).
@@ -133,6 +151,11 @@ community PR under the contract.
 - **Compression accelerators.** headroom/thlibo guidance lands inside
   the routines and transcriber modules as decision points with
   heuristics, per DESIGN.md — never as dependencies.
+- **Eddic website.** Coming, for many reasons (owner, 2026-07-18);
+  the first concrete trigger is the recorder's consent post, which
+  links a privacy posture page Eddic must host. Also the natural home
+  for docs and the eventual marketplace face. Scope and stack decided
+  when the first trigger fires.
 - **Payment gateway.** Choose when the marketplace module (15) starts:
   a gateway with checkout-and-download and no inventory overhead;
   cost posture per principle 4. Until then the transaction arc is
