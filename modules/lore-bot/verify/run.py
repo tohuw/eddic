@@ -90,8 +90,11 @@ def main():
             @staticmethod
             def create(**kw):
                 captured["anthropic"] = kw
-                return types.SimpleNamespace(
-                    content=[types.SimpleNamespace(text="ok")])
+                # thinking block first, like modern models actually
+                # answer — the adapter must pick the text block
+                return types.SimpleNamespace(content=[
+                    types.SimpleNamespace(type="thinking"),
+                    types.SimpleNamespace(type="text", text="ok")])
     fake_anthropic.Anthropic = _FakeAnthropicClient
     sys.modules["anthropic"] = fake_anthropic
 

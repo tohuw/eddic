@@ -20,4 +20,6 @@ class AnthropicProvider:
         res = self.client.messages.create(
             model=model, max_tokens=max_tokens, system=blocks,
             messages=[{"role": "user", "content": prompt}])
-        return res.content[0].text
+        # content may lead with thinking blocks; answer = the text block
+        return next(b.text for b in res.content
+                    if getattr(b, "type", "") == "text")
