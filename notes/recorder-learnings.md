@@ -41,6 +41,17 @@ router additionally requires `__sink_listeners__` (list of
 (event, method) pairs; empty is fine) and `walk_children()`; the
 reader touches `sink.client`. Our ConsentSink already matches.
 
+How Craig survives DAVE (2026-07-18 research): a bot is a legitimate
+E2EE *participant* — it joins the call's MLS group and receives keys
+like any client. The working implementation is **davey**
+(github.com/Snazzah/davey — Rust DAVE via OpenMLS, by Craig's
+co-maintainer; the JS ecosystem's de facto core), and davey ships
+**Python bindings**. So pycord#3139 is plumbing (wire DAVESession
+into the voice packet path), not cryptography; if it stalls, wiring
+davey ourselves — into py-cord's 2.8 engine, whose sink contract we
+already match — is the credible fallback before any Node-sidecar
+contortion.
+
 Known design debt before shipping:
 - Silence-gap padding: per-speaker tracks only receive speech
   frames; long sessions drift out of cross-track alignment. Pad
