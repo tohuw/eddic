@@ -28,7 +28,7 @@ compatibility:
     role: model provider
     status: verified
     date: 2026-07-16
-    evidence: design proven by predecessor bot in production; pure core verified in CI
+    evidence: live end-to-end 2026-07-18 (answers, blindness, linked citations, unprompted self-refresh); pure core and request shapes verified in CI
   openai:
     role: model provider
     status: unverified

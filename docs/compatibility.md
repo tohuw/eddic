@@ -45,7 +45,7 @@ default (see `modules/CONTRACT.md`).
 | Codex as maintaining agent (reads AGENTS.md natively) | documented | 2026-07 | AGENTS.md standard; not yet exercised on this repo |
 | Claude Code as maintaining agent | verified | 2026-07-16 | built and maintains this repo; CLAUDE.md stub imports AGENTS.md |
 | Companion conduct doctrine holds under adversarial asks (per client) | unverified | 2026-07-18 | rig: modules/companion/verify/conduct-acceptance.md; no live pass recorded |
-| Anthropic API lore bot (corpus-in-cached-prompt) | verified | 2026-07-16 | design proven by the predecessor bot in production; module verify covers the pure core in CI |
+| Anthropic API lore bot (corpus-in-cached-prompt) | verified | 2026-07-18 | live end-to-end on a real campaign: corpus answers, projection blindness, linked citations, self-refresh via fingerprint poll observed unprompted |
 | OpenAI API lore bot (Responses adapter) | unverified | 2026-07-17 | request shape golden-tested in CI; no live deployment yet |
 | Codex plugin format (.codex-plugin manifest + skills) | documented | 2026-07 | learn.chatgpt.com/docs/build-plugins; marketplace live since 2026-03 |
 | Eddic installs as a Codex plugin (skill routes to AGENTS.md) | unverified | 2026-07-17 | shipped in-repo; needs one live `codex plugin install` + removal test |

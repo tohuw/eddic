@@ -61,7 +61,10 @@ file injected after the cache breakpoint, never in the corpus.
 
 3. Local mode (default): point `CORPUS_DIR` at the projection and
    run `python bot.py` under the owner's process manager of choice
-   (you know the host; pick its native supervisor). Cloud mode:
+   (you know the host; pick its native supervisor). Run it
+   unbuffered (`PYTHONUNBUFFERED=1`) — otherwise the startup and
+   reload prints sit invisibly in the stdout buffer and the bot
+   looks silent precisely when you are trying to watch it. Cloud mode:
    push the campaign repo, create the worker service from it, set
    the variables as real env (they override the file), give it a
    read-only repo token.

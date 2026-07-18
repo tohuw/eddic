@@ -24,6 +24,13 @@ Awaiting live vendor sessions: the ChatGPT acceptance rig
 (`modules/retrieval/verify/chatgpt-acceptance.md`), a Codex
 plugin-install test, an OpenAI-provider bot deployment.
 
+**Lore bot live 2026-07-18:** full end-to-end on the test campaign —
+Discord app created via driven browser (human: one captcha, one MFA,
+one ToS, one Authorize), corpus answers with linked citations into the
+live Pages site, projection blindness holding conversationally, and
+the freshness poll observed reloading unprompted after a wiki edit.
+Four live finds shipped back into the module during the test.
+
 **Transaction arc 2026-07-18:** contribs (14) and companion (13)
 shipped at 0.1.0; the author role is declared config (may differ from
 the DM — DESIGN records the consequences); wiki 0.3.0 applies
