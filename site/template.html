@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{TITLE}} — {{SITE_NAME}}</title>
+<style>
+:root {
+  --bg: #faf7f2; --fg: #2a2622; --muted: #6b6259; --accent: #7c5cbf;
+  --rule: #e2dcd2; --card: #ffffff;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #171512; --fg: #e8e2d8; --muted: #a39a8d;
+          --accent: #a98ee6; --rule: #322e28; --card: #201d19; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg);
+  font: 17px/1.65 "Literata", Georgia, serif; }
+nav { display: flex; gap: 1.4em; align-items: baseline; flex-wrap: wrap;
+  max-width: 46rem; margin: 0 auto; padding: 1.2rem 1.2rem 0; }
+nav .brand { font-weight: 700; font-size: 1.15em; letter-spacing: .02em;
+  margin-right: .6em; }
+nav a { color: var(--muted); text-decoration: none; font-size: .95em; }
+nav a.brand { color: var(--fg); }
+nav a:hover { color: var(--accent); }
+main { max-width: 46rem; margin: 0 auto; padding: 1.4rem 1.2rem 4rem; }
+h1 { font-size: 1.9em; line-height: 1.25; margin: 1.2em 0 .5em; }
+h2 { font-size: 1.25em; margin: 1.8em 0 .5em; }
+a { color: var(--accent); }
+code { background: var(--card); border: 1px solid var(--rule);
+  border-radius: 4px; padding: .08em .35em; font-size: .86em;
+  font-family: "IBM Plex Mono", ui-monospace, monospace; }
+pre { background: var(--card); border: 1px solid var(--rule);
+  border-radius: 8px; padding: 1em; overflow-x: auto; }
+pre code { border: 0; padding: 0; background: none; }
+blockquote { margin: 1em 0; padding: .2em 1em; border-left: 3px solid
+  var(--accent); color: var(--muted); }
+table { border-collapse: collapse; width: 100%; display: block;
+  overflow-x: auto; }
+td, th { border: 1px solid var(--rule); padding: .45em .7em;
+  text-align: left; font-size: .93em; }
+hr { border: 0; border-top: 1px solid var(--rule); margin: 2.2em 0; }
+footer { max-width: 46rem; margin: 0 auto; padding: 0 1.2rem 2.5rem;
+  color: var(--muted); font-size: .85em; }
+</style>
+</head>
+<body>
+<nav>
+  <a class="brand" href="index.html">Eddic</a>
+  <a href="how-it-works.html">How it works</a>
+  <a href="modules.html">Modules</a>
+  <a href="principles.html">Principles</a>
+  <a href="privacy.html">Privacy</a>
+  <a href="https://github.com/tohuw/eddic">Source</a>
+</nav>
+<main>
+{{BODY}}
+</main>
+<footer>
+Eddic is Apache-2.0 open source. Campaign content produced with Eddic
+belongs to its authors.
+</footer>
+</body>
+</html>
