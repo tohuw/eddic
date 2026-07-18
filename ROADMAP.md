@@ -89,8 +89,11 @@ community PR under the contract.
   notarization; Azure Trusted Signing ~$10/mo for Windows): a human
   browser-download path, or a module needing stable OS-permission
   identity.
-- **License.** Must be chosen before the repo goes public / first
-  external PR.
+- **License.** Resolved 2026-07-17: Apache-2.0 (see `LICENSE` and the
+  "License and authorship" section of `README.md`). Permissive, so
+  vendored and stamped copies inside campaign repos stay clean; carries
+  a patent grant; §5 makes inbound contributions self-licensing with no
+  CLA needed.
 - **Compression accelerators.** headroom/thlibo guidance lands inside
   the routines and transcriber modules as decision points with
   heuristics, per DESIGN.md — never as dependencies.
