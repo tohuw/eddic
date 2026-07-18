@@ -37,6 +37,16 @@ capture source is a genuine choice, not a doctrine.
    out to be Craig's own transcript (premium), place it as the
    session's source directly. Log an `ingest` entry either way.
 
+   macOS recognition note: Safari auto-extracts Craig's zip into a
+   folder *named* `craig-*.flac`, which macOS then treats as a
+   quarantined package — Gatekeeper warnings, opens in an audio app
+   instead of Finder. Staging handles it untouched (pass the folder
+   as-is; copied files shed the quarantine attribute), so under
+   this pattern the owner never meets the problem. If they arrive
+   already bitten ("my Mac says the recording is damaged"), the
+   cure is stripping the quarantine attribute and renaming the
+   folder to drop the bogus extension — you know the commands.
+
 ## Decision points
 
 - **Capture source.** Default: **free Craig** — proven for years,

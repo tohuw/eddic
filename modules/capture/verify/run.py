@@ -46,6 +46,15 @@ def main():
          "extras reported for the agent's judgment"),
     ]
 
+    # the Safari case: the download IS a folder named craig-*.flac
+    safari = tmp / "craig-999.flac"
+    (safari).mkdir()
+    (safari / "1-alice.flac").write_text("safari-bytes", encoding="utf-8")
+    p = run(str(safari), "--out", str(out), "--date", "2026-01-02")
+    checks.append((p.returncode == 0 and
+                   (out / "2026-01-02" / "1-alice.flac").is_file(),
+                   "Safari-mangled top-level folder stages"))
+
     empty = tmp / "empty.zip"
     with zipfile.ZipFile(empty, "w") as z:
         z.writestr("readme.txt", "no audio here")

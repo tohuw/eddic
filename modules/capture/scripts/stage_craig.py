@@ -84,8 +84,15 @@ def main(argv):
                     shutil.copyfile(inner[0], dest / name)
                     staged.append(name)
                 continue
-            if not p.is_file() or any(part.suffix.lower() in AUDIO_EXTS
-                                      for part in p.parents):
+            if not p.is_file():
+                continue
+            # skip files inside an inner quirk dir (handled above) —
+            # but the source root's own name never disqualifies its
+            # children (Safari extracts the zip INTO craig-*.flac/)
+            inner_parents = [part for part in p.parents
+                             if part != src and src in part.parents]
+            if any(part.suffix.lower() in AUDIO_EXTS
+                   for part in inner_parents):
                 continue
             if Path(name).suffix.lower() in AUDIO_EXTS:
                 dest.mkdir(parents=True, exist_ok=True)
