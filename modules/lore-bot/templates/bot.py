@@ -43,6 +43,11 @@ MAX_TOKENS = int(os.environ.get("MAX_TOKENS", "800"))
 REFRESH = int(os.environ.get("REFRESH_MINUTES", "5"))
 AUTO_CHANNELS = {int(c) for c in
                  os.environ.get("AUTO_CHANNEL_IDS", "").split(",") if c}
+# optionally confine the bot to one category (a "group" of channels):
+# when set, @mentions outside it are ignored — no answering in the
+# dice or music channels
+CATEGORY_IDS = {int(c) for c in
+                os.environ.get("CATEGORY_IDS", "").split(",") if c}
 OWNER_ID = int(os.environ.get("OWNER_ID", "0"))
 COOLDOWN = int(os.environ.get("COOLDOWN_SECONDS", "15"))
 GITHUB_REPO = os.environ.get("GITHUB_REPO", "")
@@ -180,6 +185,9 @@ async def on_message(message):
                 f"corpus {len(state['corpus']) // 1024} KB, loaded {age}s "
                 f"ago, stamp {state['stamp'][:12]}", mention_author=False)
         return
+    if CATEGORY_IDS and getattr(message.channel, "category_id", None) \
+            not in CATEGORY_IDS:
+        return                              # outside the bot's category
     mentioned = client.user in message.mentions
     if mentioned or message.channel.id in AUTO_CHANNELS:
         await answer(message)

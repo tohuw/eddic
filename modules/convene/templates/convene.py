@@ -226,6 +226,9 @@ def setup(client):
 
     @grp.command(name="status", description="Sessions and who is in")
     async def status_cmd(inter):
+        # defer first: fetching events and attendees can exceed the
+        # 3-second interaction deadline ("app did not respond")
+        await inter.response.defer(ephemeral=True)
         lines = []
         for guild in client.guilds:
             for event in await guild.fetch_scheduled_events():
@@ -233,7 +236,7 @@ def setup(client):
                 lines.append(
                     f"**{event.name}** — {count}/{QUORUM} in"
                     f"{' (DM in)' if dm_in else ''}")
-        await inter.response.send_message(
+        await inter.followup.send(
             "\n".join(lines) or "no sessions on the calendar.",
             ephemeral=True)
 
