@@ -41,7 +41,7 @@ CREATED, AT_RISK, IMMINENT, ENDED = (
 REMINDERS = {
     CREATED:  "{ping}A session is on the calendar: **{title}**, {when}. "
               "React *interested* on the event so we can call quorum.",
-    AT_RISK:  "Heads up{dm_mention} — **{title}** is {hours}h out and "
+    AT_RISK:  "Heads up{dm_mention} — **{title}** is {when_rel} and "
               "only {count} of {quorum} are in. Rally the table, or "
               "pick a new night while there's time.",
     IMMINENT: "{ping}**{title}** is on tonight — quorum met ({count}/"
@@ -95,8 +95,8 @@ def load_messages(path, defaults=None):
     p = Path(path)
     if not p.is_file():
         return msgs
-    sample = dict(ping="", title="x", when="w", hours=1, count=0,
-                  quorum=3, dm_mention="", recorder_line="")
+    sample = dict(ping="", title="x", when="w", when_rel="w", hours=1,
+                  count=0, quorum=3, dm_mention="", recorder_line="")
     try:
         override = json.loads(p.read_text(encoding="utf-8"))
     except (ValueError, OSError):
@@ -111,15 +111,28 @@ def load_messages(path, defaults=None):
     return msgs
 
 
-def render(key, *, title, when="", start=None, now=None, count=0,
-           quorum=0, dm_mention="", recorder=True, ping="",
+def effective_status(raw, start, now, end=None, duration_s=4 * 3600):
+    """Discord's status, with a time-based 'ended' fallback: an event
+    that is past its end (or start + a default duration when it has no
+    explicit end) counts as completed even if the DM never marked it —
+    external events do not auto-complete, and the stage/transcribe
+    nudge must still fire. Pure."""
+    if raw in ("completed", "canceled"):
+        return raw
+    horizon = end if end else start + duration_s
+    return "completed" if now > horizon else raw
+
+
+def render(key, *, title, when="", when_rel="", start=None, now=None,
+           count=0, quorum=0, dm_mention="", recorder=True, ping="",
            templates=None):
     hours = int(round((start - now) / 3600.0)) if start and now else 0
     recorder_line = ("Bring the recorder into the voice channel. "
                      if recorder else "")
     return (templates or REMINDERS)[key].format(
-        title=title, when=when, hours=hours, count=count, quorum=quorum,
-        dm_mention=dm_mention, recorder_line=recorder_line, ping=ping)
+        title=title, when=when, when_rel=when_rel, hours=hours,
+        count=count, quorum=quorum, dm_mention=dm_mention,
+        recorder_line=recorder_line, ping=ping)
 
 
 def load_state(path):
@@ -161,6 +174,7 @@ def setup(client):
     RECORDER = os.environ.get("RECORDER_NUDGE", "1") != "0"
     SITE_URL = os.environ.get("SITE_URL", "").rstrip("/")
     TICK = envint("REFRESH_MINUTES", 5) * 60
+    DURATION_S = envint("SESSION_DURATION_HOURS", 4) * 3600
     MESSAGES = load_messages(
         HERE / os.environ.get("CONVENE_MESSAGES", "convene_messages.json"))
 
@@ -213,10 +227,20 @@ def setup(client):
                 dm_in = True
                 continue                    # the DM is not a player
             member = event.guild.get_member(u.id)
-            if not cfg["player_role"]:
-                players += 1
-            elif member and any(r.name == cfg["player_role"]
-                                for r in member.roles):
+            # who counts as a player: an explicit PLAYER_ROLE name, else
+            # the ping role (the one role you already set doubles as the
+            # roster — a stray "interested" click from a non-player is
+            # ignored), else anyone. This is also the seam for a shared
+            # server: a campaign's role scopes its own quorum.
+            if cfg["player_role"]:
+                if member and any(r.name == cfg["player_role"]
+                                  for r in member.roles):
+                    players += 1
+            elif cfg["role_id"]:
+                if member and any(r.id == cfg["role_id"]
+                                  for r in member.roles):
+                    players += 1
+            else:
                 players += 1
         return players, dm_in
 
@@ -238,9 +262,14 @@ def setup(client):
                     live_ids.add(eid)
                     rec = state["events"].setdefault(eid, {"fired": []})
                     count, dm_in = await count_interested(event)
-                    session = {"start": event.start_time.timestamp(),
+                    start = event.start_time.timestamp()
+                    end = (event.end_time.timestamp()
+                           if getattr(event, "end_time", None) else None)
+                    session = {"start": start,
                                "count": count, "dm_in": dm_in,
-                               "status": status_name(event),
+                               "status": effective_status(
+                                   status_name(event), start, now,
+                                   end=end, duration_s=DURATION_S),
                                "fired": rec["fired"]}
                     ping = (f"<@&{cfg['role_id']}> " if cfg["role_id"]
                             else "")
@@ -254,6 +283,8 @@ def setup(client):
                                     key, title=event.name, ping=ping,
                                     when=discord.utils.format_dt(
                                         event.start_time, "F"),
+                                    when_rel=discord.utils.format_dt(
+                                        event.start_time, "R"),
                                     start=session["start"], now=now,
                                     count=count, quorum=cfg["quorum"],
                                     dm_mention=(f" <@{cfg['dm_id']}>"
@@ -394,9 +425,14 @@ def setup(client):
                     # (Railway wipes the state file) never re-announces
                     # an event. Only transitions after startup post.
                     count, dm_in = await count_interested(event)
-                    session = {"start": event.start_time.timestamp(),
+                    start = event.start_time.timestamp()
+                    end = (event.end_time.timestamp()
+                           if getattr(event, "end_time", None) else None)
+                    session = {"start": start,
                                "count": count, "dm_in": dm_in,
-                               "status": status_name(event),
+                               "status": effective_status(
+                                   status_name(event), start, now,
+                                   end=end, duration_s=DURATION_S),
                                "fired": rec["fired"]}
                     for key in evaluate(session, now, cfg["quorum"],
                                         require_dm=require_dm):

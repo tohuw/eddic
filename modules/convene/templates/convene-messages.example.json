@@ -1,7 +1,7 @@
 {
-  "_comment": "Copy to convene_messages.json beside the bot to re-voice or translate convene's reminders. Keep every {placeholder} exactly as it appears; a template with an unknown placeholder is rejected and the built-in default kept. Placeholders: {ping} (role mention or empty), {title}, {when} (Discord timestamp), {hours}, {count}, {quorum}, {dm_mention}, {recorder_line}. Omit any key to keep its default.",
+  "_comment": "Copy to convene_messages.json beside the bot to re-voice or translate convene's reminders. Keep every {placeholder} exactly as it appears; a template with an unknown placeholder is rejected and the built-in default kept. Placeholders: {ping} (role mention or empty), {title}, {when} (Discord absolute timestamp), {when_rel} (Discord relative timestamp — renders 'in 12 hours' and counts down live), {hours} (integer hours, if you prefer a plain number), {count}, {quorum}, {dm_mention}, {recorder_line}. Omit any key to keep its default.",
   "created": "{ping}A session is on the calendar: **{title}**, {when}. React *interested* on the event so we can call quorum.",
-  "at_risk": "Heads up{dm_mention} — **{title}** is {hours}h out and only {count} of {quorum} are in. Rally the table, or pick a new night while there's time.",
+  "at_risk": "Heads up{dm_mention} — **{title}** is {when_rel} and only {count} of {quorum} are in. Rally the table, or pick a new night while there's time.",
   "imminent": "{ping}**{title}** is on tonight — quorum met ({count}/{quorum}). {recorder_line}See you at the table.",
   "ended": "That's a wrap on **{title}**. When you get a moment: stage the recording and transcribe it, and the recap will announce itself once it's published."
 }

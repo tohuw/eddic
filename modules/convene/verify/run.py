@@ -83,9 +83,10 @@ def main():
     # render fills the templates safely
     txt = convene.render(convene.AT_RISK, title="Session 3",
                          start=now + HOUR, now=now, count=1, quorum=3,
-                         dm_mention=" <@1>")
-    checks.append(("Session 3" in txt and "1 of 3" in txt,
-                   "render fills the reminder text"))
+                         dm_mention=" <@1>", when_rel="<t:1:R>")
+    checks.append(("Session 3" in txt and "1 of 3" in txt
+                   and "<t:1:R>" in txt,
+                   "render fills at_risk with the relative timestamp"))
 
     # persistence round-trip + reconcile
     tmp = Path(tempfile.mkdtemp(prefix="eddic-convene-verify-"))
@@ -154,6 +155,20 @@ def main():
                          ping="<@&1> ", templates=msgs)
     checks.append(("¡Sesión! **X**" in out and out.startswith("<@&1> "),
                    "render uses the override with the ping"))
+
+    # effective_status: time-based 'ended' fallback
+    checks.append((convene.effective_status("scheduled", now - 5*HOUR,
+                   now, duration_s=4*HOUR) == "completed",
+                   "an event past start+duration counts as ended"))
+    checks.append((convene.effective_status("active", now - 5*HOUR,
+                   now, end=now - HOUR) == "completed",
+                   "an active event past its explicit end is ended"))
+    checks.append((convene.effective_status("scheduled", now + HOUR,
+                   now, duration_s=4*HOUR) == "scheduled",
+                   "a future event is not force-ended"))
+    checks.append((convene.effective_status("canceled", now - 9*HOUR,
+                   now) == "canceled",
+                   "canceled stays canceled, never force-ended"))
 
     # envint tolerates inline comments and whitespace (the crash that
     # took convene down on the live bot)

@@ -213,3 +213,17 @@ community PR under the contract.
   a gateway with checkout-and-download and no inventory overhead;
   cost posture per principle 4. Until then the transaction arc is
   rights machinery, not commerce.
+- **Multi-tenant lore bot (convene).** Today one bot serves one
+  campaign: convene counts *every* scheduled event on the guild toward
+  that campaign's quorum. Two campaigns sharing a Discord server would
+  cross-contaminate — each other's events, reminders, and quorum
+  counts. The seam is already cut the right way: convene scopes
+  players by a per-campaign role (`SESSION_ROLE_ID`/`PLAYER_ROLE`), so
+  the missing piece is scoping *events* the same way — a campaign only
+  tracks events it owns. Trigger: a second campaign wanting to share
+  one server (or one bot process). Likely shape: tag events to a
+  campaign (an event-role gate, a channel/category binding, or a
+  naming prefix) and filter `fetch_scheduled_events()` by it, with the
+  lore-bot corpus and recap thread already per-campaign. Do not
+  half-build it before the second tenant is real — the single-tenant
+  path must stay zero-config.
