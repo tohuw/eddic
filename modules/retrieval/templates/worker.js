@@ -182,8 +182,43 @@ function rest(corpus, url) {
   return Response.json({ error: "no such endpoint" }, { status: 404 });
 }
 
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers":
+    "Authorization, Content-Type, Accept, Mcp-Session-Id, " +
+    "Mcp-Protocol-Version",
+  "Access-Control-Expose-Headers": "Mcp-Session-Id",
+  "Access-Control-Max-Age": "86400",
+};
+
+// Every response carries CORS, and the preflight is answered without
+// auth: browser-based MCP connectors (e.g. claude.ai) send an OPTIONS
+// preflight and abort if it lacks Access-Control-* headers. curl skips
+// the preflight — which is why the endpoint can pass a curl check yet
+// refuse to attach as a connector.
+function withCors(resp) {
+  const r = new Response(resp.body, resp);
+  for (const k in CORS) r.headers.set(k, CORS[k]);
+  return r;
+}
+
 export default {
   async fetch(request, env) {
+    if (request.method === "OPTIONS") {
+      return new Response(null, { status: 204, headers: CORS });
+    }
+    return withCors(await this._handle(request, env));
+  },
+  async _handle(request, env) {
+    // Do not advertise OAuth. Auth-discovery probes (/.well-known/...)
+    // return 404, not 401 — a 401 makes a connector (e.g. claude.ai)
+    // believe there is a sign-in service and attempt OAuth client
+    // registration, which then fails. 404 says "no OAuth here", so the
+    // connector uses the bearer token carried in the URL directly.
+    if (new URL(request.url).pathname.includes("/.well-known/")) {
+      return new Response("not found", { status: 404 });
+    }
     const t = tier(request, env);
     if (!t) return new Response("unauthorized", { status: 401 });
     const url = new URL(request.url);
