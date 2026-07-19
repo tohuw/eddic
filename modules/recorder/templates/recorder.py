@@ -170,9 +170,6 @@ def setup(bot):
                     channel_status: discord.Option(
                         bool, "Show a recording status on the voice "
                         "channel (default: yes)", default=True)):
-        _age = (discord.utils.utcnow()
-                - ctx.interaction.created_at).total_seconds()
-        print(f'/start: interaction age at entry: {_age:.2f}s')
         await ctx.defer(ephemeral=True)
         voice = getattr(ctx.author, "voice", None)
         if not voice or not voice.channel:
@@ -229,7 +226,7 @@ def setup(bot):
         await ctx.respond(
             f"Recording session open — [the consent post]"
             f"({msg.jump_url}) is up in the channel's text chat. "
-            f"Nobody is captured until they react.", ephemeral=True)
+            f"Nobody's mic is captured until they react.", ephemeral=True)
 
     @record.command(name="stop",
                     description="Close the recording session and "
