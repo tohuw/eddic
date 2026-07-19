@@ -368,6 +368,8 @@ def setup(client):
             for p in botlib.page_paths(corpus):
                 if "sessions/" in p and p not in state["announced"]:
                     state["announced"].append(p)
+            now = time.time()
+            require_dm = cfg["require_dm"] and cfg["dm_id"] != 0
             live_ids = set()
             for guild in client.guilds:
                 # copy globals into the guild first, or the guild sync
@@ -375,7 +377,22 @@ def setup(client):
                 tree.copy_global_to(guild=guild)
                 await tree.sync(guild=guild)
                 for event in await guild.fetch_scheduled_events():
-                    live_ids.add(str(event.id))
+                    eid = str(event.id)
+                    live_ids.add(eid)
+                    rec = state["events"].setdefault(eid, {"fired": []})
+                    # startup catch-up: mark everything currently due as
+                    # already handled WITHOUT sending, so a restart
+                    # (Railway wipes the state file) never re-announces
+                    # an event. Only transitions after startup post.
+                    count, dm_in = await count_interested(event)
+                    session = {"start": event.start_time.timestamp(),
+                               "count": count, "dm_in": dm_in,
+                               "status": status_name(event),
+                               "fired": rec["fired"]}
+                    for key in evaluate(session, now, cfg["quorum"],
+                                        require_dm=require_dm):
+                        if key not in rec["fired"]:
+                            rec["fired"].append(key)
             state["events"] = reconcile(state, live_ids)
             save_state(STATE_FILE, state)
             client.loop.create_task(tick_loop())
