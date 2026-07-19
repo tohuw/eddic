@@ -50,6 +50,29 @@ const badAuth = await rpc("wrong-token", init);
 check(badAuth.status === 200,
       "wrong token also falls through to the static site");
 
+// companion page: GET /<token>/companion is token-gated and fills the
+// caller's own MCP URL per request; a bogus token does not serve it.
+async function getPath(path) {
+  const res = await worker.fetch(
+    new Request(`https://w.example${path}`, { method: "GET" }), env);
+  return { status: res.status,
+           ctype: res.headers.get("content-type") || "",
+           text: await res.text() };
+}
+const comp = await getPath("/player-secret/companion");
+check(comp.status === 200 && comp.ctype.includes("text/html") &&
+      comp.text.includes("https://w.example/player-secret/mcp"),
+      "companion page served with the caller's own MCP URL filled");
+check(!comp.text.includes("{{PLAYER_MCP_URL}}"),
+      "companion page leaves no unfilled MCP-URL sentinel");
+const compBad = await getPath("/wrong-token/companion");
+check(compBad.text === ASSETS_SENTINEL,
+      "bogus token does not serve the companion page (falls through)");
+const compPost = await worker.fetch(
+  new Request("https://w.example/player-secret/companion",
+              { method: "POST" }), env);
+check(compPost.status === 405, "companion page refuses non-GET");
+
 // initialize, both auth styles
 const viaHeader = await rpc("dm-secret", init);
 check(viaHeader.body?.result?.serverInfo?.name?.endsWith("-dm"),

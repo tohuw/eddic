@@ -98,18 +98,28 @@ in-Discord backstory help.
 
 The templates onboard the DM and interested players who read the
 patterns, but a player who only wants to *use* a companion needs no
-repo and no setup. The player kit closes that gap. It is a one-page,
-DM-filled handoff — `templates/player-kit.md` — that a DM fills with
-the campaign name and one player's player-tier connector URL, then
-sends alongside the player companion persona. Its three steps are load
-the companion persona into any capable assistant, add the connector
-(reusing the [retrieval](retrieval.md) module's connect flow, so the
-player adds it themselves), and start asking. It states plainly what a
-companion will and won't do — answers from the wiki, helps you decide,
-never decides or rolls for you, never spoils the DM, never writes your
-character. It is safe to distribute by construction: the player token
-is projection-only, so nothing DM-only rides along, and the companion
-conduct it points at is the verified doctrine above.
+repo and no setup. The player kit closes that gap, and the DM hands it
+over as a single URL rather than a file to fill and email. The kit is
+one single source — `templates/player-kit.md` — and the
+[retrieval](retrieval.md) worker renders it as a self-documenting page
+served, token-gated, at `/<token>/companion`. When `eddic stage` builds
+the worker it fills the campaign name, inlines the player companion
+persona where the kit marks `{{PLAYER_COMPANION}}`, and leaves a
+`{{PLAYER_MCP_URL}}` sentinel that the worker fills per request from the
+authenticated token — so the page a player loads shows *their* tier's
+connector URL and no token is ever baked into the bundled asset. The DM
+gives a player their player-tier capability URL with `/companion`
+appended; that one link carries the persona, the three-step setup (an
+assistant-does-it lead plus a jargon-free manual fallback), and the
+player's own MCP URL. Its steps are load the companion persona into any
+capable assistant, add the connector (reusing the retrieval module's
+connect flow, so the player adds it themselves), and start asking. It
+states plainly what a companion will and won't do — answers from the
+wiki, helps you decide, never decides or rolls for you, never spoils the
+DM, never writes your character. It is safe to distribute by
+construction: the player token is projection-only, so nothing DM-only
+rides along; the page renders only on a valid tier token; and the
+companion conduct it points at is the verified doctrine above.
 
 ## Verification
 

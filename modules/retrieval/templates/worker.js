@@ -9,6 +9,11 @@
  * connector UIs that only accept a URL. TOKEN_DM sees the master,
  * TOKEN_PLAYER sees the projection. Rotation = `wrangler secret put`.
  *
+ * The same token path also serves the player companion page at
+ * GET /<token>/companion — the self-documenting handoff (persona,
+ * setup, and the caller's own MCP URL, filled per request from the
+ * authenticated token). Bundled from companion.mjs by `eddic stage`.
+ *
  * MCP: streamable HTTP, JSON-RPC 2.0, tools only
  * (list_pages / read_page / search / fetch). All tools are
  * read-only and closed-world, and say so via annotations; results
@@ -19,20 +24,25 @@
 
 import CORPUS_DM from "./corpus_dm.mjs";
 import CORPUS_PLAYER from "./corpus_player.mjs";
+import COMPANION from "./companion.mjs";
 
 const PROTOCOL = "2025-06-18";
 const SNIPPET = 120;
 const MAX_HITS = 8;
 
-function tier(request, env) {
-  const auth = request.headers.get("Authorization") || "";
-  const bearer = auth.startsWith("Bearer ") ? auth.slice(7).trim() : null;
+// Resolve the request's tier and the concrete token it authenticated
+// with — the token is what the companion page needs to build a caller's
+// own capability URL, so we return it rather than discarding it.
+function auth(request, env) {
+  const a = request.headers.get("Authorization") || "";
+  const bearer = a.startsWith("Bearer ") ? a.slice(7).trim() : null;
   const seg = new URL(request.url).pathname.split("/").filter(Boolean)[0];
   for (const [token, name] of [[env.TOKEN_DM, "dm"],
                                [env.TOKEN_PLAYER, "player"]]) {
-    if (token && (bearer === token || seg === token)) return name;
+    if (token && bearer === token) return { tier: name, token };
+    if (token && seg === token) return { tier: name, token };
   }
-  return null;
+  return { tier: null, token: null };
 }
 
 const READ_ONLY = { readOnlyHint: true, destructiveHint: false,
@@ -219,12 +229,32 @@ export default {
     if (new URL(request.url).pathname.includes("/.well-known/")) {
       return new Response("not found", { status: 404 });
     }
-    const t = tier(request, env);
+    const { tier: t, token } = auth(request, env);
     // No valid token -> not an MCP/REST request. Serve the static site
     // (the player projection rendered to HTML) from the ASSETS binding.
     // One host: humans get the site at /, agents get MCP at /<token>/mcp.
     if (!t) return env.ASSETS.fetch(request);
     const url = new URL(request.url);
+    // Companion page: GET /<token>/companion serves the self-documenting
+    // player kit — persona, setup, and this caller's own MCP URL. Token-
+    // gated exactly like MCP (we only reach here with a valid tier). The
+    // MCP URL is filled per request from the authenticated token, so no
+    // token is ever baked into the bundled page.
+    const seg = url.pathname.split("/").filter(Boolean);
+    if (seg[seg.length - 1] === "companion" && seg.length <= 2) {
+      if (request.method !== "GET" && request.method !== "HEAD") {
+        return new Response("companion page: GET only",
+                            { status: 405, headers: { Allow: "GET, HEAD" } });
+      }
+      const mcpUrl = `${url.origin}/${token}/mcp`;
+      const page = COMPANION.html.split("{{PLAYER_MCP_URL}}").join(mcpUrl);
+      // no-store: the page is token-bearing and filled per request, so
+      // it must never be edge-cached (and a cached probe must never be
+      // replayed for it).
+      return new Response(request.method === "HEAD" ? null : page,
+        { status: 200, headers: { "content-type": "text/html; charset=utf-8",
+          "Cache-Control": "no-store" } });
+    }
     if (url.pathname.includes("/api/")) {
       if (request.method !== "GET") {
         return new Response("read-only API: GET only",

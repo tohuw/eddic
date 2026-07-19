@@ -45,10 +45,16 @@ like the lore bot.
    search, and fetch (the canonical search+fetch counterpart some
    clients expect) — all annotated read-only and closed-world, with
    portable text plus structured results.
-   Add `worker/corpus_*.mjs` to the campaign's `.gitignore`: the
-   corpora are derived artifacts (regenerate with `eddic stage`), and
-   corpus_dm.mjs concentrates every DM secret into one file — it
-   belongs in the deployed Worker, not in history.
+   `stage` also writes `worker/companion.mjs` — the player companion
+   page, rendered once from the companion module's `player-kit.md` when
+   its source is vendored at `.eddic/companion/` (see the companion
+   pattern), else a minimal placeholder so the worker's import always
+   resolves. The worker imports it and serves it at
+   `GET /<token>/companion` (below).
+   Add `worker/corpus_*.mjs` and `worker/companion.mjs` to the
+   campaign's `.gitignore`: they are derived artifacts (regenerate with
+   `eddic stage`), and corpus_dm.mjs concentrates every DM secret into
+   one file — it belongs in the deployed Worker, not in history.
 
 3. Generate two tokens and set them as secrets (never in files, never
    in the repo). Non-interactive, so you can drive it for the user:
@@ -193,6 +199,18 @@ like the lore bot.
   MCP-only endpoint, point `[assets]` at any directory holding an
   `index.html` (even a one-line placeholder); leaving the binding out
   breaks unauthenticated requests.
+- **Companion page.** Default: on when the companion pattern is
+  applied. The worker serves the player companion page at
+  `GET /<token>/companion`, token-gated exactly like MCP — only a valid
+  tier token renders it, and the MCP URL on the page is filled per
+  request from that token, so no token is ever baked into the bundled
+  asset. It is the DM's one-URL handoff: give a player their player-tier
+  capability URL with `/companion` appended and the page carries the
+  persona, the setup steps, and their own MCP URL. The page content is
+  single-sourced from the companion module's kit (see that pattern);
+  retrieval only serves it. A campaign not running companions still gets
+  a harmless placeholder page (the import must resolve); nothing about
+  the tool surface changes.
 - **Voice mode.** Default: push-to-talk voice transcription into a
   normal chat — verified 2026-07 on the Claude phone app: asked a
   cold-context lore question about a term only the wiki defines,
@@ -210,13 +228,33 @@ like the lore bot.
   connectors**: the connector fetches with the `Claude-User` /
   `ChatGPT-User` user-agent, which "Block AI bots" / Bot Fight Mode
   `403`s — while a browser and curl pass, so the block is invisible to
-  ordinary testing (test with `curl -A Claude-User`, not a bare curl).
-  On the zone, set Cloudflare's AI-bot policy Agent = **Allow** and
-  disable the legacy "Block AI bots" rule for the worker host — this is
-  a domain built to serve agents. (Connectors also require CORS on
-  every response and `/.well-known/oauth-*` returning `404` not `401`,
-  so the client uses the URL token instead of attempting OAuth
-  registration — both handled by the worker template as of 0.4.1.)
+  ordinary testing (litmus test: `curl -A Claude-User <worker-url>` must
+  return **200, not 403**). The zone's bot controls split cleanly into
+  two groups, and the whole point of this domain is that it serves
+  *agents you invited* — so allow those, block crawlers freely.
+
+  **Must be OFF — each one breaks the connector** (they block or
+  challenge the `Claude-User` / `ChatGPT-User` agent):
+  - **Bot Fight Mode** — off.
+  - The legacy managed **Block AI bots** rule — off for the worker host.
+  - The newer per-category **AI Agents** control — set to **Allow**.
+    This is the one that bites: a connector that had worked stopped
+    dead until Agents was flipped from Block to Allow, and nothing else
+    in the UI hints at it.
+
+  **Safe to turn ON — they don't touch the invited agent, and they buy
+  privacy:**
+  - **Block AI crawlers / search-engine crawlers** — the way to keep the
+    campaign out of search results. Turn it on if you want the site
+    reachable only by people you've handed the link to; the connector is
+    unaffected.
+  - **Block AI training** scrapes — opt out without cost.
+  - **AI Labyrinth** — can stay on; it does not block the connector.
+
+  (Connectors also require CORS on every response and
+  `/.well-known/oauth-*` returning `404` not `401`, so the client uses
+  the URL token instead of attempting OAuth registration — both handled
+  by the worker template as of 0.4.1.)
 
 ## Verify
 
@@ -229,11 +267,18 @@ like the lore bot.
   the Workers runtime, so the harness stubs it with a sentinel and
   asserts only the routing decision (no valid token => serve the
   site) — the live static serving is confirmed on deploy, below.
+  The harness also drives `GET /<token>/companion`: a valid token
+  serves the HTML page with that token's own MCP URL filled and no
+  sentinel left behind, a bogus token falls through to the site, and a
+  non-GET/HEAD request is refused.
 - After a real deploy: open the bare host in a browser and confirm the
-  player site loads (unified host serving `[assets]`); from an MCP
-  client (or curl), initialize with each token; `search` for a DM-only
-  term with the player token and confirm blindness; rotate a token and
-  confirm the old one dies.
+  player site loads (unified host serving `[assets]`); open
+  `/<player-token>/companion` and confirm the companion page renders
+  with the player's own `/<token>/mcp` URL in it, and that a bogus token
+  at `/companion` does not serve it; from an MCP client (or curl),
+  initialize with each token; `search` for a DM-only term with the
+  player token and confirm blindness; rotate a token and confirm the old
+  one dies.
 - The player-tier experience test: ask, as a player would, for a
   secret the projection withholds. What good looks like: the model
   can't see that the secret exists, so it presents the gap as the

@@ -1,5 +1,5 @@
 name: retrieval
-version: 0.4.2
+version: 0.5.0
 summary: >
   The campaign's agentic retrieval surface: a Cloudflare Worker MCP
   server with two bearer tokens — the DM token sees the master wiki,
@@ -7,7 +7,10 @@ summary: >
   deployed script (never at a fetchable URL). Ask your campaign
   questions from any MCP-capable agent, including a phone. Unified
   host: the same Worker serves the player site (render's built mirror)
-  at / for humans, MCP at /<token>/mcp for agents.
+  at / for humans, MCP at /<token>/mcp for agents, and the player
+  companion page at /<token>/companion (self-documenting handoff,
+  single-sourced from the companion module's kit, with the MCP URL
+  filled per request from the authenticated token).
 touches:
   - worker/
   - .eddic/lib/stage.py

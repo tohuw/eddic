@@ -25,9 +25,9 @@ def main():
                     "backstory-interviewer.md", "player-kit.md"},
          "the templates ship (three companions plus the player kit)"),
         ("{{PLAYER_MCP_URL}}" in t["player-kit.md"] and
-         "player-companion.md" in t["player-kit.md"],
-         "player kit carries the connector URL slot and points at "
-         "the companion persona"),
+         "{{PLAYER_COMPANION}}" in t["player-kit.md"],
+         "player kit carries the per-request connector URL sentinel "
+         "and the inlined-persona slot (single-sourced hosted page)"),
         (all(RULE in t[n] for n in
              ("player-companion.md", "dm-companion.md")),
          "both companions carry the conduct rule verbatim"),

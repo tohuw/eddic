@@ -35,17 +35,30 @@ omniscient human referee. Nothing here pretends to be enforcement.
    The template also carries the collaborator facet — how it answers
    generative asks ("give me ideas", "what might") — kept or stripped
    per the decision point below.
-4. Hand each player their kit: fill `templates/player-kit.md` with
-   `{{SITE_NAME}}` and that player's player-tier capability URL
-   (`{{PLAYER_MCP_URL}}` — the token-in-URL form from the retrieval
-   pattern's connect flow, which the kit reuses so the player adds the
-   connector themselves), and send it, with the `player-companion.md`
-   text, one filled kit per player. This is the player-as-audience
-   handoff — the only path a player needs, no repo. It is safe to
-   distribute by construction: the player token is projection-only
-   (the firewall guarantees it), and the companion's conduct is
-   verified (see Verify), so nothing DM-only and no unbounded advice
-   rides along.
+4. Publish the player kit as a page, then hand each player a URL — no
+   files to fill or email. Vendor the two single-source templates into
+   the campaign so the retrieval worker can render them:
+
+       mkdir -p <campaign>/.eddic/companion
+       cp templates/player-kit.md templates/player-companion.md \
+           <campaign>/.eddic/companion/
+
+   Leave `{{SITE_NAME}}` and `{{PLAYER_MCP_URL}}` in place — `eddic
+   stage` fills the site name and inlines the persona at
+   `{{PLAYER_COMPANION}}` when it builds `worker/companion.mjs`, and the
+   worker fills the MCP URL per request from the authenticated token
+   (nothing is baked in). Re-stage and deploy the worker (the retrieval
+   pattern's flow). The kit page is then served, token-gated, at
+   `https://<worker>/<token>/companion`. Hand each player their own
+   player-tier capability URL with `/companion` appended — one URL,
+   self-documenting: it carries the persona, the setup steps (assistant
+   lead plus jargon-free manual fallback), and that player's own MCP URL
+   filled in. This is the player-as-audience handoff — the only path a
+   player needs, no repo, no attachment. It is safe to distribute by
+   construction: the player token is projection-only (the firewall
+   guarantees it), the page renders only on a valid tier token, and the
+   companion's conduct is verified (see Verify), so nothing DM-only and
+   no unbounded advice rides along.
 5. Log a `schema` entry naming which companions the table runs.
 
 ## Decision points

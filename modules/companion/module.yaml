@@ -1,5 +1,5 @@
 name: companion
-version: 0.1.2
+version: 0.2.0
 summary: >
   At-the-table companions under the knowledge-parity conduct doctrine
   (possible and true, never better): player and DM companions on their
@@ -10,10 +10,14 @@ summary: >
   red-team (2026-07-19, all HELD); the interviewer's backstory
   extrapolation hardened to offer two–three divergent seeds rather
   than a single "most plausible" one, keeping the identity the
-  player's to choose. Also ships the player kit: a one-page,
-  DM-filled handoff (companion persona plus that player's
-  player-tier connector URL) that onboards a player as an audience
-  with no repo, safe to distribute by projection and verified conduct.
+  player's to choose. Also ships the player kit: a single-source,
+  one-page handoff (companion persona plus that player's player-tier
+  connector URL) the DM shares as one capability URL — the retrieval
+  worker serves it as a self-documenting page at /<token>/companion,
+  rendered from the same player-kit.md and with the MCP URL filled per
+  request from the authenticated token, so no token is ever baked in.
+  Onboards a player as an audience with no repo, safe to distribute by
+  projection and verified conduct.
 touches:
   - retrieval
 depends:

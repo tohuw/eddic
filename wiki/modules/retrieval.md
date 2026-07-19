@@ -6,7 +6,7 @@ MCP-capable agent can ask the campaign questions. Its defining use case
 is the DM's phone in the car — "what do I know about the Reavers'
 patron?" becomes a tool call with no login flow anywhere in the chain.
 It depends on the [cli](cli.md), [wiki](wiki.md), and [render](render.md)
-modules and is currently at version 0.4.2.
+modules and is currently at version 0.5.0.
 
 ## Two tokens, two tiers
 
@@ -45,7 +45,12 @@ MCP or REST call, so the Worker falls through to its `[assets]` binding
 and serves the static site that the [render](render.md) module builds
 (`dist/site`). Humans get the wiki at `/`; agents get MCP at
 `/<token>/mcp` and REST at `/<token>/api/...` on that same host — one URL
-to share, one thing to deploy. This is why retrieval now pairs with
+to share, one thing to deploy. The same token path also serves the
+player companion page at `/<token>/companion`: a token-gated,
+self-documenting handoff whose content is single-sourced from the
+[companion](companion.md) module's kit and whose MCP URL is filled per
+request from the authenticated token, so the DM shares one link and no
+token is ever baked into a bundled asset. This is why retrieval now pairs with
 render: build the site with `eddic build` before deploying, and fold the
 `build` into the publish flow so the served site tracks the wiki
 alongside the corpus. Because the fallback references the `[assets]`
@@ -71,10 +76,13 @@ the load-bearing safety property: DM content is bundled into the Worker
 and never sits at a fetchable URL. Staging refuses when the projection
 is missing or empty — the player tier must come from the projection and
 cannot be assembled here, so the script never makes a visibility
-decision. Because the corpora are derived artifacts, they are
-git-ignored and regenerated; the freshness contract folds
-`project`, `stage`, and `deploy` into the publish flow so the corpus
-tracks the wiki. Contributor overlays are applied at their targets when
+decision. Alongside the corpora, `stage` also writes `companion.mjs` — the player
+companion page, rendered once from the companion module's kit when that
+source is vendored, or a harmless placeholder otherwise so the worker's
+import always resolves. Because the corpora and the companion page are
+derived artifacts, they are git-ignored and regenerated; the freshness
+contract folds `project`, `stage`, and `deploy` into the publish flow so
+the corpus tracks the wiki. Contributor overlays are applied at their targets when
 the DM corpus is built. Staging warns as a corpus nears the 1 MB
 free-tier bundle limit, at which point a KV-backed corpus is the growth
 path; the Cloudflare Workers free tier otherwise sits orders of
