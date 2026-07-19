@@ -6,13 +6,15 @@ shares the archivist's always-on lifecycle exactly (one Railway
 process, zero new spend). Convene DRIVES Discord's native Guild
 Scheduled Events (the event card, the "interested" list, the
 countdown are all the platform's; convene never rebuilds them) and
-adds the three things the platform and generic scheduling bots
+adds the things the platform and generic scheduling bots
 cannot: **quorum** (a session runs iff the DM plus N players are in),
 **lifecycle nudges** (bring the recorder; stage and transcribe
-after), and **recap announcement** (a new `sessions/` page reaching
+after), **recap announcement** (a new `sessions/` page reaching
 the projection the bot already polls becomes an announcement) — which
 restores the announce that the source stack's bot once did by cron,
-now in its rightful always-on home.
+now in its rightful always-on home — and the **prep ask**, the DM's
+between-sessions "decide this before we play" broadcast, relayed to
+the players verbatim inside the bot's voice.
 
 ## Preflight
 
@@ -49,7 +51,10 @@ now in its rightful always-on home.
    #reminders`, `/session recap-channel #recaps`. Slash settings
    persist and win over env until a redeploy wipes them, then env
    is the fallback. Convene reuses `REFRESH_MINUTES` for its poll
-   cadence and `SITE_URL` for recap links.
+   cadence and `SITE_URL` for recap links. `/session prep` opens a
+   pop-up where the DM types a between-sessions ask; `/session status`
+   shows the current config, quorum against live "interested", and the
+   outstanding prep ask.
 
 3. Redeploy the bot. On connect convene syncs its `/session`
    commands per guild, snapshots the recaps already in the projection
@@ -64,7 +69,11 @@ now in its rightful always-on home.
    stage-and-transcribe nudge when it ends, and the recap
    announcement when the published page appears. Session recaps come
    from the projection, so DM-only pages never announce, by
-   construction.
+   construction. Between sessions, the DM runs `/session prep` and
+   types the ask ("send me two backstory NPCs"; "decide why you were
+   headed to the Sunken City") into a pop-up; convene broadcasts it to
+   the player role in the DM's own words, wrapped in the bot's voice,
+   and remembers it so `/session status` can show what's outstanding.
 
 ## Decision points
 
@@ -87,6 +96,14 @@ now in its rightful always-on home.
   template with an unknown one is rejected and the default kept, so a
   broken translation can never break a reminder. `CONVENE_MESSAGES`
   points elsewhere if you keep per-language files.
+- **Prep-ask voice.** Default: the DM's ask goes out verbatim wrapped
+  in a short frame (the `prep` template, placeholders `{ping}` and
+  `{body}` only). The frame is the bot's; the words between it are the
+  DM's and are never rewritten — mechanical relay, not authorship. To
+  drop the frame entirely, set `prep` to `"{ping}{body}"`; to re-voice
+  or translate it, edit the frame around `{body}`. A channel reference
+  in the ask is just `<#id>` in the DM's text — Discord renders it as a
+  link when posted.
 - **Recorder nudge.** Default: on — the go-ahead reminds the DM to
   bring the recorder. Turn it off (`RECORDER_NUDGE=0`) for a table
   that captures with Craig instead.

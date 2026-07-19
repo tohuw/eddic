@@ -1,11 +1,12 @@
 name: convene
-version: 0.1.1
+version: 0.2.0
 summary: >
   Session lifecycle as a capability of the always-on lore bot: drives
   Discord's native scheduled events, adds quorum (a session runs iff
   the DM plus N players are in), lifecycle nudges (bring the recorder;
-  stage and transcribe after), and recap announcement when a new
-  sessions/ page reaches the projection the bot already polls.
+  stage and transcribe after), recap announcement when a new
+  sessions/ page reaches the projection the bot already polls, and the
+  between-sessions prep ask the DM broadcasts to the players verbatim.
 touches:
   - lore-bot
 depends:

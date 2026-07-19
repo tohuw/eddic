@@ -37,6 +37,9 @@ def envint(key, default=0):
 # reminder keys, each fired at most once per event (persisted)
 CREATED, AT_RISK, IMMINENT, ENDED = (
     "created", "at_risk", "imminent", "ended")
+# PREP is not an auto-reminder — the DM triggers it with /session prep;
+# it shares the template/override machinery but evaluate() never fires it.
+PREP = "prep"
 
 REMINDERS = {
     CREATED:  "{ping}A session is on the calendar: **{title}**, {when}. "
@@ -49,6 +52,11 @@ REMINDERS = {
     ENDED:    "That's a wrap on **{title}**. When you get a moment: "
               "stage the recording and transcribe it, and the recap "
               "will announce itself once it's published.",
+    # {body} is the DM's verbatim ask — the frame is Snorri's, the words
+    # between it are the DM's, never rewritten. Overridable/translatable
+    # like the rest.
+    PREP:     "{ping}A prep note for the table before next session:\n\n"
+              "{body}",
 }
 
 AT_RISK_WINDOW_H = 36     # flag the DM this many hours out if short
@@ -96,7 +104,8 @@ def load_messages(path, defaults=None):
     if not p.is_file():
         return msgs
     sample = dict(ping="", title="x", when="w", when_rel="w", hours=1,
-                  count=0, quorum=3, dm_mention="", recorder_line="")
+                  count=0, quorum=3, dm_mention="", recorder_line="",
+                  body="x")
     try:
         override = json.loads(p.read_text(encoding="utf-8"))
     except (ValueError, OSError):
@@ -123,16 +132,16 @@ def effective_status(raw, start, now, end=None, duration_s=4 * 3600):
     return "completed" if now > horizon else raw
 
 
-def render(key, *, title, when="", when_rel="", start=None, now=None,
+def render(key, *, title="", when="", when_rel="", start=None, now=None,
            count=0, quorum=0, dm_mention="", recorder=True, ping="",
-           templates=None):
+           body="", templates=None):
     hours = int(round((start - now) / 3600.0)) if start and now else 0
     recorder_line = ("Bring the recorder into the voice channel. "
                      if recorder else "")
     return (templates or REMINDERS)[key].format(
         title=title, when=when, when_rel=when_rel, hours=hours,
         count=count, quorum=quorum, dm_mention=dm_mention,
-        recorder_line=recorder_line, ping=ping)
+        recorder_line=recorder_line, ping=ping, body=body)
 
 
 def load_state(path):
@@ -150,6 +159,8 @@ def save_state(path, state):
            "announced": sorted(state["announced"])}
     if state.get("settings"):
         out["settings"] = state["settings"]     # slash-set config
+    if state.get("prep"):
+        out["prep"] = state["prep"]             # last /session prep ask
     Path(path).write_text(json.dumps(out, indent=1), encoding="utf-8")
 
 
@@ -361,6 +372,44 @@ def setup(client):
         await inter.response.send_message(
             f"Recaps will announce in {channel.mention}.", ephemeral=True)
 
+    class PrepModal(discord.ui.Modal, title="Ask the players to prep"):
+        # A paragraph field so a long, multi-paragraph ask fits. The DM's
+        # text goes out verbatim inside the frame — never rewritten.
+        ask = discord.ui.TextInput(
+            label="What should the players decide or prepare?",
+            style=discord.TextStyle.paragraph,
+            placeholder="Goes out to the players in your own words. "
+                        "Paste a channel as <#id> to link it.",
+            max_length=3800, required=True)
+
+        async def on_submit(self, inter):
+            chan = await reminder_channel()
+            if not chan:
+                await inter.response.send_message(
+                    "No channel to post in yet — set one with "
+                    "`/session channel` first.", ephemeral=True)
+                return
+            body = str(self.ask.value)
+            ping = f"<@&{cfg['role_id']}> " if cfg["role_id"] else ""
+            await chan.send(
+                content=render(PREP, ping=ping, body=body,
+                               templates=MESSAGES),
+                allowed_mentions=discord.AllowedMentions(
+                    roles=True, users=True, everyone=False))
+            state["prep"] = {"text": body, "at": time.time(),
+                             "by": inter.user.id}
+            save_state(STATE_FILE, state)
+            await inter.response.send_message(
+                f"Sent to {chan.mention}.", ephemeral=True)
+
+    @grp.command(name="prep",
+                 description="Ask the players to decide/prepare something "
+                             "before next session")
+    async def prep_cmd(inter):
+        if not await _gate(inter):     # _gate only replies when refused,
+            return                     # leaving the response free for the
+        await inter.response.send_modal(PrepModal())   # modal on success
+
     @grp.command(name="status", description="Sessions, quorum, and config")
     async def status_cmd(inter, debug: bool = False):
         await inter.response.defer(ephemeral=True)
@@ -369,6 +418,12 @@ def setup(client):
         lines = [f"DM: {dm} · quorum: {cfg['quorum']} player(s)"
                  f"{' + DM required' if cfg['require_dm'] else ''}"
                  f" · ping: {role}"]
+        prep = state.get("prep")
+        if prep:
+            first = prep["text"].strip().splitlines()[0] if prep["text"] \
+                else ""
+            snip = (first[:80] + "…") if len(first) > 80 else first
+            lines.append(f"prep out: “{snip}” · set <t:{int(prep['at'])}:R>")
         for guild in client.guilds:
             for event in await guild.fetch_scheduled_events():
                 count, dm_in = await count_interested(event)

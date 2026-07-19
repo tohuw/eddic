@@ -156,6 +156,39 @@ def main():
     checks.append(("¡Sesión! **X**" in out and out.startswith("<@&1> "),
                    "render uses the override with the ping"))
 
+    # prep: the DM's ask goes out verbatim inside a frame, with the ping
+    body = ("Send me a couple of NPCs from your backstory. Also: why "
+            "was your character headed to <#123>? Roll is 2d6+{mod}.")
+    out = convene.render(convene.PREP, ping="<@&9> ", body=body)
+    checks.append((body in out and out.startswith("<@&9> "),
+                   "prep relays the DM's words verbatim, with the ping"))
+    checks.append(("{mod}" in out,
+                   "braces in the DM's text survive (not re-interpreted)"))
+    # prep frame is overridable/translatable like the other templates
+    mf2 = tmp / "convene_messages_prep.json"
+    mf2.write_text(_json.dumps({
+        "prep": "{ping}Escuchad:\n\n{body}"}), encoding="utf-8")
+    pmsgs = convene.load_messages(mf2)
+    checks.append((pmsgs[convene.PREP] == "{ping}Escuchad:\n\n{body}",
+                   "a valid prep frame override replaces the default"))
+    checks.append((convene.load_messages(
+        tmp / "absent.json")[convene.PREP] == convene.REMINDERS[convene.PREP],
+        "prep falls back to the default frame when not overridden"))
+    # prep is DM-triggered, never an auto-reminder
+    checks.append((convene.PREP not in convene.evaluate(
+        sess(-2, 3, status="completed", fired=["created"]), now, 3),
+        "evaluate never emits prep on its own"))
+    # prep persists through the state file
+    st4 = {"events": {}, "announced": [],
+           "prep": {"text": body, "at": 1000, "by": 7}}
+    convene.save_state(sf, st4)
+    checks.append((convene.load_state(sf).get("prep", {}).get("text") == body,
+                   "the last prep ask survives the state file"))
+    st5 = {"events": {}, "announced": []}
+    convene.save_state(sf, st5)
+    checks.append(("prep" not in convene.load_state(sf),
+                   "no prep key written when there is none"))
+
     # effective_status: time-based 'ended' fallback
     checks.append((convene.effective_status("scheduled", now - 5*HOUR,
                    now, duration_s=4*HOUR) == "completed",
