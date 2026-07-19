@@ -260,7 +260,7 @@ def setup(client):
                                           ephemeral=True)
 
     @grp.command(name="status", description="Sessions and who is in")
-    async def status_cmd(inter):
+    async def status_cmd(inter, debug: bool = False):
         # defer first: fetching events and attendees can exceed the
         # 3-second interaction deadline ("app did not respond")
         await inter.response.defer(ephemeral=True)
@@ -271,6 +271,16 @@ def setup(client):
                 lines.append(
                     f"**{event.name}** — {count}/{QUORUM} in"
                     f"{' (DM in)' if dm_in else ''}")
+                if debug:
+                    users = (event.users() if hasattr(event, "users")
+                             else event.fetch_users())
+                    ids = [f"{u.id} ({u.display_name})"
+                           async for u in users]
+                    lines.append(
+                        f"  configured OWNER_ID (DM): `{OWNER_ID}`\n"
+                        f"  interested user id(s): "
+                        f"{', '.join(ids) or 'none'}\n"
+                        f"  you: `{inter.user.id}` ({inter.user})")
         await inter.followup.send(
             "\n".join(lines) or "no sessions on the calendar.",
             ephemeral=True)
