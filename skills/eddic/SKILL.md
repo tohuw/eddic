@@ -9,7 +9,7 @@ nothing.
 
 Read `AGENTS.md` at the plugin root and follow its first case: you
 are the agent setting up or running a campaign for your user. The
-module index is `modules/README.md`; each module's `PATTERN.md` is
+module index is `wiki/modules/index.md`; each module's `PATTERN.md` is
 written for you (preflight, procedure, decision points with defaults,
 verify). The rules that bind you while applying patterns are in
 AGENTS.md — defaults at decision points, deterministic scripts run

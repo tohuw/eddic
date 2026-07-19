@@ -9,8 +9,8 @@ which you are and route accordingly.
 Your user wants Eddic's facilities — a campaign wiki, a lore bot,
 published sites, transcription, timeline tooling — not Eddic's source
 code. Go to `modules/` and read the module your user needs (the index is
-in `modules/README.md`; if it does not exist yet, the roadmap in
-`ROADMAP.md` tells you what is real today). Each module's pattern doc is
+in `wiki/modules/index.md`; if it does not exist yet, the roadmap in
+`wiki/roadmap.md` tells you what is real today). Each module's pattern doc is
 written for you: preflight checks, a procedure, marked decision points,
 and a verify section.
 
@@ -28,11 +28,11 @@ Rules that bind you while applying patterns:
 - Never let anything DM-only reach a player-facing surface. The
   projection and firewall lint exist for this; trust them, run them.
 - Respect authorship: never stylistically rewrite human-authored prose.
-  Mechanical, owner-directed transforms only. See `DESIGN.md`.
+  Mechanical, owner-directed transforms only. See `wiki/design/principles.md`.
 
 ## You are developing Eddic itself
 
-Read `DESIGN.md` (principles — they are tiebreakers, not decoration) and
+Read `wiki/design/principles.md` (principles — they are tiebreakers, not decoration) and
 `modules/CONTRACT.md` (the module contract, including the deterministic
 CI floor and the semantic rubric) before changing anything.
 
@@ -48,7 +48,7 @@ Repo conventions:
   competent agent would do it unaided, it does not belong here.
 - No symlinks, no bash-isms in module machinery. Everything deterministic
   must run on Windows and macOS via the `eddic` CLI (uv-run Python,
-  PEP 723). See the installation principle in `DESIGN.md`.
+  PEP 723). See the installation principle in `wiki/design/principles.md`.
 - Write docs in dense prose. No padding.
 - Keep module docs campaign-agnostic: no examples from any real
   campaign (including the one Eddic grew out of). Generalize to what

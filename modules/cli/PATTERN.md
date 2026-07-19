@@ -43,7 +43,7 @@ newer version against the manifest.
    `eddic secrets` in their own terminal — it prompts locally with
    no-echo input, writes the value into place, and reports only a
    fingerprint. That is intake route 3 with the folder navigation
-   and the editor removed (`docs/data-controls.md`).
+   and the editor removed (`wiki/reference/data-controls.md`).
 
 3. Vendoring a verb (done by *other* modules' patterns, recorded here
    for reference): copy the module's lib script into `.eddic/lib/`,

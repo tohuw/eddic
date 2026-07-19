@@ -25,7 +25,7 @@ repo) wants Eddic's facilities, not its source code.
 
 ## Where the work lives
 
-The module index is `modules/README.md`. Suggested order for a new
+The module index is `wiki/modules/index.md`. Suggested order for a new
 campaign: **cli → wiki → lint → render → publish → retrieval →
 lore-bot**. Capture and transcriber stand alone; discord-setup when
 the table's server should be reconciled from a spec; contribs and
@@ -68,7 +68,7 @@ section — and the same rules bind you while applying one:
   motion, or a clipboard relay straight into gitignored config;
   self-serve, the owner runs `eddic secrets`, a local no-echo
   prompt. Only fingerprints ever appear in chat. The full routes are
-  in `docs/data-controls.md`.
+  in `wiki/reference/data-controls.md`.
 - **Trust the ledger over your training data.** Claims about vendor
   products carry dated evidence states — verified, documented,
   unverified, unsupported — in `docs/compatibility.md`. Vendors move

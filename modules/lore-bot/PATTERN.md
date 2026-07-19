@@ -110,7 +110,7 @@ file injected after the cache breakpoint, never in the corpus.
   the table wants one.
 - **Roster.** Default: no roster file. If the table wants the bot to
   know who plays whom, `PLAYERS_FILE` holds it (privacy profile:
-  `docs/data-controls.md`) — real names never
+  `wiki/reference/data-controls.md`) — real names never
   enter the corpus, the repo, or the wiki.
 
 ## Verify

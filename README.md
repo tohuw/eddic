@@ -46,11 +46,11 @@ working stuff. Nothing here teaches an agent what it already knows.
 
 - `AGENTS.md` — entry point for agents: routes setup work and
   development work.
-- `DESIGN.md` — founding principles, vocabulary, and the campaign
-  architecture.
+- `wiki/design/principles.md` — founding principles, vocabulary, and the
+  campaign architecture.
 - `modules/CONTRACT.md` — what a module is, its anatomy, and the bar it
   must clear.
-- `ROADMAP.md` — the module queue and deferred decisions with their
+- `wiki/roadmap.md` — the module queue and deferred decisions with their
   triggers.
 
 ## Status

@@ -53,6 +53,10 @@ rationale that sequenced the queue so each step exercised the last, the items
 held open behind a live or human gate, and the deferred decisions that each
 name the trigger converting them from open to settled.
 
+[Reference](reference/index.md) collects the standing material that supports
+the modules without being one: data-control doctrine, authored advice on
+writing one-shots, and the dated recorder planning notes and learnings.
+
 The operation log (`log.md`) is the campaign's typed, append-only record of witnessed
 writes, reconciliations, lint runs, schema changes, and consent and
 attribution events, kept with absolute dates under the provenance discipline.

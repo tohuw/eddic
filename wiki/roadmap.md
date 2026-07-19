@@ -1,125 +1,261 @@
 # Roadmap
 
-The roadmap records the order in which Eddic's modules were built and the
-decisions deliberately held open. The ordering principle is that each step
-exercises what the previous one built: the first module proves the
-[module contract](concepts/the-module-contract.md), and the CLI grows verbs
-only as later modules demand them. As of the overnight and transaction arcs
-of mid-2026, all fifteen planned queue items are built, twelve modules stand
-in the tree, and repository CI enforces the contract floor while running
-every module's verify suite on Ubuntu, macOS, and Windows.
+This page is Eddic's module queue and its deferred decisions. The order was
+chosen so that each step exercises what the previous one built: the first
+module proves the [module contract](concepts/the-module-contract.md), and the
+`eddic` CLI grows verbs only as later modules need them.
 
-## Build sequence and rationale
+## Status
 
-The queue was sequenced deliberately rather than by feature priority. Lint
-came first because it is self-contained, high-value, and exercises the entire
-contract; the CLI skeleton followed as the locus everything else hangs off.
-The wiki schema, the static renderer, and Cloudflare Pages publishing
-established the authoring-to-published-site path. Retrieval — the
-bearer-token-gated Worker that serves the master corpus to a DM token and the
-projection to a player token — was proven live end-to-end, including a voice
-spike in which push-to-talk phone dictation reached connector tools and
-answered from a cold context in about ten seconds. The lore bot, transcriber,
-and capture modules closed the session-knowledge loop, and orlog and routines
-completed the twelve-module tree. The transaction arc landed last, extending
-wiki, lint, and publish with contributor overlays and the sale-build fence.
+**2026-07-16:** items 1–8 shipped at 0.1.0 (see the
+[module index](modules/index.md)), plus repository CI enforcing the contract
+floor and running every module verify on ubuntu/macos/windows. Retrieval is
+proven live end-to-end on a Land of Song test absorption: the Worker deployed,
+tier isolation wire-verified, and the voice spike passed — push-to-talk
+dictation on the phone app reached connector tools and answered from a cold
+context in about ten seconds. The Pages live deploy awaits the owner.
+Remaining at that point: recorder (9, needs the owner's brief), discord-setup
+(10), routines (11), orlog (12).
 
-Windows CI repeatedly earned its place: it caught two real portability bugs
-in orlog — path mangling under shell splitting and a codepage unable to print
-the module's own name — before any user could hit them.
+**Provider parity, 2026-07-17** (issue #1, PRs #2–#9 merged): the compatibility
+ledger (`docs/compatibility.md`) with floor-enforced, evidence-backed vendor
+claims; worker 0.3.0 (cross-client MCP hardening plus a Custom GPT Actions REST
+facade); lore-bot 0.2.0 (an OpenAI Responses adapter behind a provider seam,
+the Anthropic default unchanged); data-control profiles; and Codex plugin
+routing to AGENTS.md. Awaiting live vendor sessions: the ChatGPT acceptance rig
+(`modules/retrieval/verify/chatgpt-acceptance.md`), a Codex plugin-install
+test, and an OpenAI-provider bot deployment.
 
-## Modules that shipped
+**Lore bot live, 2026-07-18:** full end-to-end on the test campaign — the
+Discord app created via a driven browser (the human supplied one captcha, one
+MFA, one ToS, one Authorize), corpus answers with linked citations into the
+live Pages site, projection blindness holding conversationally, and the
+freshness poll observed reloading unprompted after a wiki edit. Four live finds
+shipped back into the module during the test.
 
-Lint, the CLI, the wiki schema, the renderer, publish, retrieval, the lore
-bot, and the transcriber form the first eight, shipped together and CI-gated.
-Provider parity work added a compatibility ledger of evidence-backed vendor
-claims, cross-client MCP hardening with a REST facade, and a provider seam in
-the lore bot that admits a second vendor while leaving the default unchanged.
+**Overnight, 2026-07-18:** orlog (12) and routines (11) shipped at 0.1.0 —
+twelve modules in the tree, queue items 1–12 all built. The Eddic site went
+live at eddic-site.pages.dev (pitch, how-it-works, modules, principles, and the
+privacy posture the recorder's consent post links — its trigger, fired),
+dogfooded through the render module. Windows CI caught two real portability
+bugs in orlog before any user could (shlex path mangling; cp1252 unable to
+print "Ørlǫg"). The recorder build was deliberately deferred to a session with
+the owner awake: voice capture needs live testing, lore-bot-style.
 
-Capture and the [recorder](modules/recorder.md) address session audio by two
-routes. Capture defaults to a free third-party recording path with
-deterministic staging, because all Eddic truly needs is the audio and
-transcription runs locally. The recorder is the consent-gated
-no-third-party option: it receives audio over the Discord voice gateway
-without an operating-system microphone permission, writes per-speaker FLAC
-straight to disk on its own thread so answer latency can never drop frames,
-and stages files with a log entry on stop. End-to-end voice receive was
-solved against a broadly-broken ecosystem baseline by a patch set shared with
-the upstream project; the patch module retires when that upstream change
-lands. The recorder is its own bot rather than a mode of the always-on lore
-bot: the two have different lifecycles and hosts — one always-on and
-cloud-cheap, the other session-time-only, voice-heavy, and wanting to run
-beside the disk the transcriber reads.
+**Transaction arc, 2026-07-18:** contribs (14) and companion (13) shipped at
+0.1.0; the author role is declared config (it may differ from the DM — DESIGN
+records the consequences); wiki 0.3.0 applies contributor overlays across every
+surface, lint 0.3.0 checks them, retrieval 0.4.0 stages the effective corpus;
+`eddic bundle` is the sale-build fence (hash-pinned consent, derivation-graph
+rights, stale-clearance refusal). `tools/verify_e2e.py` proves the full
+composition in CI on all three OSes. Companion conduct claims are unverified
+until live adversarial passes; marketplace (15) waits on the payment-gateway
+decision.
 
-Discord-setup reconciles a live server to a standing spec versioned in the
-campaign repository, reporting drift in the manner of a linter and ships a
-curated third-party bot set with agent-driven invite flows. Routines defines
-the maintenance-routine contract — idempotent, safe to miss, safe to
-double-run — with a preference chain from hosted agent routines through
-GitHub Actions to local scheduling. Orlog documents driving a headless
-timeline CLI as a reconciler that turns wiki facts into validated,
-all-or-nothing mutations on a fork.
+## Module queue
 
-The transaction arc shipped [contribs](modules/contribs.md) and the companion
-family together. Contribs carries contributor overlays with shadowing and a
-derivation graph, the pure-corpus projection with its full-equals-pure-plus-
-attribution-log invariant, and consent receipts; attribution capture ships
-earlier, in the wiki schema, because attribution is unrecoverable after the
-fact. Companions run on their respective retrieval tiers under a
-knowledge-parity conduct doctrine, with conduct claims verified adversarially
-per answering client before any default is set.
+1. **lint** — the wiki health check, generalized from the DitD discipline:
+   broken links and anchors, orphans, catalog drift, STUB mismatches, malformed
+   log headers, and the [firewall](concepts/the-firewall.md) check (no
+   player-visible page links DM-only). Deterministic reporter plus a
+   model-triage seam. First because it is self-contained, high-value, and
+   exercises the whole module contract.
+2. **cli** — the `eddic` skeleton (uv-run Python, PEP 723): `doctor`, `lint`,
+   `manifest`. The contractual locus everything else hangs off.
+3. **wiki** — the campaign knowledge schema, generalized from the Land of Song
+   kb: taxonomy, encyclopedia tone, stub convention, typed log, authorship
+   frontmatter, visibility frontmatter, and the `project` verb (deterministic
+   player [projection](concepts/projection-and-visibility.md)).
+4. **render** — the purpose-built static renderer, patterned on bolverk's wiki
+   stage but Eddic-owned: markdown tree in, HTML mirror out, `.md`→`.html` link
+   rewriting, one template. Held at exactly that scope — the moment it grows an
+   index generator, we have rebuilt Hugo badly.
+5. **publish** — Cloudflare Pages deployment for the projected sites (unlisted,
+   noindex; DM and player sites).
+6. **retrieval** — the Cloudflare Worker MCP: bearer-token-gated, the DM token
+   sees the master, the player token sees the projection; token rotation as the
+   panic procedure. Includes the spike: verify connector availability in phone
+   voice mode before this becomes load-bearing. Later: the `witness` write tool
+   and inbox (bidirectionality).
+7. **lore-bot** — snorri absorbed and parameterized: corpus-in-cached-prompt
+   Discord Q&A over the player projection, a forum CLI, session announce. Must
+   satisfy DESIGN.md's freshness contract from day one: the bot self-refreshes
+   by watching the projection's version (HEAD poll) rather than relying on
+   deploy chaining, webhooks, or an owner-gated reload command — the source
+   stack's bot went stale on every wiki publish for lack of exactly this.
+8. **transcriber** — local session transcription (whisper.cpp) from recorded
+   audio; the free path that replaces paid transcript services. Likely the
+   first binary-bearing module.
+9. **capture** — SHIPPED 0.1.0 (2026-07-18, reframed from "recorder" at the
+   owner's direction): session audio by the table's chosen route — **free Craig
+   by default** (all Eddic truly needs is the audio; transcription is local;
+   premium Craig with its own transcripts is equally fine), with deterministic
+   staging (`eddic stage-craig`, including the folder-named-.flac quirk) and a
+   no-folder-navigation agent handoff. The **recorder module** (SHIPPED 0.1.0
+   the same day) is the consent-gated no-third-party option: DAVE receive was
+   SOLVED here 2026-07-18 — davey plus five import-time patches to py-cord 2.8.0
+   (the approach shared with upstream's in-progress PR), live capture and
+   transcription proven; the patch module retires when pycord#3139 merges. Prior
+   blocked-status context: Discord voice receive is broken
+   Python-ecosystem-wide by DAVE E2EE enforcement; the module ships when
+   Pycord-Development/pycord#3139 lands and a live capture passes. Everything
+   human-facing was proven live (consent flow, commands, staging — see
+   `notes/recorder-learnings.md`; cloud/R2 design in
+   `notes/cloud-recorder-plan.md`); no module ships non-working capture, because
+   modules hold only what is proven to work. The brief (owner, 2026-07-18;
+   **revised the same day: the recorder is its own bot**, reversing the earlier
+   one-bot call): the lore bot is always-on and cloud-cheap; the recorder is
+   session-time-only and voice-heavy, wants to run beside the disk the
+   transcriber reads, and cloud voice-UDP is unverified — different lifecycles,
+   different hosts, so separate applications and tokens. The capability code
+   shape, consent machinery, and staging layout are unchanged; the driven portal
+   flow makes the second app cheap. Local, session-time execution is the
+   default; the R2/cloud design (`notes/cloud-recorder-plan.md`) becomes this
+   bot's optional cloud mode. Audio arrives over the Discord voice gateway (no
+   OS mic permission); the voice sink runs on its own thread writing straight to
+   disk so answer latency can never drop frames. Summon/dismiss via slash
+   commands (`/record start|stop|help`; invites need the `applications.commands`
+   scope alongside `bot`). Output: per-speaker FLAC to the campaign's local disk
+   in the transcriber's expected layout; on stop, files are staged and a log
+   entry written — transcription stays a deliberate maintenance step. Consent:
+   on start, the bot posts in the voice channel's text chat — announcement,
+   privacy-posture link (hosted on the Eddic site), and per-member opt-in
+   reacts; a member's audio is captured only after their react, nobody is gated
+   on anyone else, and fail-closed means un-reacted members are simply never in
+   the recording. Decision point: strict per-session reacts (default) vs
+   standing acks remembered across sessions with visible opt-out. Doctrine:
+   consent-to-record is not consent-to-sell — the transaction arc's full-table
+   sign-off remains its own later act. See the [recorder](modules/recorder.md)
+   module.
+10. **discord-setup** — SHIPPED 0.1.0 (2026-07-18, same-day from spec to
+    live-proven: mock-verified in CI, then dumped, drift-reported,
+    403-refused-with-advice, re-invited, applied, and converged against a real
+    server — privacy overwrites round-trip in the dump). The spec: a
+    deterministic REST script as an eddic verb, using the campaign bot's
+    existing token (no gateway, no second bot) against a **standing server
+    spec** versioned in the campaign repo — re-running reconciles the live
+    server to spec and reports drift, lint-style. The default scaffold
+    generalizes the reference table's server: an ask-the-archivist channel,
+    threaded session-recaps, a botspam sandbox, a session voice channel with its
+    text chat, a DM-private channel, DM/player roles with sane overwrites. Ships
+    a **curated third-party set** (drafted from the reference server, owner to
+    confirm: dice = Avrae, scheduling = Apollo, music = Jockie; recording
+    deliberately absent — the recorder capability replaces it) with the
+    agent-driven invite-URL flow for each and per-bot config notes. Decision
+    points: adopt-vs-scaffold on an existing server; which curated bots to take;
+    spec-drift policy (report-only vs repair).
+11. **routines** — the maintenance routine contract (idempotent, safe to miss,
+    safe to double-run) with the preference chain: hosted agent routines →
+    GitHub Actions → local cron-esque. Adapters stated as contracts, not how-tos
+    (no egg-sucking).
+12. **orlog** — guidance for driving Ørlǫg's headless CLI (M5, shipped
+    2026-07-16: `orlog apply/dump/query/fork/validate/schema`, constraint-checked
+    all-or-nothing writes, a JSON Schema of the Mutation union, zero build step
+    on Node ≥ 24): the reconciler skill (wiki facts → validated mutations on a
+    fork), and `validate` as the story's test suite. Unblocked.
+13. **companion** — the at-the-table module family under the knowledge-parity
+    conduct doctrine (DESIGN: "Companions at the table"): player and DM
+    companions on their respective retrieval tiers, and the backstory
+    interviewer with its scribe/drafter authorship dial. Conduct claims verified
+    adversarially per answer client before any default.
+14. **contribs** — the transaction arc's machinery (DESIGN: "The transaction
+    arc"), landing as wiki/lint/publish extensions: contributor overlays with
+    `replaces:` shadowing, a `derived-from:` derivation graph, the pure-corpus
+    projection with its full = pure + attribution-log invariant, the
+    transactability frontmatter axis and sale-build fence, consent receipts.
+    Attribution *capture* ships earlier in the wiki schema — it cannot wait,
+    because attribution is unrecoverable after the fact. See the
+    [contribs](modules/contribs.md) module.
+15. **marketplace** — transactable campaigns as products: the author role, base
+    and deluxe (session-log) offerings, packaging and refusal machinery. The
+    payment gateway is a deferred decision below.
 
-## Items awaiting a live or human gate
+**Contributable thereafter:** VTT modules (Roll20, Foundry, …) by community PR
+under the contract.
 
-Some work is designed and deferred to a session that supplies what only a
-person can. The recorder brief was refined with the owner awake because voice
-capture wants live testing. The marketplace module — transactable campaigns
-as products, with an author role that is declared configuration and may
-differ from the DM — is built as rights machinery but waits on the payment
-gateway decision before it becomes commerce. Companion conduct claims remain
-unverified until live adversarial passes. Beyond the planned queue, virtual
-tabletop integrations are left to community contribution under the contract.
+## Deferred decisions, with triggers
 
-## Deferred decisions
-
-Each deferred decision names a trigger that converts it from open to settled.
-
-Signed binaries: CI already builds unsigned per-OS binaries as release
-artifacts to prove the pipeline early, since agent-driven installs mostly
-dodge the operating-system reputation gates that key on browser-download
-provenance. The trigger to buy code signing is a human browser-download path
-or a module needing a stable operating-system permission identity.
-
-Licensing was resolved to a permissive license with a patent grant, chosen so
-that vendored and stamped copies inside campaign repositories stay clean and
-inbound contributions are self-licensing without a separate agreement.
-
-Compression accelerators are handled as decision points with heuristics
-inside the routines and transcriber modules, never as hard dependencies. The
-Eddic website's first trigger has fired — it is live, rendered by the render
-module, and carries the privacy posture the recorder's consent post links;
-the remaining owner calls are a real domain and whether the site grows a
-docs or marketplace face.
-
-The payment gateway is chosen when the marketplace module starts: a gateway
-offering checkout-and-download with no inventory overhead, under the project's
-cost posture. Until then the transaction arc is rights machinery, not sales.
-
-Multi-tenant operation of the scheduling bot is the newest open decision.
-Today one bot serves one campaign, and [convene](modules/convene.md) counts
-every scheduled event on the guild toward that campaign's quorum, so two
-campaigns sharing a server would cross-contaminate events, reminders, and
-quorum counts. The seam is already cut correctly — players are scoped by a
-per-campaign role — so the missing piece is scoping events the same way, by
-tagging each event to a campaign and filtering the event fetch by it. The
-trigger is a real second tenant; the module deliberately stays unbuilt until
-then so the single-tenant path remains zero-configuration.
+- **Signed binaries.** Now: CI builds unsigned per-OS binaries as release
+  artifacts (prove the pipeline early; agent-driven installs mostly dodge
+  Gatekeeper/SmartScreen, which key on browser-download provenance). Trigger to
+  buy signing (Apple Developer ~$99/yr plus notarization; Azure Trusted Signing
+  ~$10/mo for Windows): a human browser-download path, or a module needing
+  stable OS-permission identity.
+- **License.** Resolved 2026-07-17: Apache-2.0 (see `LICENSE` and the "License
+  and authorship" section of `README.md`). Permissive, so vendored and stamped
+  copies inside campaign repos stay clean; it carries a patent grant; §5 makes
+  inbound contributions self-licensing with no CLA needed.
+- **Compression accelerators.** headroom/thlibo guidance lands inside the
+  routines and transcriber modules as decision points with heuristics, per
+  DESIGN.md — never as dependencies.
+- **Eddic website.** First trigger fired 2026-07-18: live at
+  eddic-site.pages.dev (source in `site/`, rendered by the render module),
+  carrying the privacy posture the recorder's consent post links. Remaining
+  owner calls: a real domain, and whether the site grows a docs/marketplace face
+  beyond the current five pages.
+- **Payment gateway.** Choose when the marketplace module (15) starts: a gateway
+  with checkout-and-download and no inventory overhead; cost posture per
+  principle 4. Until then the transaction arc is rights machinery, not commerce.
+- **Multi-tenant lore bot (convene).** Today one bot serves one campaign:
+  [convene](modules/convene.md) counts *every* scheduled event on the guild
+  toward that campaign's quorum. Two campaigns sharing a Discord server would
+  cross-contaminate — each other's events, reminders, and quorum counts. The
+  seam is already cut the right way: convene scopes players by a per-campaign
+  role (`SESSION_ROLE_ID`/`PLAYER_ROLE`), so the missing piece is scoping
+  *events* the same way — a campaign only tracks events it owns. Trigger: a
+  second campaign wanting to share one server (or one bot process). Likely
+  shape: tag events to a campaign (an event-role gate, a channel/category
+  binding, or a naming prefix) and filter `fetch_scheduled_events()` by it, with
+  the lore-bot corpus and recap thread already per-campaign. Do not half-build it
+  before the second tenant is real — the single-tenant path must stay
+  zero-config.
+- **eddic.quest subdomain hosting (multi-tenant hosting service).**
+  Self-hosting is and stays the default — a campaign is a self-contained repo
+  the owner controls on their own domain (or a free Pages/Workers deploy). This
+  is a convenience for people who won't buy or manage a domain: give a tenant
+  `<campaign>.eddic.quest` with their site, retrieval/MCP endpoint, and other
+  services all hung off that one subdomain. Proven at N=1
+  (`landofsong.eddic.quest` runs a real campaign's retrieval Worker plus site
+  today); the decision is how to generalize to arbitrary tenants correctly. This
+  is the convene multi-tenant problem widened — from one bot over many campaigns
+  to one platform over many campaigns on shared `eddic.quest` infrastructure —
+  and it reuses the same isolation seam: hard per-tenant separation of corpus
+  and DM/player tokens, the firewall enforced across tenants so A can never read
+  B. Likely shape: wildcard `*.eddic.quest` DNS plus wildcard TLS, a routing
+  Worker mapping `<tenant>` to that tenant's Pages site, retrieval Worker, and
+  tokens, and automated provisioning (create the campaign dir, stage the corpus,
+  deploy, mint tokens, add the DNS/route — one flow). Open questions: per-tenant
+  Workers vs one shared multi-tenant Worker (isolation vs cost/ops);
+  token/secret management at scale (today tokens are per-Worker Cloudflare
+  secrets); cert strategy (wildcard vs per-hostname custom domains); billing,
+  quotas, and abuse limits if it is a real service; and how tenants author
+  content (the same agent-applied module flow as self-hosted). Non-negotiable: a
+  hosted tenant must always be able to walk away with their self-contained repo
+  — hosting is a convenience, never lock-in. Trigger: a second party wanting to
+  run a campaign without owning a domain, or demand for hosted onboarding.
+- **Eddic is not D&D-specific.** Eddic grew out of a D&D campaign and its
+  framing still says "D&D" throughout (AGENTS.md, DESIGN.md, the site, the
+  self-documenting wiki), but the machinery — the campaign knowledge
+  architecture, the deterministic player projection, retrieval, the lore/session
+  bots, the session lifecycle, publishing — is system-neutral: it manages a
+  collaboratively-authored world and the comms around it, not rules. Direction:
+  generalize the framing to tabletop RPG campaigns broadly, auditing docs, wiki,
+  and examples for hard D&D assumptions (the verify fixtures' invented world —
+  the Warden, the Sunken City — are already system-neutral and stay).
+  System-specific content (rules, dice mechanics, an SRD) is always an optional
+  pluggable pack, never core — the reason the 5.2 SRD stays out of the tree.
+  Open question: how far to generalize — Eddic assumes a GM/player split and a
+  wiki-able setting, which fits most TTRPGs but not rules-light or GM-less
+  systems, so decide whether to scope to "GM-led TTRPGs" or widen the
+  projection/firewall model. Trigger: a non-D&D campaign adopting Eddic, or a
+  public positioning pass that shouldn't over-index on one system.
 
 ## Related pages
 
 The roadmap sits alongside the full [module index](modules/index.md) and the
 [concepts index](concepts/index.md). Its versioning discipline is described
-under [releases and versioning](concepts/releases-and-versioning.md), and the
-floor every queued item had to clear is the
-[module contract](concepts/the-module-contract.md). Return to the
-[Eddic overview](index.md) for the project as a whole.
+under [releases and versioning](concepts/releases-and-versioning.md); the floor
+every queued item had to clear is the
+[module contract](concepts/the-module-contract.md); and the tiebreaker
+[principles](design/principles.md) shape which deferred decisions convert when.
+Return to the [Eddic overview](index.md) for the project as a whole.

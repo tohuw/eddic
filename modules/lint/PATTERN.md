@@ -56,7 +56,7 @@ script never edits anything; judgment about findings is your half.
    - `log-malformed` — never rewrite history in an append-only log;
      report it and let the owner decide whether to annotate.
    - Anything whose fix would delete a page or alter human-authored
-     prose (authorship preservation; see DESIGN.md).
+     prose (authorship preservation; see wiki/design/principles.md).
 
 3. Record a `lint` entry in the campaign's operation log: date, what
    was found, what was fixed, what was escalated.

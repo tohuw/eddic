@@ -2,7 +2,7 @@
 
 The short version of the doctrine that decides Eddic's close calls.
 The full text lives in
-[DESIGN.md](https://github.com/tohuw/eddic/blob/master/DESIGN.md).
+[the design principles](https://github.com/tohuw/eddic/blob/master/wiki/design/principles.md).
 
 **Deterministic core, agent shell.** Scripts do everything
 repeatable; agents make judgment calls at marked decision points.
