@@ -1,0 +1,20 @@
+name: convene
+version: 0.1.0
+summary: >
+  Session lifecycle as a capability of the always-on lore bot: drives
+  Discord's native scheduled events, adds quorum (a session runs iff
+  the DM plus N players are in), lifecycle nudges (bring the recorder;
+  stage and transcribe after), and recap announcement when a new
+  sessions/ page reaches the projection the bot already polls.
+touches:
+  - lore-bot
+depends:
+  - lore-bot
+cost_posture:
+  free: >
+    Rides the lore bot's existing always-on process; zero new spend,
+    no second host.
+  paid: none
+  heuristic: >
+    Only earns its place over free Apollo for tables wanting quorum,
+    lifecycle orchestration, and recap announce.

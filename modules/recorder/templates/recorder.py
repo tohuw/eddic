@@ -183,7 +183,12 @@ def setup(bot):
             await ctx.respond("A recording session is already open "
                               "here.", ephemeral=True)
             return
-        outdir = RECORD_ROOT / datetime.date.today().isoformat()
+        # one directory per session, named by its start — never by
+        # date alone: a session crosses midnight, two sessions share a
+        # date, and a crash-and-restart must never reuse a directory
+        # and squash the tracks already in it
+        outdir = (RECORD_ROOT
+                  / datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
         outdir.mkdir(parents=True, exist_ok=True)
         vc = await voice.channel.connect()
         for _ in range(50):                 # the voice handshake can

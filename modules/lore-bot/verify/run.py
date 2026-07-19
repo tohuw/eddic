@@ -68,6 +68,21 @@ def main():
                                             12345) == "who is the warden?",
                    "mention stripped"))
 
+    # corpus page helpers (convene builds on these)
+    corpus = ("=== places/warden.md ===\n# The Warden\n\ntext\n\n"
+              "=== campaigns/c/sessions/session-1.md ===\n"
+              "# Session 1 — Arrival\n\nrecap")
+    checks.append((botlib.page_paths(corpus)
+                   == ["places/warden.md",
+                       "campaigns/c/sessions/session-1.md"],
+                   "page_paths lists every page header"))
+    checks.append((botlib.new_session_pages(corpus, set())
+                   == ["campaigns/c/sessions/session-1.md"],
+                   "new_session_pages finds unannounced recaps only"))
+    checks.append((botlib.page_title(
+        corpus, "campaigns/c/sessions/session-1.md")
+        == "Session 1 — Arrival", "page_title reads the H1"))
+
     # bot.py and providers compile (deps not required to parse)
     for src in [TEMPLATES / "bot.py",
                 *sorted((TEMPLATES / "providers").glob("*.py"))]:

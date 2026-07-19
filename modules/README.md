@@ -13,7 +13,7 @@ contribs and companion layer on once the campaign is live.
 | [render](render/) | purpose-built md→html renderer with a self-contained template and real 404 | 0.2.0 |
 | [publish](publish/) | Cloudflare Pages deploy behind the lint→project→build safety pipeline | 0.1.0 |
 | [retrieval](retrieval/) | Worker MCP + Actions REST facade, two bearer tokens: DM tier = master, player tier = projection | 0.4.0 |
-| [lore-bot](lore-bot/) | Discord lore-keeper over the projection, self-refreshing corpus, Anthropic/OpenAI providers | 0.2.0 |
+| [lore-bot](lore-bot/) | Discord lore-keeper over the projection, self-refreshing corpus, Anthropic/OpenAI providers, capability seam | 0.3.0 |
 | [transcriber](transcriber/) | local whisper.cpp session transcription, per-speaker merge | 0.1.0 |
 | [contribs](contribs/) | the transaction arc: overlays, hash-pinned consent, derivation-graph rights, the sale-build fence | 0.1.0 |
 | [companion](companion/) | at-the-table companions under the knowledge-parity doctrine; backstory interviewer | 0.1.0 |
@@ -21,4 +21,5 @@ contribs and companion layer on once the campaign is live.
 | [routines](routines/) | the maintenance-routine contract and runner chain; freshness loop as the first routine | 0.1.0 |
 | [capture](capture/) | session audio by the table's route (free Craig default), staged for local transcription, no folder navigation | 0.1.0 |
 | [discord-setup](discord-setup/) | the server's standing spec: REST reconcile, lint-style drift, additive-only apply | 0.1.0 |
+| [convene](convene/) | session lifecycle on native scheduled events: quorum, lifecycle nudges, recap announce | 0.1.0 |
 | [recorder](recorder/) | the campaign's own recording bot: react-gated per-mic consent, DAVE receive via davey + pinned patches | 0.1.0 |

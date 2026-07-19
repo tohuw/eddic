@@ -114,3 +114,30 @@ def split_message(text, limit=2000):
 
 def strip_bot_mention(content, bot_id):
     return re.sub(rf"<@!?{bot_id}>", "", content).strip()
+
+
+def page_paths(corpus):
+    """Every page path in a corpus block (the `=== path ===` headers).
+    Lets a capability notice which pages exist without re-reading disk."""
+    return re.findall(r"^=== (.+?) ===$", corpus, re.M)
+
+
+def page_title(corpus, path):
+    """The first `# ` heading of the given page's block, or the path's
+    stem titleized if it has none."""
+    m = re.search(rf"^=== {re.escape(path)} ===\n(.*?)(?=^=== |\Z)",
+                  corpus, re.M | re.S)
+    if m:
+        h = re.search(r"^#\s+(.+)$", m.group(1), re.M)
+        if h:
+            return h.group(1).strip()
+    stem = path.rsplit("/", 1)[-1].removesuffix(".md")
+    return stem.replace("-", " ").title()
+
+
+def new_session_pages(corpus, announced):
+    """Session recap pages present in the corpus but not yet announced.
+    A page counts as a session recap if 'sessions/' is in its path.
+    Pure: the caller owns the announced set and its persistence."""
+    return [p for p in page_paths(corpus)
+            if "sessions/" in p and p not in announced]

@@ -66,6 +66,18 @@ intents = discord.Intents.default()
 intents.message_content = True          # enable in the dev portal too,
 client = discord.Client(intents=intents)  # or the bot is online but deaf
 
+# optional capabilities extend the same always-on bot; the convene
+# module vendors convene.py beside this file (session lifecycle:
+# native scheduled events, quorum, recap announce)
+try:
+    import convene as _convene
+    capability = _convene.setup(client)
+except ImportError:
+    capability = None
+except Exception as e:                      # a capability must never
+    print(f"convene setup failed, continuing without it: {e}")
+    capability = None
+
 state = {"corpus": "", "stamp": "", "loaded": 0.0}
 last_reply = {}
 
@@ -101,6 +113,12 @@ async def freshness_poll():
                 stale = botlib.dir_fingerprint(src) != state["stamp"]
             if stale:
                 await asyncio.to_thread(load_corpus)
+                if capability:                      # announce new recaps
+                    try:
+                        await capability.on_corpus_refresh(
+                            state["corpus"])
+                    except Exception as ce:
+                        print(f"capability refresh failed: {ce}")
         except Exception as e:                      # poll must survive
             print(f"freshness poll error: {e}")
 
@@ -139,6 +157,11 @@ async def answer(message):
 async def on_ready():
     await asyncio.to_thread(load_corpus)
     client.loop.create_task(freshness_poll())
+    if capability:
+        try:                                # never let a capability
+            await capability.ready(state["corpus"])  # break the bot
+        except Exception as e:
+            print(f"capability ready failed: {e}")
     print(f"ready as {client.user}")
 
 
