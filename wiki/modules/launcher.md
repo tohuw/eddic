@@ -13,7 +13,7 @@ dependencies in config and the same double-click picks them up.
 ## Two native forms, one generator
 
 On macOS the launcher is a real, code-signed `.app`: an `Info.plist` and a
-small compiled Swift supervisor at `MacOS/<Name>`. On Windows it is a `.cmd`
+compiled Swift AppKit supervisor at `MacOS/<Name>`. On Windows it is a `.cmd`
 file with CRLF line endings. A real Windows `.exe` would need a packager
 (pyinstaller, WinSW) and a build step; the `.cmd` is the dependency-free
 equivalent and is what this module ships, leaving a signed binary out of
@@ -26,23 +26,28 @@ seat regenerates locally because the campaign path is baked in per machine
 the same arguments is idempotent — it rebuilds the launcher in place — and an
 unknown service name is refused with no artifact written.
 
-## The macOS app supervises, and owns its identity
+## Its own window, and its own identity
 
-The macOS app is hand-built rather than an `osacompile` applet for two
-reasons. First, it supervises: the Swift executable is a real app with an
-event loop, so on launch it runs the run verb as its *own child* in a new
-session/process group, opens a Terminal window tailing the service's logfile,
-and stays resident. Quitting the app (Cmd-Q) or closing the log window
-terminates the whole child process group — the `uv`/python/recorder tree dies
-together, no orphan left recording. The earlier applet detached the bot under
-Terminal, so quitting the app did nothing to the bot; this owns the
-lifecycle. Second, it owns its identity: the bundle carries a per-app
-reverse-DNS `CFBundleIdentifier` (`quest.eddic.launcher.<slug>`), its own
-name, and an ad-hoc code signature, so macOS TCC pins the service's
-permissions — the recorder's microphone, above all — to this app on a stable
-designated requirement, not to the shared "Applet" identity an `osacompile`
-bundle reuses. Because the bot is the app's own child, TCC attributes it to
-the app, not to Terminal.
+The macOS app is a hand-built, self-contained AppKit app rather than an
+`osacompile` applet or a Terminal-driver, for two reasons. First, it is its
+own window: the Swift executable is a real windowed app with a menu bar (a
+Quit item on Cmd-Q, and a standard Edit menu so the log is selectable and
+copyable) and its own window holding a read-only, monospaced, auto-scrolling
+text view that streams the service's stdout+stderr live off the child's pipe,
+run unbuffered so nothing stalls into apparent silence. It drives no Terminal
+and no other app, so there is nothing else left running to quit and no shared
+Terminal to force-quit out from under someone. Quitting the app (Cmd-Q or the
+Quit menu), closing its window, or the bot exiting on its own terminates the
+whole child process group — the `uv`/python/recorder tree dies together, no
+orphan left recording. The earlier designs detached the bot under Terminal,
+so quitting the app did nothing to the bot; this owns the lifecycle. Second,
+it owns its identity: the bundle carries a per-app reverse-DNS
+`CFBundleIdentifier` (`quest.eddic.launcher.<slug>`), its own name, and an
+ad-hoc code signature, so macOS TCC pins the service's permissions — the
+recorder's microphone, above all — to this app on a stable designated
+requirement, not to the shared "Applet" identity an `osacompile` bundle
+reuses. Because the bot is the app's own child (in its own session via
+setsid), TCC attributes it to the app.
 
 ## Wrapping a working command, never debugging one
 
@@ -59,13 +64,13 @@ it.
 
 ## Visible by default
 
-The launcher opens a live log window by default, because the recorder bot
-posts consent and streams logs the owner must see, and that window is also
-how the owner quits — close it, or Cmd-Q the app, and exactly one copy runs,
-by construction of the run verb. A `--headless` mode redirects output to a
-logfile with no window (an `LSUIElement` agent), but only for a background
-service that needs no live interaction and whose stop is handled elsewhere; a
-consent-gated recorder should never be headless. `--name` sets the app's
+The launcher opens the app's own live-log window by default, because the
+recorder bot posts consent and streams logs the owner must see, and that
+window is also how the owner quits — close it, Cmd-Q, or the Quit menu, and
+exactly one copy runs, by construction of the run verb. A `--headless` mode
+redirects output to a logfile with no window (an `LSUIElement` agent), but
+only for a background service that needs no live interaction and whose stop
+is handled elsewhere; a consent-gated recorder should never be headless. `--name` sets the app's
 label and, with it, the reverse-DNS identity TCC pins permissions to, so it
 stays stable across restamps; `--icon` brands the app. The launcher lands in
 the campaign directory by default so it travels and versions with the
@@ -78,18 +83,21 @@ copy remains the source of truth to restamp from.
 The module's verifier golden-tests against a planted service spec. Across
 every OS it asserts the pure builders and the Windows path: the Swift
 supervisor source delegates to the run verb, launches the service as the
-app's own child in a new process group, and kills that group on quit; the
-`Info.plist` carries the per-app `quest.eddic.launcher.<slug>` identifier, the
-app's name as executable and display name, and a microphone usage string
-(with `LSUIElement` under `--headless`); the Windows path emits a CRLF `.cmd`
+app's own child in a new process group and kills that group on quit, streams
+the log into its own monospaced `NSTextView`/`NSScrollView` with a Quit item
+on Cmd-Q and no Terminal/osascript/`tail` machinery at all; the `Info.plist`
+carries the per-app `quest.eddic.launcher.<slug>` identifier, the app's name
+as executable and display name, and a microphone usage string (with
+`LSUIElement` under `--headless`); the Windows path emits a CRLF `.cmd`
 invoking the same run verb; an unknown service refuses with no artifact. On
 macOS with the toolchain it also builds the `.app` and asserts a Mach-O
 executable, the per-app identifier in the on-disk plist, and an ad-hoc
 signature keyed on it (`codesign --verify` passes) — without launching the
-app. The live check is a double-click: a log window opens, the service
-announces itself, and `codesign -dvvv` confirms the app's own identity; then
-Cmd-Q or closing the window stops the service and its whole process group,
-leaving no orphan — the owner never typed a command.
+app. The live check is a double-click: the app's own window opens, the
+service announces itself, and `codesign -dvvv` confirms the app's own
+identity; then Cmd-Q or closing the window stops the service and its whole
+process group, leaving no orphan and no Terminal ever spawned — the owner
+never typed a command.
 
 See the [module index](index.md), the services and run verb the
 [cli](cli.md) module provides, and the [recorder](recorder.md) and

@@ -1,14 +1,16 @@
 name: launcher
-version: 0.2.0
+version: 0.3.0
 summary: >
   Packages a campaign's local service (the recorder bot, or a
   locally-run lore bot) as a native double-clickable launcher: a
   hand-built, code-signed macOS .app that owns its identity and
   supervises the service, or a Windows .cmd. Each delegates to the
   campaign's run verb (uv run .eddic/eddic.py run <service>) so it never
-  duplicates the run command. On macOS the app runs the service as its
-  own child, opens a live log window, and quitting it (Cmd-Q or closing
-  the window) terminates the whole process group — no orphans.
+  duplicates the run command. On macOS the app is a self-contained
+  windowed AppKit app — its own live-log window and a Quit-on-Cmd-Q menu,
+  no Terminal — that runs the service as its own child; quitting it
+  (Cmd-Q or closing the window) terminates the whole process group, no
+  orphans.
 touches:
   - recorder
   - lore-bot

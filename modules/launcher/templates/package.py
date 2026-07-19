@@ -12,22 +12,26 @@ duplicates the run command, only wraps it so the owner can double-click:
   macOS   -> <Name>.app bundle, a real signed app that owns its identity
   Windows -> <Name>.cmd launcher
 
-The macOS app is hand-built (its own Info.plist, a tiny compiled Swift
+The macOS app is hand-built (its own Info.plist, a compiled Swift AppKit
 supervisor as Contents/MacOS/<Name>, ad-hoc code-signed) rather than an
-osacompile "applet". That matters for two reasons the owner hit:
+osacompile "applet", and it is fully self-contained — it drives no other
+app. That matters for the reasons the owner hit:
 
-  1. Lifecycle. The supervisor is a real Cocoa app with an event loop.
-     It launches the run verb as *its own child* in a new process group,
-     opens a Terminal window tailing the service's logfile (the live log
-     window), and stays resident. Quitting the app (Cmd-Q) or closing
-     the log window terminates the whole child process group — no
-     orphaned python/recorder left behind.
-  2. Identity. Because the bundle carries its own reverse-DNS
+  1. Its own window. The supervisor is a real windowed AppKit app: a menu
+     bar with a Quit item on Cmd-Q, and a read-only, monospaced,
+     auto-scrolling text view showing the service's stdout+stderr live.
+     No Terminal, no osascript, no tail — nothing else to leave running.
+  2. Clean lifecycle. It launches the run verb as its own child in a new
+     session/process group. Quitting the app (Cmd-Q / menu), closing the
+     window, or the bot exiting on its own terminates the whole child
+     process group — no orphaned python/recorder, and no third app left
+     behind.
+  3. Identity. Because the bundle carries its own reverse-DNS
      CFBundleIdentifier (quest.eddic.launcher.<slug>), its own name, and
      an ad-hoc code signature, macOS TCC pins the service's permissions
-     (microphone, etc.) to *this app*, not to a shared "Applet" identity.
-     And because the bot is the app's child, TCC attributes it to the
-     app, not to Terminal.
+     (microphone, etc.) to *this app*. And because the bot is the app's
+     own child (in its own session via setsid), TCC attributes it to the
+     app.
 
 Building the macOS app requires macOS with `swiftc` and `codesign` (both
 ship with the Xcode command-line tools / macOS). The pure text builders
@@ -81,29 +85,30 @@ def _swift_str(value):
 
 
 def swift_source_text(name, service, campaign_dir, headless):
-    """The Swift source for Contents/MacOS/<Name> — the supervisor. Pure:
-    values are baked as escaped Swift string literals; build_macos_app
-    compiles it. Delegates to the run verb (never duplicates the run
-    command); launches it as the app's own child in a new session/process
-    group (perl setsid) so the whole tree dies with one signal."""
+    """The Swift source for Contents/MacOS/<Name> — the AppKit
+    supervisor. Pure: values are baked as escaped Swift string literals;
+    build_macos_app compiles it. Delegates to the run verb (never
+    duplicates the run command); runs it as the app's own child in a new
+    session/process group (perl setsid) so the whole tree dies with one
+    signal and TCC pins the mic to this app; streams the child's
+    stdout+stderr into an in-window text view."""
     n = _swift_str(name)
     svc = _swift_str(service)
     camp = _swift_str(campaign_dir)
     headless_flag = "true" if headless else "false"
-    # The template uses %s for the four baked values, in order:
-    # displayName, service, campaignDir, headless.
+    # Baked values, in order: displayName, service, campaignDir, headless.
     return _SWIFT_TEMPLATE % (n, svc, camp, headless_flag)
 
 
-# The supervisor. Kept deliberately small. It:
-#   - launches `uv run .eddic/eddic.py run <service>` as its own child,
-#     in a new session/process group (perl setsid), stdout+stderr to the
-#     service logfile under .eddic/;
-#   - opens a Terminal window tailing that logfile (unless headless),
-#     remembering the window id;
-#   - quits — killing the child's whole process group (TERM then KILL) —
-#     when the app is asked to quit (Cmd-Q), when the log window is
-#     closed (polled), or when the child exits on its own.
+# The AppKit supervisor. Self-contained: it owns a window with a
+# monospaced, auto-scrolling NSTextView (in an NSScrollView) that shows
+# the child's stdout+stderr live, a menu bar with Quit on Cmd-Q, and a
+# standard Edit menu so the log is selectable/copyable. It launches
+# `uv run .eddic/eddic.py run <service>` as its own child, in a new
+# session/process group (perl setsid), with PYTHONUNBUFFERED=1 so logs
+# stream. It kills the child's whole process group (TERM then KILL) on
+# quit (Cmd-Q / menu), on the window closing, and when the child exits.
+# It spawns no Terminal and drives no other app.
 _SWIFT_TEMPLATE = r'''import AppKit
 import Foundation
 
@@ -113,36 +118,113 @@ let campaignDir = "%s"
 let headless = %s
 let logPath = campaignDir + "/.eddic/" + service + ".log"
 
-@discardableResult
-func runOsa(_ src: String) -> String {
-    let t = Process()
-    t.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
-    t.arguments = ["-e", src]
-    let pipe = Pipe()
-    t.standardOutput = pipe
-    do { try t.run() } catch { return "" }
-    t.waitUntilExit()
-    let d = pipe.fileHandleForReading.readDataToEndOfFile()
-    return String(data: d, encoding: .utf8)?
-        .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-}
-
-final class Supervisor: NSObject, NSApplicationDelegate {
+final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate {
     var childPGID: pid_t = -1
-    var logTTY: String = ""
-    var timer: Timer?
+    var process: Process?
+    var pipe: Pipe?
+    var logHandle: FileHandle?
+    var window: NSWindow?
+    var textView: NSTextView?
+    var quitting = false
 
     func applicationDidFinishLaunching(_ note: Notification) {
+        buildMenu()
+        if !headless { buildWindow() }
+        startChild()
+    }
+
+    // App menu (Quit on Cmd-Q) + a standard Edit menu so the log text is
+    // selectable and copyable.
+    func buildMenu() {
+        let mainMenu = NSMenu()
+
+        let appItem = NSMenuItem()
+        mainMenu.addItem(appItem)
+        let appMenu = NSMenu()
+        appMenu.addItem(withTitle: "Hide " + displayName,
+            action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
+        appMenu.addItem(NSMenuItem.separator())
+        appMenu.addItem(withTitle: "Quit " + displayName,
+            action: #selector(NSApplication.terminate(_:)),
+            keyEquivalent: "q")
+        appItem.submenu = appMenu
+
+        let editItem = NSMenuItem()
+        mainMenu.addItem(editItem)
+        let editMenu = NSMenu(title: "Edit")
+        editMenu.addItem(withTitle: "Cut",
+            action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        editMenu.addItem(withTitle: "Copy",
+            action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        editMenu.addItem(withTitle: "Paste",
+            action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        editMenu.addItem(withTitle: "Select All",
+            action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        editItem.submenu = editMenu
+
+        NSApp.mainMenu = mainMenu
+    }
+
+    func buildWindow() {
+        let frame = NSRect(x: 0, y: 0, width: 760, height: 480)
+        let win = NSWindow(contentRect: frame,
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            backing: .buffered, defer: false)
+        win.title = displayName + " \u{2014} live log"
+        win.delegate = self
+        win.center()
+
+        let scroll = NSScrollView(frame: frame)
+        scroll.hasVerticalScroller = true
+        scroll.autoresizingMask = [.width, .height]
+        scroll.borderType = .noBorder
+
+        let tv = NSTextView(frame: frame)
+        tv.isEditable = false
+        tv.isSelectable = true
+        tv.isRichText = false
+        tv.font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+        tv.textColor = NSColor.textColor
+        tv.backgroundColor = NSColor.textBackgroundColor
+        tv.isVerticallyResizable = true
+        tv.isHorizontallyResizable = false
+        tv.autoresizingMask = [.width]
+        tv.textContainerInset = NSSize(width: 6, height: 6)
+        tv.textContainer?.widthTracksTextView = true
+
+        scroll.documentView = tv
+        win.contentView = scroll
+        win.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        self.window = win
+        self.textView = tv
+    }
+
+    // Append on the main queue, cap backlog, keep pinned to the bottom.
+    func append(_ s: String) {
+        guard let tv = textView, let ts = tv.textStorage else { return }
+        let attrs: [NSAttributedString.Key: Any] = [
+            .font: NSFont.monospacedSystemFont(ofSize: 12, weight: .regular),
+            .foregroundColor: NSColor.textColor,
+        ]
+        ts.append(NSAttributedString(string: s, attributes: attrs))
+        let cap = 400000
+        if ts.length > cap {
+            ts.deleteCharacters(
+                in: NSRange(location: 0, length: ts.length - cap))
+        }
+        tv.scrollToEndOfDocument(nil)
+    }
+
+    func startChild() {
         let logDir = campaignDir + "/.eddic"
         try? FileManager.default.createDirectory(
             atPath: logDir, withIntermediateDirectories: true)
         FileManager.default.createFile(atPath: logPath, contents: Data())
-        guard let log = FileHandle(forWritingAtPath: logPath) else {
-            NSApp.terminate(nil); return
-        }
+        logHandle = FileHandle(forWritingAtPath: logPath)
 
-        // Delegate to the campaign's run verb, as our own child, in a new
-        // session/process group so we can signal the whole tree at once.
+        // Delegate to the run verb, as our own child, in a new
+        // session/process group (setsid) so one signal fells the tree.
         let invoke = "uv run .eddic/eddic.py run " + service
         let script = "cd \"" + campaignDir + "\" && exec perl -e "
             + "'use POSIX qw(setsid); setsid(); exec @ARGV' "
@@ -150,61 +232,46 @@ final class Supervisor: NSObject, NSApplicationDelegate {
         let p = Process()
         p.executableURL = URL(fileURLWithPath: "/bin/bash")
         p.arguments = ["-c", script]
-        p.standardOutput = log
-        p.standardError = log
-        p.standardInput = FileHandle.nullDevice
-        do { try p.run() } catch { NSApp.terminate(nil); return }
-        childPGID = p.processIdentifier
-        p.terminationHandler = { _ in
-            DispatchQueue.main.async { NSApp.terminate(nil) }
-        }
+        var env = ProcessInfo.processInfo.environment
+        env["PYTHONUNBUFFERED"] = "1"   // stream, don't buffer into silence
+        p.environment = env
 
-        if !headless {
-            // The live log window: a Terminal tailing the logfile. We
-            // key on its tty (stable and unambiguous) to poll for close
-            // and to close it on quit.
-            let banner = "== " + displayName
-                + " -- live log. Close this window or Quit "
-                + displayName + " to stop. =="
-            let osa = "tell application \"Terminal\"\n"
-                + "activate\n"
-                + "return tty of (do script \"clear; echo '" + banner
-                + "'; tail -f " + logPath + "\")\n"
-                + "end tell"
-            logTTY = runOsa(osa)
-            // If the log window is closed, the user is done: tear down.
-            timer = Timer.scheduledTimer(
-                withTimeInterval: 2.0, repeats: true) { [weak self] _ in
-                guard let self = self, !self.logTTY.isEmpty else { return }
-                if self.tabCount() == "0" { NSApp.terminate(nil) }
+        let pp = Pipe()
+        p.standardOutput = pp
+        p.standardError = pp
+        p.standardInput = FileHandle.nullDevice
+        pp.fileHandleForReading.readabilityHandler = { [weak self] fh in
+            let data = fh.availableData
+            if data.isEmpty { return }
+            self?.logHandle?.write(data)   // tee for post-mortem
+            let text = String(decoding: data, as: UTF8.self)
+            DispatchQueue.main.async { self?.append(text) }
+        }
+        p.terminationHandler = { [weak self] proc in
+            let status = proc.terminationStatus
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                self.append("\n[" + displayName
+                    + " stopped (exit \(status))]\n")
+                if !self.quitting {
+                    self.childPGID = -1   // it is already gone
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+                        NSApp.terminate(nil)
+                    }
+                }
             }
         }
-    }
-
-    // Number of Terminal tabs (across all windows) on the log tty.
-    func tabCount() -> String {
-        let osa = "tell application \"Terminal\"\n"
-            + "set c to 0\n"
-            + "repeat with w in windows\n"
-            + "repeat with t in tabs of w\n"
-            + "if tty of t is \"" + logTTY + "\" then set c to c + 1\n"
-            + "end repeat\n"
-            + "end repeat\n"
-            + "return c\n"
-            + "end tell"
-        return runOsa(osa)
-    }
-
-    func applicationShouldTerminate(
-        _ sender: NSApplication) -> NSApplication.TerminateReply {
-        timer?.invalidate()
-        killChild()
-        if !logTTY.isEmpty {
-            runOsa("tell application \"Terminal\" to close (every window "
-                + "where (tty of its selected tab) is \"" + logTTY
-                + "\") saving no")
+        do {
+            try p.run()
+        } catch {
+            append("failed to launch " + displayName + ": "
+                + error.localizedDescription + "\n")
+            return
         }
-        return .terminateNow
+        process = p
+        pipe = pp
+        childPGID = p.processIdentifier   // == pgid after setsid
+        append("== " + displayName + " \u{2014} live log ==\n")
     }
 
     func killChild() {
@@ -214,11 +281,31 @@ final class Supervisor: NSObject, NSApplicationDelegate {
         kill(-childPGID, SIGKILL)
         childPGID = -1
     }
+
+    // Cmd-Q / the Quit menu item.
+    func applicationShouldTerminate(
+        _ sender: NSApplication) -> NSApplication.TerminateReply {
+        quitting = true
+        pipe?.fileHandleForReading.readabilityHandler = nil
+        killChild()
+        return .terminateNow
+    }
+
+    // The window's red close button.
+    func windowWillClose(_ notification: Notification) {
+        quitting = true
+        pipe?.fileHandleForReading.readabilityHandler = nil
+        killChild()
+        NSApp.terminate(nil)
+    }
+
+    func applicationShouldTerminateAfterLastWindowClosed(
+        _ app: NSApplication) -> Bool { return true }
 }
 
 let app = NSApplication.shared
-let delegate = Supervisor()
-app.delegate = delegate
+let controller = Controller()
+app.delegate = controller
 app.setActivationPolicy(headless ? .accessory : .regular)
 app.run()
 '''
@@ -379,7 +466,7 @@ def main(argv=None):
                     "title-cased)")
     ap.add_argument("--icon", help="path to a .icns to use as the app icon")
     ap.add_argument("--headless", action="store_true",
-                    help="no log window; output to .eddic/<service>.log")
+                    help="no window; output to .eddic/<service>.log")
     args = ap.parse_args(argv)
 
     campaign = (Path(args.campaign).expanduser().resolve() if args.campaign

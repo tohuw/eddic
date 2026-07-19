@@ -82,9 +82,26 @@ def main():
     check("setsid" in swift,
           "supervisor puts the child in a new session/process group")
     check("SIGTERM" in swift and "SIGKILL" in swift and "kill(-" in swift,
-          "supervisor kills the child's whole process group on quit")
+          "supervisor kills the child's whole process group")
     check("NSApplicationDelegate" in swift,
           "supervisor is a real Cocoa app (event loop for Cmd-Q)")
+    # A self-contained, native log window — no Terminal, no osascript.
+    check("NSTextView" in swift and "NSScrollView" in swift,
+          "supervisor shows logs in its own NSTextView/NSScrollView")
+    check("monospacedSystemFont" in swift, "the log view is monospaced")
+    check("readabilityHandler" in swift,
+          "supervisor streams the child's stdout+stderr live")
+    check("PYTHONUNBUFFERED" in swift,
+          "supervisor runs the child unbuffered so logs stream")
+    check('"Quit "' in swift and 'keyEquivalent: "q"' in swift,
+          "supervisor has a Quit menu item bound to Cmd-Q")
+    check("applicationShouldTerminate" in swift
+          and "windowWillClose" in swift,
+          "quit and window-close both route to teardown")
+    for banned in ("osascript", "Terminal", "do script", "tail -f",
+                   "/usr/bin/osascript"):
+        check(banned not in swift,
+              f"supervisor drives no Terminal machinery ({banned!r})")
     h_swift = pkg.swift_source_text(name, "recorder", str(camp), True)
     check("let headless = true" in h_swift,
           "--headless bakes the headless flag into the supervisor")

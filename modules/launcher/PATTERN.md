@@ -18,24 +18,30 @@ WinSW) and a build step; the `.cmd` is the dependency-free equivalent
 and is what this pattern ships — treat the `.exe` as out-of-scope until
 a table has a hard need for a signed binary.
 
-The macOS app is hand-built rather than an `osacompile` applet on
-purpose, and it earns that cost twice over:
+The macOS app is a hand-built, self-contained AppKit app rather than an
+`osacompile` applet or a Terminal-driver, and that earns its cost twice
+over:
 
-- **It supervises.** The Swift executable is a real app with an event
-  loop. On launch it runs the run verb as *its own child* in a new
-  session/process group, opens a Terminal window tailing the service's
-  logfile (the live log window), and stays resident. Quitting the app
-  (Cmd-Q) *or* closing the log window terminates the whole child process
-  group — the `uv`/python/recorder tree dies together, no orphan left
-  recording. The old applet detached the bot under Terminal, so quitting
-  did nothing; this owns the lifecycle.
+- **It is its own window.** The Swift executable is a real windowed app:
+  a menu bar with a Quit item on Cmd-Q (and a standard Edit menu, so the
+  log is selectable and copyable), and its own window holding a
+  read-only, monospaced, auto-scrolling text view that shows the
+  service's stdout+stderr live (streamed off the child's pipe, run
+  unbuffered so nothing stalls into apparent silence). It drives no
+  Terminal and no other app — there is nothing else left running to
+  quit, and no shared Terminal to force-quit out from under someone.
+  Quitting the app (Cmd-Q or the Quit menu), closing its window, or the
+  bot exiting on its own terminates the whole child process group — the
+  `uv`/python/recorder tree dies together, no orphan left recording. The
+  old designs detached the bot under Terminal, so quitting did nothing;
+  this owns the lifecycle.
 - **It owns its identity.** The bundle carries a per-app reverse-DNS
   `CFBundleIdentifier` (`quest.eddic.launcher.<slug>`), its own name, and
   an ad-hoc code signature. macOS TCC therefore pins the service's
   permissions — microphone, and the like — to *this app*, keyed on a
   stable designated requirement, not to the shared "Applet" identity an
   `osacompile` bundle reuses. And because the bot is the app's own child
-  (not a Terminal grandchild), TCC attributes it to the app.
+  (in its own session via setsid), TCC attributes it to the app.
 
 ## Preflight
 
@@ -79,18 +85,18 @@ purpose, and it earns that cost twice over:
    `.app` is Spotlight- and Dock-droppable as-is; move or `--dest
    ~/Applications` it if the owner wants it in Launchpad. On Windows the
    `.cmd` can be right-click → *Send to → Desktop* for a shortcut. The
-   owner double-clicks: on macOS a log window opens streaming the
-   service, and Cmd-Q (or closing that window) stops it cleanly; on
-   Windows a console opens and Ctrl-C stops it. The first macOS launch
-   raises a one-time "<Name> wants to control Terminal" prompt (the app
-   opens the log window through Terminal) and, for a recorder, the
-   microphone prompt — both grant to this app's identity and persist.
+   owner double-clicks: on macOS the app's own window opens streaming the
+   service live, and Cmd-Q (or the Quit menu, or closing that window)
+   stops it cleanly; on Windows a console opens and Ctrl-C stops it. For
+   a recorder, the first launch raises the one-time microphone prompt,
+   which grants to this app's identity and persists — no other
+   permission prompts, since the app drives nothing but its own window.
 
 3. Record the application in the manifest so the campaign's shape knows
    it exists and an upgrade can restamp it:
 
        uv run <campaign>/.eddic/eddic.py manifest record \
-           --module launcher --version 0.2.0 \
+           --module launcher --version 0.3.0 \
            --params '{"service":"<service>","target":"<target>"}'
 
    Re-running the generator with the same arguments is idempotent: it
@@ -107,13 +113,13 @@ purpose, and it earns that cost twice over:
   runs a second local service, such as a self-hosted lore bot on the
   Warden's own machine; a hosted service has no local process to launch
   and needs none.
-- **Terminal-visible vs headless.** Default: **visible** — the recorder
-  bot posts consent and streams logs the owner must see, and the log
-  window is also how the owner quits (close it, or Cmd-Q). Choose
-  `--headless` (LSUIElement agent, output to `.eddic/<service>.log`, no
-  window) only for a background service that needs no live interaction
-  and is stopped some other way; a consent-gated recorder should never be
-  headless.
+- **Windowed vs headless.** Default: **windowed** — the recorder bot
+  posts consent and streams logs the owner must see, and the app's own
+  window is also how the owner quits (close it, Cmd-Q, or the Quit menu).
+  Choose `--headless` (LSUIElement agent, output to `.eddic/<service>.log`
+  only, no window) for a background service that needs no live
+  interaction and is stopped some other way; a consent-gated recorder
+  should never be headless.
 - **App name and icon.** Default: the app is named for the service,
   title-cased (`recorder` → `Recorder`), with no custom icon. Pass
   `--name <Label>` when the campaign has a name for its bot (the app's
@@ -132,8 +138,10 @@ purpose, and it earns that cost twice over:
   planted service spec. Cross-platform, it asserts the pure builders and
   the Windows path: the Swift supervisor source delegates to the run verb
   for the service, launches it as the app's own child in a new process
-  group, and kills that group on quit; the `Info.plist` carries the
-  per-app `quest.eddic.launcher.<slug>` identifier, the app's name as
+  group and kills that group on quit, shows the stream in its own
+  monospaced `NSTextView`/`NSScrollView` with a Quit item on Cmd-Q and no
+  Terminal/osascript/`tail` machinery at all; the `Info.plist` carries
+  the per-app `quest.eddic.launcher.<slug>` identifier, the app's name as
   executable and display name, and a microphone usage string (and
   `LSUIElement` under `--headless`); the Windows target emits a CRLF
   `.cmd` invoking the same run verb; an unknown service refuses with no
@@ -142,12 +150,13 @@ purpose, and it earns that cost twice over:
   identifier in the on-disk `Info.plist`, and an ad-hoc signature keyed
   on that identifier (`codesign --verify` passes). The app is never
   launched by the verifier.
-- Live: double-click the stamped `.app`. A log window opens and the
-  service announces itself and streams (for the recorder bot in the
-  Sunken City campaign, its consent post appears in the log). Confirm the
-  ownership with `codesign -dvvv <App>.app` (Identifier is
+- Live: double-click the stamped `.app`. The app's own window opens and
+  the service announces itself and streams into it (for the recorder bot
+  in the Sunken City campaign, its consent post appears in the log).
+  Confirm the ownership with `codesign -dvvv <App>.app` (Identifier is
   `quest.eddic.launcher.<slug>`, Signature is adhoc) and `PlistBuddy -c
   'Print CFBundleIdentifier' <App>.app/Contents/Info.plist`. Then Cmd-Q
-  the app, or close the log window: the service and its whole process
-  group exit — `pgrep -f <service>` shows nothing, no orphaned python or
-  recorder. The owner never typed a command.
+  the app (or the Quit menu, or the window's close button): the service
+  and its whole process group exit — `pgrep -f <service>` shows nothing,
+  no orphaned python or recorder, and no Terminal was ever spawned. The
+  owner never typed a command.

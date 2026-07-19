@@ -29,7 +29,7 @@ companion layer on once the campaign is live.
 | [convene](convene.md) | session lifecycle on native scheduled events: quorum, lifecycle nudges, recap announce, prep ask | 0.2.1 |
 | [recorder](recorder.md) | the campaign's own recording bot: react-gated per-mic consent, DAVE receive via davey + pinned patches | 0.1.0 |
 | [backup](backup.md) | tier-2 blob backup: session audio in object storage (R2 default) via rclone, gitignored, tracked by a path/size/sha256 inventory; two hooks over one worker, text push never blocks | 0.1.0 |
-| [launcher](launcher.md) | native double-clickable launcher for a local service: a hand-built, code-signed macOS `.app` that supervises the service, or a Windows `.cmd`, wrapping the campaign's run verb | 0.2.0 |
+| [launcher](launcher.md) | native double-clickable launcher for a local service: a hand-built, code-signed macOS `.app` with its own live-log window that supervises the service, or a Windows `.cmd`, wrapping the campaign's run verb | 0.3.0 |
 
 For the design tenets these modules answer to, see [principles](../design/principles.md);
 for the concepts they build on, see [concepts](../concepts/index.md); for what
