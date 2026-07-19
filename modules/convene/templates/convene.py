@@ -76,12 +76,38 @@ def evaluate(session, now, quorum, require_dm=True,
     return due
 
 
+def load_messages(path, defaults=None):
+    """Reminder templates, with a campaign's JSON override merged over
+    the defaults — the seam for re-voicing and translation. A bad
+    template (unknown placeholder) is rejected and the default kept,
+    so a broken translation can never crash a reminder."""
+    msgs = dict(defaults or REMINDERS)
+    p = Path(path)
+    if not p.is_file():
+        return msgs
+    sample = dict(ping="", title="x", when="w", hours=1, count=0,
+                  quorum=3, dm_mention="", recorder_line="")
+    try:
+        override = json.loads(p.read_text(encoding="utf-8"))
+    except (ValueError, OSError):
+        return msgs
+    for k, v in override.items():
+        if k in msgs and isinstance(v, str):
+            try:
+                v.format(**sample)
+                msgs[k] = v
+            except (KeyError, IndexError, ValueError):
+                pass                        # keep the default
+    return msgs
+
+
 def render(key, *, title, when="", start=None, now=None, count=0,
-           quorum=0, dm_mention="", recorder=True, ping=""):
+           quorum=0, dm_mention="", recorder=True, ping="",
+           templates=None):
     hours = int(round((start - now) / 3600.0)) if start and now else 0
     recorder_line = ("Bring the recorder into the voice channel. "
                      if recorder else "")
-    return REMINDERS[key].format(
+    return (templates or REMINDERS)[key].format(
         title=title, when=when, hours=hours, count=count, quorum=quorum,
         dm_mention=dm_mention, recorder_line=recorder_line, ping=ping)
 
@@ -131,6 +157,9 @@ def setup(client):
     PLAYER_ROLE = os.environ.get("PLAYER_ROLE", "")
     RECORDER = os.environ.get("RECORDER_NUDGE", "1") != "0"
     SESSION_ROLE = os.environ.get("SESSION_ROLE_ID", "")
+    MESSAGES = load_messages(
+        HERE / os.environ.get("CONVENE_MESSAGES",
+                              "convene_messages.json"))
     SITE_URL = os.environ.get("SITE_URL", "").rstrip("/")
     TICK = int(os.environ.get("REFRESH_MINUTES", "5")) * 60
 
@@ -203,7 +232,8 @@ def setup(client):
                                 count=count, quorum=QUORUM,
                                 dm_mention=(f" <@{OWNER_ID}>"
                                             if OWNER_ID else ""),
-                                recorder=RECORDER))
+                                recorder=RECORDER,
+                                templates=MESSAGES))
                         rec["fired"].append(key)
             state["events"] = reconcile(state, live_ids)
             save_state(STATE_FILE, state)

@@ -124,6 +124,25 @@ def main():
                    == "Session 2 — The Deep",
                    "recap title read from the page's H1"))
 
+    # message overrides (re-voice / translation seam)
+    mf = tmp / "convene_messages.json"
+    import json as _json
+    mf.write_text(_json.dumps({
+        "created": "{ping}¡Sesión! **{title}** — {when}",
+        "at_risk": "{title} usa un marcador {desconocido}",  # bad
+    }), encoding="utf-8")
+    msgs = convene.load_messages(mf)
+    checks.append((msgs[convene.CREATED].startswith("{ping}¡Sesión!"),
+                   "valid override replaces the default template"))
+    checks.append((msgs[convene.AT_RISK] == convene.REMINDERS[convene.AT_RISK],
+                   "a template with an unknown placeholder is rejected"))
+    checks.append((convene.load_messages(tmp / "absent.json")
+                   == convene.REMINDERS, "no override file keeps defaults"))
+    out = convene.render(convene.CREATED, title="X", when="W",
+                         ping="<@&1> ", templates=msgs)
+    checks.append(("¡Sesión! **X**" in out and out.startswith("<@&1> "),
+                   "render uses the override with the ping"))
+
     # convene.py imports clean without discord (pure core only)
     import py_compile
     try:

@@ -71,6 +71,13 @@ now in its rightful always-on home.
   attending — honest about its limit (it is interest, not a
   commitment). A finer yes/maybe/no via a reaction post rebuilds what
   Apollo already does and stays off unless a table asks.
+- **Reminder wording.** Default: the built-in English templates.
+  Drop a `convene_messages.json` beside the bot (start from
+  `templates/convene-messages.example.json`) to re-voice the
+  reminders or **translate** them — keep every `{placeholder}`; a
+  template with an unknown one is rejected and the default kept, so a
+  broken translation can never break a reminder. `CONVENE_MESSAGES`
+  points elsewhere if you keep per-language files.
 - **Recorder nudge.** Default: on — the go-ahead reminds the DM to
   bring the recorder. Turn it off (`RECORDER_NUDGE=0`) for a table
   that captures with Craig instead.
