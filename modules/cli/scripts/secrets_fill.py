@@ -28,6 +28,22 @@ for stream in (sys.stdout, sys.stderr):
         stream.reconfigure(encoding="utf-8", errors="replace")
 
 
+def shape_warning(key, secret):
+    """Cheap shape checks for well-known token kinds; advisory only —
+    vendors change formats, so never refuse, just warn."""
+    if "DISCORD" in key and "TOKEN" in key:
+        if secret.count(".") != 2 or len(secret) < 50:
+            return ("that does not look like a Discord BOT token "
+                    "(expected ~70 chars with two dots — the Bot "
+                    "page's Reset Token, not the OAuth2 Client "
+                    "Secret)")
+    if "ANTHROPIC" in key and not secret.startswith("sk-ant-"):
+        return "Anthropic API keys start with sk-ant-"
+    if "OPENAI" in key and not secret.startswith("sk-"):
+        return "OpenAI API keys start with sk-"
+    return None
+
+
 def main(argv):
     args = [a for a in argv if not a.startswith("--")]
     opts = dict(zip(argv, argv[1:]))
@@ -63,6 +79,11 @@ def main(argv):
             if not secret:
                 skipped += 1
                 continue
+            hint = shape_warning(key.strip(), secret)
+            if hint:
+                print(f"  note: {hint} — stored anyway; re-run "
+                      f"after blanking the slot if it was the "
+                      f"wrong credential")
             lines[i] = f"{key.strip()}={secret}"
             changed = True
             filled += 1
