@@ -28,8 +28,13 @@ def main():
         name = run.parent.parent.name
         print(f"=== {name} ===", flush=True)
         try:
+            # unbuffered child: on a timeout kill, the module's progress
+            # prints have already flushed, so the log shows how far it
+            # got instead of losing everything to the pipe buffer.
+            child_env = dict(os.environ, PYTHONUNBUFFERED="1")
             rc = subprocess.run(runner + [str(run)],
                                 stdin=subprocess.DEVNULL,
+                                env=child_env,
                                 timeout=TIMEOUT).returncode
         except subprocess.TimeoutExpired:
             print(f"TIMEOUT after {TIMEOUT}s: {name} verify hung",

@@ -28,6 +28,20 @@ for stream in (sys.stdout, sys.stderr):
         stream.reconfigure(encoding="utf-8", errors="replace")
 
 
+def read_secret(prompt):
+    """One secret from the operator. Interactive: hidden entry via
+    getpass. Non-interactive (piped stdin): read a line. getpass on
+    Windows reads the console directly and ignores a pipe — so a
+    scripted fill would hang forever waiting on a console that isn't
+    there; the isatty gate makes fills scriptable and cross-platform."""
+    if sys.stdin is not None and sys.stdin.isatty():
+        return getpass.getpass(prompt)
+    line = sys.stdin.readline()
+    if not line:                       # EOF: nothing piped -> skip
+        return ""
+    return line.rstrip("\n")
+
+
 def shape_warning(key, secret):
     """Cheap shape checks for well-known token kinds; advisory only —
     vendors change formats, so never refuse, just warn."""
@@ -74,7 +88,7 @@ def main(argv):
             if val.strip() or not key.strip() or " " in key.strip():
                 continue
             rel = f.relative_to(root)
-            secret = getpass.getpass(
+            secret = read_secret(
                 f"{key.strip()} for {rel} (Enter to skip): ")
             if not secret:
                 skipped += 1
