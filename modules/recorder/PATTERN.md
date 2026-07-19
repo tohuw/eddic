@@ -23,10 +23,15 @@ retire. Pin the versions as written below.
 - The capture pattern is applied (this bot is its no-third-party
   route; free Craig remains the default there).
 - A second Discord application for the recorder: the lore-bot
-  pattern's portal flow applies verbatim (create app, token once
-  into the recorder's own variables.txt, MESSAGE CONTENT INTENT on).
-  Invite scopes `bot applications.commands` with View Channels,
-  Send Messages, Read Message History, Add Reactions, Connect.
+  pattern's portal flow applies (create app, Reset Token once into
+  the recorder's own variables.txt) — but note the recorder needs
+  **no privileged intents at all**: slash commands are interactions,
+  consent reacts arrive as raw reaction events, and voice states are
+  a default intent. The Message Content toggle is the lore bot's
+  need, not this bot's. Invite with scopes
+  `bot applications.commands` and permissions View Channels, Send
+  Messages, Read Message History, Add Reactions, **Connect** (it
+  listens; it never needs Speak) — permissions integer `1117248`.
 - uv on the DM's machine; the bot runs at session time only.
 
 ## Procedure
