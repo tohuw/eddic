@@ -69,9 +69,16 @@ file injected after the cache breakpoint, never in the corpus.
    the variables as real env (they override the file), give it a
    read-only repo token.
 
-4. Edit `persona.md` to the campaign's register — it is the
-   campaign's file now. Keep the hard rules (corpus-only, cite
-   pages, no invention, no future-speculation). Know the seam: the
+4. The persona is the campaign's file now, and its default — the
+   courteous, dry-witted chronicler — stands perfectly well on its
+   own. Tell the owner plainly: **the bot's character is theirs to
+   change by just telling you what they want.** "Make it talk like
+   a goblin" is a complete instruction — write the voice yourself;
+   that is your craft, not a template's. Whatever the character,
+   the hard rules stay (corpus-only, real citations, no invention,
+   no future-speculation, length caps) — personality rides on top
+   of them, never instead of them — and log persona changes as
+   `schema`. Know the seam: the
    persona file is the owner's voice and nothing else; config-derived
    facts are appended by bot.py at runtime (with `SITE_URL` set, a
    citation line carrying the live site root and a worked example
