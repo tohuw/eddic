@@ -10,7 +10,10 @@ summary: >
   red-team (2026-07-19, all HELD); the interviewer's backstory
   extrapolation hardened to offer two–three divergent seeds rather
   than a single "most plausible" one, keeping the identity the
-  player's to choose.
+  player's to choose. Also ships the player kit: a one-page,
+  DM-filled handoff (companion persona plus that player's
+  player-tier connector URL) that onboards a player as an audience
+  with no repo, safe to distribute by projection and verified conduct.
 touches:
   - retrieval
 depends:

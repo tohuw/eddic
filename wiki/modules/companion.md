@@ -94,10 +94,28 @@ and can be stripped for a player who wants pure elicitation; the
 [lore-bot](lore-bot.md) can adopt the same facet at persona level for
 in-Discord backstory help.
 
+## The player kit
+
+The templates onboard the DM and interested players who read the
+patterns, but a player who only wants to *use* a companion needs no
+repo and no setup. The player kit closes that gap. It is a one-page,
+DM-filled handoff — `templates/player-kit.md` — that a DM fills with
+the campaign name and one player's player-tier connector URL, then
+sends alongside the player companion persona. Its three steps are load
+the companion persona into any capable assistant, add the connector
+(reusing the [retrieval](retrieval.md) module's connect flow, so the
+player adds it themselves), and start asking. It states plainly what a
+companion will and won't do — answers from the wiki, helps you decide,
+never decides or rolls for you, never spoils the DM, never writes your
+character. It is safe to distribute by construction: the player token
+is projection-only, so nothing DM-only rides along, and the companion
+conduct it points at is the verified doctrine above.
+
 ## Verification
 
-The deterministic floor is `verify/run.py`: it checks that exactly the
-three templates ship, that both companions carry the conduct rule
+The deterministic floor is `verify/run.py`: it checks that the three
+companion templates and the player kit ship, that both companions
+carry the conduct rule
 verbatim, that every template is parameterized on the campaign, that
 the player template closes the puzzle loophole and keeps the option
 landscape open, that the DM template scopes to reference and marks

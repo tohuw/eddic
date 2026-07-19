@@ -22,8 +22,12 @@ def main():
         encoding="utf-8")
     checks = [
         (set(t) == {"player-companion.md", "dm-companion.md",
-                    "backstory-interviewer.md"},
-         "exactly the three templates ship"),
+                    "backstory-interviewer.md", "player-kit.md"},
+         "the templates ship (three companions plus the player kit)"),
+        ("{{PLAYER_MCP_URL}}" in t["player-kit.md"] and
+         "player-companion.md" in t["player-kit.md"],
+         "player kit carries the connector URL slot and points at "
+         "the companion persona"),
         (all(RULE in t[n] for n in
              ("player-companion.md", "dm-companion.md")),
          "both companions carry the conduct rule verbatim"),

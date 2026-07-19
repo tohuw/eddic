@@ -35,7 +35,18 @@ omniscient human referee. Nothing here pretends to be enforcement.
    The template also carries the collaborator facet — how it answers
    generative asks ("give me ideas", "what might") — kept or stripped
    per the decision point below.
-4. Log a `schema` entry naming which companions the table runs.
+4. Hand each player their kit: fill `templates/player-kit.md` with
+   `{{SITE_NAME}}` and that player's player-tier capability URL
+   (`{{PLAYER_MCP_URL}}` — the token-in-URL form from the retrieval
+   pattern's connect flow, which the kit reuses so the player adds the
+   connector themselves), and send it, with the `player-companion.md`
+   text, one filled kit per player. This is the player-as-audience
+   handoff — the only path a player needs, no repo. It is safe to
+   distribute by construction: the player token is projection-only
+   (the firewall guarantees it), and the companion's conduct is
+   verified (see Verify), so nothing DM-only and no unbounded advice
+   rides along.
+5. Log a `schema` entry naming which companions the table runs.
 
 ## Decision points
 
