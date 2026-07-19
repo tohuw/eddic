@@ -32,6 +32,9 @@ omniscient human referee. Nothing here pretends to be enforcement.
    output lands in `sources/` with the player's contributor id
    (wiki schema: attribution at write time); drafted output is
    marked machine-authored with the player credited for the ideas.
+   The template also carries the collaborator facet — how it answers
+   generative asks ("give me ideas", "what might") — kept or stripped
+   per the decision point below.
 4. Log a `schema` entry naming which companions the table runs.
 
 ## Decision points
@@ -40,6 +43,21 @@ omniscient human referee. Nothing here pretends to be enforcement.
   never rewritten; their story stays their protected expression.
   Offer `drafter` only when the player prefers it, with one sentence
   on the trade (machine prose is nobody's protected expression).
+- **Collaborator facet.** Whether the interviewer may answer a
+  generative ask — "give me ideas", "what might have happened",
+  RP hooks — or stay purely elicitive, drawing out only what the
+  player already imagines. Default: on — the say-what's-true rule
+  extended to generation, in the order the template fixes: the
+  archive's actual record first and cited, then a marked register
+  shift to *ideas, not canon* for the DM to rule on, at most one
+  narrowing question so the ideas are specific rather than generic,
+  and every suggestion grounded in what the session logs already
+  establish about that character and place. It stays projection-only,
+  so a floated idea is an honest guess and never a leaked secret, and
+  invention is never dressed as record. Strip the block for a player
+  who wants the interviewer to offer nothing of its own; the same
+  facet can ride the player companion for in-play RP hooks when the
+  table wants it there too.
 - **Player companion rollout.** Default: offered, not imposed — a
   player who wants no agent at the table simply has none; parity is
   a ceiling on the tool, not a mandate to use it.
@@ -51,8 +69,11 @@ omniscient human referee. Nothing here pretends to be enforcement.
 
 - `uv run modules/companion/verify/run.py` — deterministic floor:
   templates present, conduct rule verbatim in both companions, the
-  puzzle loophole closed, the interviewer's mode dial intact, and
-  the acceptance rig covering all seven behavior classes.
+  puzzle loophole closed, the interviewer's mode dial intact, the
+  collaborator facet's load-bearing phrases (record first, the
+  *ideas, not canon* register shift, grounding in the session logs)
+  present in the interviewer, and the acceptance rig covering all
+  eight behavior classes.
 - `verify/conduct-acceptance.md` — the live adversarial suite, run
   once per answer client the table uses. Conduct claims stay
   `unverified` in module.yaml and `docs/compatibility.md` until a

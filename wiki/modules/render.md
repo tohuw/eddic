@@ -10,7 +10,7 @@ fixed by design: it is exactly a wiki renderer and nothing more. A need
 that seems to demand an index generator, a taxonomy engine, or a plugin
 system belongs in a different module, not here. This deliberate narrowness
 is the module's expression of [patterns, not code](../concepts/patterns-not-code.md).
-The current version is 0.2.0 and it exposes a single verb, `build`.
+The current version is 0.2.1 and it exposes a single verb, `build`.
 
 ## Inputs and dependencies
 
@@ -34,7 +34,9 @@ correctly on the built site; links carrying an explicit URL scheme (such
 as `https:` or `mailto:`) are left untouched. Each heading receives a
 slugified `id` so that fragment links resolve to the right anchor. The
 first H1 in the source becomes the page title, falling back to a
-title-cased form of the filename when a page has no H1. Frontmatter is
+title-cased form of the filename when a page has no H1; on the
+root/eponymous page, whose title equals the site name, the title tag is
+deduped from `Name — Name` to just `Name`. Frontmatter is
 stripped before rendering. Non-markdown files — images and other assets —
 are copied through unchanged, while `CLAUDE.md`, `AGENTS.md`, `README.md`,
 and the campaign operation log are never rendered into the site. Markdown
@@ -47,6 +49,14 @@ one, static hosts with an SPA fallback answer every absent path with a
 200 and the homepage; an absent page must stay indistinguishable from a
 deliberately withheld one, so the renderer forces a genuine 404 on the
 live site.
+
+Site branding lives in an optional `static/` directory at the campaign
+root. When present, the build copies its files verbatim — excluding
+`.DS_Store` — to `static/` in the output, served at `/static/`, so a
+campaign can add a banner, favicon, or avatars and reference them by
+absolute path from the template or pages. It is a copy-through only:
+no processing, no manifest, and nothing is added when the directory is
+absent.
 
 ## Template
 
@@ -77,9 +87,10 @@ deploy.
 The module ships a verify harness that renders a planted tree and asserts
 the HTML mirror paths, `.md`-to-`.html` link rewriting with fragments
 preserved, external links left alone, heading ids for fragment landing,
-the title drawn from the H1, frontmatter stripping, the `noindex` meta,
-asset copying, the emitted `404.html`, and that non-content files are
-skipped. In a real campaign the check is to open the built
+the title drawn from the H1 and deduped on the eponymous page,
+frontmatter stripping, the `noindex` meta, asset copying, the emitted
+`404.html`, a campaign `static/` directory copied to the output (minus
+`.DS_Store`), and that non-content files are skipped. In a real campaign the check is to open the built
 `index.html` locally, click through several links, and confirm the pages
 resolve and read well in both light and dark.
 

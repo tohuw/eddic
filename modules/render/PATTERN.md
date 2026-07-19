@@ -44,6 +44,13 @@ plugin system here, the need belongs in a different module.
   reach a public deploy target; if the owner wants a browsable DM
   site, that belongs behind the retrieval module's token, not on
   Pages.
+- **Site branding assets.** Default: none — the stock template makes
+  no external requests and needs no files. If the owner wants a
+  banner, favicon, or other verbatim assets, drop a `static/` dir at
+  the campaign root; the renderer copies it (minus `.DS_Store`) to
+  `<site_dir>/static/`, served at `/static/`. Reference these with
+  absolute `/static/...` paths from the template or pages. This is a
+  copy-through only — no processing, no manifest.
 
 ## Verify
 
@@ -51,7 +58,10 @@ plugin system here, the need belongs in a different module.
   asserts: html mirror paths, `.md` → `.html` link rewriting with
   fragments preserved, heading ids for fragment landing, title from
   H1, frontmatter stripped, noindex present, assets copied,
-  non-content files skipped.
+  non-content files skipped, the root/eponymous page's title deduped
+  (`Name`, not `Name — Name`) while other pages keep the site suffix,
+  and a campaign `static/` dir copied to `<site_dir>/static/` (minus
+  `.DS_Store`).
 - In the real campaign: open `dist/site/index.html` locally; click
   several links; confirm they resolve and the pages read well in
   light and dark.

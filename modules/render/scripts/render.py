@@ -69,7 +69,7 @@ def add_heading_ids(html):
 
 def main(argv):
     opts = dict(zip(argv, argv[1:]))
-    src = out = None
+    src = out = root = None
     site = opts.get("--site-name", "")
     template_path = Path(opts["--template"]) if "--template" in opts else None
     log_name = "log.md"
@@ -121,6 +121,9 @@ def main(argv):
         page = (template.replace("{{TITLE}}", title)
                         .replace("{{SITE_NAME}}", site)
                         .replace("{{BODY}}", html))
+        if title == site:              # root/eponymous page: no "Name — Name"
+            page = page.replace(f"<title>{title} — {site}</title>",
+                                f"<title>{site}</title>")
         dest = out / rel.with_suffix(".html")
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text(page, encoding="utf-8")
@@ -136,6 +139,17 @@ def main(argv):
                                   "<h1>Not found</h1>\n<p>No such page "
                                   "in this archive.</p>"))
     (out / "404.html").write_text(not_found, encoding="utf-8")
+
+    # Serve the campaign's static/ assets (branding: banner, favicon,
+    # avatars) at /static/, if a static/ dir sits at the campaign root.
+    static_src = (root / "static") if root else None
+    if static_src and static_src.is_dir():
+        for sp in sorted(static_src.rglob("*")):
+            if sp.is_file() and sp.name != ".DS_Store":
+                sd = out / "static" / sp.relative_to(static_src)
+                sd.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(sp, sd)
+                assets += 1
 
     print(f"rendered {pages} page(s), copied {assets} asset(s) to {out}")
     return 0

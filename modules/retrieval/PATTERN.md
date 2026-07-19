@@ -35,7 +35,10 @@ like the lore bot.
 
 2. Create `<campaign>/worker/`: copy `templates/worker.js` and
    `templates/wrangler.toml` (fill `{{WORKER_NAME}}`; it becomes the
-   `<name>.workers.dev` subdomain). Run `eddic.py stage` — it writes
+   `<name>.workers.dev` subdomain). The template's `[assets]` binding
+   points at `../dist/site` (the render module's `site_dir`) so the
+   Worker serves the player site on the same host — build it with
+   `eddic build` before deploying. Run `eddic.py stage` — it writes
    the two corpora beside worker.js, refusing if the projection is
    missing (the player tier only ever comes from `eddic project`).
    The worker serves four read-only tools — list_pages, read_page,
@@ -67,9 +70,10 @@ like the lore bot.
    propagation, not misconfiguration; retry before diagnosing.
 
 4. Deploy: `wrangler deploy` from `worker/`. Re-publish cadence: any
-   time the wiki changes, `eddic.py project && eddic.py stage &&
-   wrangler deploy` — fold this into the publish/routine flow so the
-   corpus tracks the wiki (freshness contract).
+   time the wiki changes, `eddic.py project && eddic.py build &&
+   eddic.py stage && wrangler deploy` — the `build` keeps the served
+   site fresh alongside the corpus; fold this into the publish/routine
+   flow so both track the wiki (freshness contract).
 
 5. Connect an agent. Two auth styles, both live:
    - `Authorization: Bearer <token>` against `https://<worker>/mcp`
@@ -174,6 +178,21 @@ like the lore bot.
   just never sets TOKEN_PLAYER (unset token = tier off).
 - **Auth style.** Default: capability URL for phone connectors,
   header auth for desktop agents. Same tokens either way.
+- **Unified host — serve the player site from the Worker.** Default:
+  on. One host, one URL to share: humans get the player site at `/`,
+  agents get MCP at `/<token>/mcp` (and REST at `/<token>/api/...`) on
+  the same host. Any request without a valid token is, by definition,
+  not an MCP/REST call, so the Worker falls through to its `[assets]`
+  binding (`directory = "../dist/site"`, `binding = "ASSETS"`) and
+  serves the render module's built site. Two consequences: build
+  before you deploy (`eddic build` must have populated `site_dir`),
+  and the `[assets]` binding must be present — the fallback references
+  it unconditionally, matching the proven-live worker. This is why
+  retrieval now pairs with render: the site the Worker serves is the
+  same static mirror render produces. If a campaign genuinely wants an
+  MCP-only endpoint, point `[assets]` at any directory holding an
+  `index.html` (even a one-line placeholder); leaving the binding out
+  breaks unauthenticated requests.
 - **Voice mode.** Default: push-to-talk voice transcription into a
   normal chat — verified 2026-07 on the Claude phone app: asked a
   cold-context lore question about a term only the wiki defines,
@@ -202,13 +221,19 @@ like the lore bot.
 ## Verify
 
 - `uv run modules/retrieval/verify/run.py` — stages a planted
-  campaign and drives the worker's fetch handler in node: 401s, both
-  auth styles, initialize/tools-list shape, notification handling,
-  and tier isolation (DM page and DM-only search terms invisible to
-  the player token).
-- After a real deploy: from an MCP client (or curl), initialize with
-  each token; `search` for a DM-only term with the player token and
-  confirm blindness; rotate a token and confirm the old one dies.
+  campaign and drives the worker's fetch handler in node: both auth
+  styles, initialize/tools-list shape, notification handling, tier
+  isolation (DM page and DM-only search terms invisible to the player
+  token), and that an unauthenticated request falls through to the
+  static site rather than 401ing. The real `[assets]` binding needs
+  the Workers runtime, so the harness stubs it with a sentinel and
+  asserts only the routing decision (no valid token => serve the
+  site) — the live static serving is confirmed on deploy, below.
+- After a real deploy: open the bare host in a browser and confirm the
+  player site loads (unified host serving `[assets]`); from an MCP
+  client (or curl), initialize with each token; `search` for a DM-only
+  term with the player token and confirm blindness; rotate a token and
+  confirm the old one dies.
 - The player-tier experience test: ask, as a player would, for a
   secret the projection withholds. What good looks like: the model
   can't see that the secret exists, so it presents the gap as the

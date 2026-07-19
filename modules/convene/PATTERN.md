@@ -23,8 +23,9 @@ the players verbatim inside the bot's voice.
 - The bot's invite includes **Manage Events** (to read and, if you
   use `/session propose` later, create scheduled events). RSVP is the
   native "interested" button — no extra permission.
-- The player role name (for counting players toward quorum) and,
-  optionally, the recap channel/thread are known.
+- The player role name (for counting players toward quorum) and the
+  channel the bot posts to (one auto-events channel — reminders,
+  go-aheads, and recap announcements all land there) are known.
 
 ## Procedure
 
@@ -43,12 +44,12 @@ the players verbatim inside the bot's voice.
    counts as the DM for quorum — **explicit, never inferred from who
    created an event**; defaults to `OWNER_ID` when the maintainer and
    DM are the same person), `SESSION_QUORUM`, `REQUIRE_DM`,
-   `PLAYER_ROLE`, `SESSION_ROLE_ID`, and a target
-   (`ANNOUNCE_CHANNEL_ID` for reminders, `RECAP_THREAD_ID` for
-   recaps). Then the DM tunes it live with **slash commands** using
-   Discord's native pickers — no IDs to paste: `/session dm @person`,
-   `/session quorum N`, `/session role @Players`, `/session channel
-   #reminders`, `/session recap-channel #recaps`. Slash settings
+   `PLAYER_ROLE`, `SESSION_ROLE_ID`, and `ANNOUNCE_CHANNEL_ID` (the
+   one auto-events channel — reminders, go-aheads, and recap
+   announcements all post there). Then the DM tunes it live with
+   **slash commands** using Discord's native pickers — no IDs to
+   paste: `/session dm @person`, `/session quorum N`, `/session role
+   @Players`, `/session channel #auto-events`. Slash settings
    persist and win over env until a redeploy wipes them, then env
    is the fallback. Convene reuses `REFRESH_MINUTES` for its poll
    cadence and `SITE_URL` for recap links. `/session prep` opens a
@@ -107,6 +108,21 @@ the players verbatim inside the bot's voice.
 - **Recorder nudge.** Default: on — the go-ahead reminds the DM to
   bring the recorder. Turn it off (`RECORDER_NUDGE=0`) for a table
   that captures with Craig instead.
+- **State durability.** Default: put `convene_state.json` on **durable
+  storage** (a persistent volume or a KV store) when the host offers
+  one; otherwise rely on the startup catch-up. That file holds the
+  `announced` set (which recaps have posted) and each event's fired
+  reminders. On an ephemeral host — Railway, say, wipes the disk on
+  every redeploy — it is lost on redeploy, so on connect convene runs a
+  catch-up that marks the recaps already in the projection as
+  already-announced. That catch-up is the fallback that stops a
+  redeploy re-posting the back catalogue, but it is only a fallback: a
+  recap that first appeared while the bot was down gets marked
+  announced without ever posting, so it is missed. Point `CONVENE_STATE`
+  at a mounted volume (an absolute path wins over the module-local
+  default) to carry the set across redeploys and close that gap. To
+  deliberately re-post every recap once — after the site URLs change,
+  say — set `CONVENE_REANNOUNCE=1` for a single boot, then unset it.
 
 ## Verify
 
@@ -115,7 +131,9 @@ the players verbatim inside the bot's voice.
   once and only when due, `require_dm` gates quorum, end supersedes,
   persistence round-trips and reconcile prunes dead events, and
   recap announce-detection surfaces each new session page exactly
-  once (never the back catalogue after a restart).
+  once (never the back catalogue after a restart), `CONVENE_REANNOUNCE`
+  is honored (it skips the catch-up so every recap re-posts), and
+  recaps resolve to the one announce channel.
 - Live, once deployed: create a scheduled event, watch `/session
   status` track "interested" against quorum, let it cross the
   threshold and confirm the go-ahead fires, then publish a session

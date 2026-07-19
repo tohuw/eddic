@@ -204,7 +204,6 @@ def setup(client):
         "player_role": os.environ.get("PLAYER_ROLE", ""),
         "role_id": envint("SESSION_ROLE_ID"),
         "announce_channel_id": envint("ANNOUNCE_CHANNEL_ID"),
-        "recap_thread_id": envint("RECAP_THREAD_ID"),
     }
     cfg = {**defaults, **state.get("settings", {})}
 
@@ -222,12 +221,12 @@ def setup(client):
         return client.get_channel(cid) or await client.fetch_channel(cid)
 
     async def reminder_channel():
-        return await _channel(cfg["announce_channel_id"]
-                              or cfg["recap_thread_id"])
+        return await _channel(cfg["announce_channel_id"])
 
+    # Recaps post to the same channel as reminders and events — one
+    # auto-events channel, no separate recap configuration.
     async def recap_channel():
-        return await _channel(cfg["recap_thread_id"]
-                              or cfg["announce_channel_id"])
+        return await _channel(cfg["announce_channel_id"])
 
     async def count_interested(event):
         players, dm_in = 0, False
@@ -362,16 +361,6 @@ def setup(client):
         await inter.response.send_message(
             f"Reminders will post in {channel.mention}.", ephemeral=True)
 
-    @grp.command(name="recap-channel",
-                 description="Channel/thread for recap announcements")
-    async def recap_cmd(inter, channel: discord.TextChannel):
-        if not await _gate(inter):
-            return
-        cfg["recap_thread_id"] = channel.id
-        save()
-        await inter.response.send_message(
-            f"Recaps will announce in {channel.mention}.", ephemeral=True)
-
     class PrepModal(discord.ui.Modal, title="Ask the players to prep"):
         # A paragraph field so a long, multi-paragraph ask fits. The DM's
         # text goes out verbatim inside the frame — never rewritten.
@@ -460,8 +449,12 @@ def setup(client):
 
     class Capability:
         async def ready(self, corpus=""):
+            # CONVENE_REANNOUNCE=1: skip the catch-up and re-post every
+            # recap once (e.g. after the site URLs change). Unset after.
+            reannounce = os.environ.get("CONVENE_REANNOUNCE") == "1"
             for p in botlib.page_paths(corpus):
-                if "sessions/" in p and p not in state["announced"]:
+                if ("sessions/" in p and p not in state["announced"]
+                        and not reannounce):
                     state["announced"].append(p)
             now = time.time()
             require_dm = cfg["require_dm"] and cfg["dm_id"] != 0
@@ -495,6 +488,8 @@ def setup(client):
                             rec["fired"].append(key)
             state["events"] = reconcile(state, live_ids)
             save_state(STATE_FILE, state)
+            if reannounce:                    # post every recap once now
+                await announce_new_recaps(corpus)
             client.loop.create_task(tick_loop())
             print(f"convene ready: DM {cfg['dm_id']}, quorum "
                   f"{cfg['quorum']}, {len(state['announced'])} recap(s)")

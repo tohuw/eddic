@@ -137,6 +137,52 @@ def main():
                    == "Session 2 — The Deep",
                    "recap title read from the page's H1"))
 
+    # CONVENE_REANNOUNCE gating (the ready() startup catch-up). Off by
+    # default: the catch-up marks every existing recap already-announced,
+    # so a restart never re-posts the back catalogue. Set to "1" and the
+    # catch-up is skipped — nothing is marked, so announce_new_recaps
+    # re-posts every recap once (e.g. after the site URLs change).
+    import os as _os
+
+    def startup_snapshot(corpus):
+        reannounce = _os.environ.get("CONVENE_REANNOUNCE") == "1"
+        marked = set()
+        for p in botlib.page_paths(corpus):
+            if ("sessions/" in p and p not in marked and not reannounce):
+                marked.add(p)
+        return marked
+
+    all_recaps = ["campaigns/ls/sessions/session-1.md",
+                  "campaigns/ls/sessions/session-2.md"]
+    _os.environ.pop("CONVENE_REANNOUNCE", None)
+    checks.append((botlib.new_session_pages(c2, startup_snapshot(c2)) == [],
+                   "default (unset): catch-up marks the back catalogue, "
+                   "nothing re-posts"))
+    _os.environ["CONVENE_REANNOUNCE"] = "0"
+    checks.append((botlib.new_session_pages(c2, startup_snapshot(c2)) == [],
+                   "CONVENE_REANNOUNCE=0 stays off — no re-post"))
+    _os.environ["CONVENE_REANNOUNCE"] = "1"
+    checks.append((sorted(botlib.new_session_pages(c2, startup_snapshot(c2)))
+                   == all_recaps,
+                   "CONVENE_REANNOUNCE=1 skips the catch-up so every recap "
+                   "re-posts"))
+    _os.environ.pop("CONVENE_REANNOUNCE", None)
+
+    # recap_channel resolves to the announce channel — one auto-events
+    # channel, no separate recap configuration. The resolver lives in the
+    # discord wiring (exercised live), so assert at the source level that
+    # both resolvers read announce_channel_id and the dropped recap
+    # config is gone entirely.
+    src = (MOD / "templates" / "convene.py").read_text(encoding="utf-8")
+    checks.append((src.count('_channel(cfg["announce_channel_id"])') >= 2,
+                   "reminder_channel and recap_channel both resolve the "
+                   "announce channel"))
+    checks.append(("recap_thread_id" not in src
+                   and "RECAP_THREAD_ID" not in src,
+                   "the separate recap-channel config is dropped"))
+    checks.append(('name="recap-channel"' not in src,
+                   "the /session recap-channel command is removed"))
+
     # message overrides (re-voice / translation seam)
     mf = tmp / "convene_messages.json"
     import json as _json

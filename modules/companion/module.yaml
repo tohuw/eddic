@@ -1,10 +1,11 @@
 name: companion
-version: 0.1.0
+version: 0.1.1
 summary: >
   At-the-table companions under the knowledge-parity conduct doctrine
   (possible and true, never better): player and DM companions on their
   retrieval tiers, and the backstory interviewer with its
-  scribe/drafter authorship dial.
+  scribe/drafter authorship dial and collaborator facet (generative
+  asks answered as archive-first record, then labeled ideas-not-canon).
 touches:
   - retrieval
 depends:
@@ -20,10 +21,10 @@ compatibility:
   claude:
     role: answer client
     status: unverified
-    date: 2026-07-18
-    evidence: conduct doctrine untested live; rig is verify/conduct-acceptance.md
+    date: 2026-07-19
+    evidence: conduct doctrine and collaborator facet untested live; rig is verify/conduct-acceptance.md
   chatgpt:
     role: answer client
     status: unverified
-    date: 2026-07-18
-    evidence: conduct doctrine untested live; rig is verify/conduct-acceptance.md
+    date: 2026-07-19
+    evidence: conduct doctrine and collaborator facet untested live; rig is verify/conduct-acceptance.md

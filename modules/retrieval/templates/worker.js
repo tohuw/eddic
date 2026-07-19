@@ -220,7 +220,10 @@ export default {
       return new Response("not found", { status: 404 });
     }
     const t = tier(request, env);
-    if (!t) return new Response("unauthorized", { status: 401 });
+    // No valid token -> not an MCP/REST request. Serve the static site
+    // (the player projection rendered to HTML) from the ASSETS binding.
+    // One host: humans get the site at /, agents get MCP at /<token>/mcp.
+    if (!t) return env.ASSETS.fetch(request);
     const url = new URL(request.url);
     if (url.pathname.includes("/api/")) {
       if (request.method !== "GET") {

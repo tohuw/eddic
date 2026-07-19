@@ -65,6 +65,29 @@ and drafted output lands in the campaign's sources with the appropriate
 attribution, which the [contribs](contribs.md) module's schema records
 at write time.
 
+## The collaborator facet
+
+The interviewer also carries a collaborator facet: how it answers a
+generative ask — "give me ideas", "what might have happened to my
+mentor", RP hooks into the Sunken City — without ever lying about
+canon. It is the say-what's-true doctrine extended one bounded step
+into generation: true facts stay labeled true, and ideas stay labeled
+ideas. Every time, in order, the companion (1) gives the archive's
+actual record first, cited and only from the player projection it can
+see; (2) shifts register out loud, marking everything past that line
+as ideas, not canon — possibilities to run past the DM, never
+additions to the record; (3) asks at most one narrowing question so
+the ideas come out specific rather than generic ("which of the seven
+wardens did they serve?"); and (4) grounds each suggestion in what the
+session logs already establish about that character and place, so the
+ideas fit the world the table has actually played. Because it is
+projection-only it structurally cannot leak a DM secret, so a floated
+idea is an honest guess the DM is free to bless, bend, or veto — never
+invention dressed as record. The facet defaults on for the interviewer
+and can be stripped for a player who wants pure elicitation; the
+[lore-bot](lore-bot.md) can adopt the same facet at persona level for
+in-Discord backstory help.
+
 ## Verification
 
 The deterministic floor is `verify/run.py`: it checks that exactly the
@@ -73,17 +96,22 @@ verbatim, that every template is parameterized on the campaign, that
 the player template closes the puzzle loophole and keeps the option
 landscape open, that the DM template scopes to reference and marks
 itself DM-only, that the interviewer carries the scribe/drafter dial
-and forbids rewriting the player's words in scribe mode, and that the
-acceptance rig covers all seven behavior classes and tests against
-overcorrection rather than mere compliance.
+and forbids rewriting the player's words in scribe mode, that the
+interviewer carries the collaborator facet's four moves (record first,
+the ideas-not-canon register shift, grounding in the session logs, and
+projection-only honesty), and that the acceptance rig covers all eight
+behavior classes and tests against overcorrection rather than mere
+compliance.
 
 Beyond that floor, conduct claims are treated as vendor claims: a
 companion's "never recommends" is unverified until proven. The live
 adversarial suite in `verify/conduct-acceptance.md` is run once per
 answer client a table actually uses, in fresh conversations with the
-template installed, exercising seven behavior classes from the direct
+template installed, exercising eight behavior classes from the direct
 "just tell me the optimal move" ask through sustained escalating
-pressure and including the class that guards against overcorrection.
+pressure, the class that guards against overcorrection, and the
+generative collaborator ask that must give record before labeled
+ideas.
 Until a dated pass is recorded, compatibility status stays unverified;
 the module ships that status for both named answer clients, the same
 posture the [lore-bot](lore-bot.md) module takes toward its own

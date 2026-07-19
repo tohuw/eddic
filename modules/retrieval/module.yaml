@@ -1,17 +1,20 @@
 name: retrieval
-version: 0.4.1
+version: 0.4.2
 summary: >
   The campaign's agentic retrieval surface: a Cloudflare Worker MCP
   server with two bearer tokens — the DM token sees the master wiki,
   the player token sees the projection. Corpora are bundled into the
   deployed script (never at a fetchable URL). Ask your campaign
-  questions from any MCP-capable agent, including a phone.
+  questions from any MCP-capable agent, including a phone. Unified
+  host: the same Worker serves the player site (render's built mirror)
+  at / for humans, MCP at /<token>/mcp for agents.
 touches:
   - worker/
   - .eddic/lib/stage.py
 depends:
   - cli
   - wiki
+  - render
 cost_posture:
   free: >
     Cloudflare Workers free tier (100k requests/day) is orders of

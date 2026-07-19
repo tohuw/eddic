@@ -5,8 +5,8 @@ single Cloudflare Worker exposing the wiki as an MCP server, so any
 MCP-capable agent can ask the campaign questions. Its defining use case
 is the DM's phone in the car — "what do I know about the Reavers'
 patron?" becomes a tool call with no login flow anywhere in the chain.
-It depends on the [cli](cli.md) and [wiki](wiki.md) modules and is
-currently at version 0.4.0.
+It depends on the [cli](cli.md), [wiki](wiki.md), and [render](render.md)
+modules and is currently at version 0.4.2.
 
 ## Two tokens, two tiers
 
@@ -36,6 +36,21 @@ serves plain content and nothing else — no persona, no styling, no
 instructions to the consuming model. Personality belongs to owned
 surfaces such as the lore bot; the agent on the other end of retrieval
 belongs to its user and answers however that user needs.
+
+## Unified host
+
+The same Worker serves the player site and the retrieval API on one
+host. Any request that carries no valid token is, by definition, not an
+MCP or REST call, so the Worker falls through to its `[assets]` binding
+and serves the static site that the [render](render.md) module builds
+(`dist/site`). Humans get the wiki at `/`; agents get MCP at
+`/<token>/mcp` and REST at `/<token>/api/...` on that same host — one URL
+to share, one thing to deploy. This is why retrieval now pairs with
+render: build the site with `eddic build` before deploying, and fold the
+`build` into the publish flow so the served site tracks the wiki
+alongside the corpus. Because the fallback references the `[assets]`
+binding unconditionally, the binding must be present; an MCP-only
+endpoint simply points it at any directory holding an `index.html`.
 
 Two authentication styles reach the same tokens: a `Bearer` header
 against `/mcp` for clients that support headers, and a capability URL
@@ -82,10 +97,14 @@ question through the stronger DM token.
 
 `verify/run.py` plants a campaign wiki and projection, stages the
 corpora, copies the Worker template beside them, and drives the fetch
-handler in Node — exercising 401s, both auth styles, the
-initialize and tools-list shapes, notification handling, and tier
-isolation, confirming that DM pages and DM-only search terms are
-invisible to the player token. The player-tier experience test asks, as
+handler in Node — exercising both auth styles, the
+initialize and tools-list shapes, notification handling, tier
+isolation (confirming that DM pages and DM-only search terms are
+invisible to the player token), and that an unauthenticated request
+falls through to the static site rather than returning 401. The real
+`[assets]` binding needs the Workers runtime, so the harness stubs it
+and asserts only the routing decision; the live static serving is
+confirmed on deploy by opening the bare host in a browser. The player-tier experience test asks, as
 a player would, for a secret the projection withholds: what good looks
 like is a model that cannot see the secret exists and so presents the
 gap as the campaign's intended mystery, with no refusal and no leak

@@ -6,6 +6,8 @@ via `uv run` (it has a declared dependency); asserts the HTML mirror,
 link rewriting, heading ids, titles, frontmatter stripping, noindex,
 and asset copying."""
 
+import json
+import os
 import shutil
 import subprocess
 import sys
@@ -57,7 +59,10 @@ def main():
          "external .md link untouched"),
         ('href="../index.html"' in warden, "relative parent link rewritten"),
         ('id="the-oath"' in warden, "heading id for fragment landing"),
-        ("<title>Realm — Realm</title>" in index, "title from H1"),
+        ("<title>Realm</title>" in index,
+         "root/eponymous title deduped (Name, not Name — Name)"),
+        ("<title>The Warden — Realm</title>" in warden,
+         "non-eponymous title keeps the site suffix"),
         ("visibility" not in index, "frontmatter stripped"),
         ('name="robots" content="noindex' in index, "noindex present"),
         ((out / "assets/map.txt").exists(), "asset copied"),
@@ -68,6 +73,38 @@ def main():
         print(("ok  " if ok else "FAIL"), msg)
     if failed:
         return 1
+
+    # A campaign static/ dir (banner, favicon) is served at /static/.
+    # Exercise the EDDIC_CONFIG path: root = cfg_path.parent.parent, and
+    # a static/ dir at that root is copied verbatim (minus .DS_Store).
+    camp = Path(tempfile.mkdtemp(prefix="eddic-render-static-"))
+    cfg_path = camp / ".eddic" / "config.json"
+    cfg_path.parent.mkdir(parents=True, exist_ok=True)
+    cfg_path.write_text(json.dumps({
+        "projection_dir": "dist/player", "site_dir": "dist/site",
+        "site_name": "Realm"}), encoding="utf-8")
+    write(camp, "dist/player/index.md", "# Realm\n\nThe realm.\n")
+    write(camp, "static/banner.png", "PNG\n")
+    write(camp, "static/.DS_Store", "junk\n")
+    env = dict(os.environ, EDDIC_CONFIG=str(cfg_path))
+    proc = subprocess.run(["uv", "run", str(RENDER)],
+                          capture_output=True, text=True, env=env)
+    if proc.returncode != 0:
+        print(f"FAIL: renderer (EDDIC_CONFIG) exit {proc.returncode}\n"
+              f"{proc.stderr}")
+        return 1
+    site = camp / "dist" / "site"
+    static_checks = [
+        ((site / "static" / "banner.png").exists(),
+         "campaign static/ file copied to out/static/"),
+        (not (site / "static" / ".DS_Store").exists(),
+         ".DS_Store excluded from static copy"),
+    ]
+    for ok, msg in static_checks:
+        print(("ok  " if ok else "FAIL"), msg)
+    if any(not ok for ok, _ in static_checks):
+        return 1
+
     print("verify ok: render module")
     return 0
 

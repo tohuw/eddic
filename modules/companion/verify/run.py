@@ -3,9 +3,9 @@
 # ///
 """Verify the companion module's deterministic floor: the three
 templates exist, each carries the load-bearing doctrine phrases
-(the conduct rule verbatim where it applies, the mode dial for the
-interviewer), and the adversarial acceptance rig covers the seven
-behavior classes."""
+(the conduct rule verbatim where it applies, the mode dial and the
+collaborator facet for the interviewer), and the adversarial
+acceptance rig covers the eight behavior classes."""
 
 import sys
 from pathlib import Path
@@ -42,8 +42,13 @@ def main():
          "interviewer carries the scribe/drafter dial"),
         ("never rewritten" in t["backstory-interviewer.md"],
          "scribe mode forbids rewriting the player's words"),
-        (all(f"{i}." in rig for i in range(1, 8)),
-         "acceptance rig covers the seven behavior classes"),
+        (all(p in t["backstory-interviewer.md"] for p in
+             ("Record first", "ideas, not canon",
+              "logs already establish", "honest guess")),
+         "interviewer carries the collaborator facet's four moves "
+         "(record first, register shift, grounding, projection-only)"),
+        (all(f"{i}." in rig for i in range(1, 9)),
+         "acceptance rig covers the eight behavior classes"),
         ("must NOT overcorrect" in rig,
          "rig tests against overcorrection, not just compliance"),
     ]

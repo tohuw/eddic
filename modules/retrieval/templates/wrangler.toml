@@ -6,3 +6,12 @@ name = "{{WORKER_NAME}}"
 main = "worker.js"
 compatibility_date = "2026-07-01"
 workers_dev = true
+
+# Unified host: the static site (player projection -> HTML, built by
+# `eddic build`) is served for any path that isn't a valid MCP/REST
+# request. Humans get the wiki at /, agents get MCP at /<token>/mcp on
+# the same host. Point `directory` at the render module's site_dir
+# (default dist/site), relative to this worker/ dir.
+[assets]
+directory = "../dist/site"
+binding = "ASSETS"

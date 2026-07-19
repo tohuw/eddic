@@ -112,6 +112,15 @@ file injected after the cache breakpoint, never in the corpus.
   know who plays whom, `PLAYERS_FILE` holds it (privacy profile:
   `wiki/reference/data-controls.md`) — real names never
   enter the corpus, the repo, or the wiki.
+- **Collaborator facet.** Default: off — the bot answers as a
+  corpus-only chronicler. When the table wants in-Discord backstory
+  and RP help, the persona may adopt the companion module's
+  collaborator facet (`modules/companion/`): on a generative ask it
+  gives the archive's record first, then shifts register to labeled
+  ideas-not-canon for the DM to rule on, grounded in the session
+  logs — never invention dressed as record. It rides the projection
+  corpus, so the register shift is persona-level; the roster still
+  never enters the corpus.
 - **Native launcher.** Default: when the bot runs locally (see
   *Where it runs*), package it as a double-clickable launcher via
   the launcher module (a macOS `.app`, a Windows `.cmd`) so the

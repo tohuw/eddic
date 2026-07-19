@@ -1,5 +1,5 @@
 name: render
-version: 0.2.0
+version: 0.2.1
 summary: >
   Purpose-built static renderer for campaign wikis: markdown tree in,
   HTML mirror out, relative .md links rewritten to .html, heading

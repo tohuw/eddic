@@ -6,7 +6,16 @@ import { join } from "node:path";
 
 const dir = process.argv[2];
 const worker = (await import(pathToFileURL(join(dir, "worker.js")))).default;
-const env = { TOKEN_DM: "dm-secret", TOKEN_PLAYER: "player-secret" };
+
+// The Workers ASSETS binding can't run in this pure-node harness — it
+// needs the real Workers runtime to serve dist/site. Stub it with a
+// sentinel so we can prove the unified-host routing decision (no valid
+// token => serve the site) without faking the static serving itself.
+const ASSETS_SENTINEL = "<static-site-served-by-ASSETS>";
+const env = {
+  TOKEN_DM: "dm-secret", TOKEN_PLAYER: "player-secret",
+  ASSETS: { fetch: () => new Response(ASSETS_SENTINEL, { status: 200 }) },
+};
 
 let failures = 0;
 function check(ok, msg) {
@@ -30,12 +39,16 @@ async function rpc(token, body, viaPath = false) {
 const init = { jsonrpc: "2.0", id: 1, method: "initialize",
                params: { protocolVersion: "2025-06-18" } };
 
-// auth
+// auth: no/invalid token is not a 401 anymore — the unified host falls
+// through to the static site (humans browsing the bare host get the
+// wiki; agents authenticate to reach MCP/REST).
 const noAuth = await worker.fetch(
   new Request("https://w.example/mcp", { method: "POST" }), env);
-check(noAuth.status === 401, "no token rejected 401");
+check(noAuth.status === 200 && (await noAuth.text()) === ASSETS_SENTINEL,
+      "no token falls through to the static site (ASSETS binding)");
 const badAuth = await rpc("wrong-token", init);
-check(badAuth.status === 401, "wrong token rejected 401");
+check(badAuth.status === 200,
+      "wrong token also falls through to the static site");
 
 // initialize, both auth styles
 const viaHeader = await rpc("dm-secret", init);
@@ -165,7 +178,8 @@ async function restGet(token, path, viaPath = false) {
 }
 
 const restNoAuth = await restGet(null, "/api/pages");
-check(restNoAuth.status === 401, "REST without token rejected 401");
+check(restNoAuth.status === 200,
+      "REST without token falls through to the static site (no 401 leak)");
 const dmPages = await restGet("dm-secret", "/api/pages");
 const plPages = await restGet("player-secret", "/api/pages", true);
 check(dmPages.body?.pages?.length > plPages.body?.pages?.length,
