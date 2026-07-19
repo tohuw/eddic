@@ -34,7 +34,22 @@ RECORD_ROOT = (HERE / os.environ.get("RECORD_DIR",
                                      "../sessions/raw")).resolve()
 PRIVACY_URL = os.environ.get(
     "PRIVACY_URL", "https://eddic-site.pages.dev/privacy")
-WIKI_LOG = (HERE / os.environ.get("WIKI_LOG", "../wiki/log.md")).resolve()
+def _default_wiki_log():
+    """The campaign's own config knows where the log lives; the
+    standard layout is only the fallback."""
+    cfg = HERE.parent / ".eddic" / "config.json"
+    if cfg.is_file():
+        try:
+            import json
+            c = json.loads(cfg.read_text(encoding="utf-8"))
+            return f"../{c.get('wiki_dir', 'wiki')}/{c.get('log', 'log.md')}"
+        except Exception:
+            pass
+    return "../wiki/log.md"
+
+
+WIKI_LOG = (HERE / os.environ.get("WIKI_LOG",
+                                  _default_wiki_log())).resolve()
 EMOJI = "🎙️"
 
 sessions = {}  # guild_id -> dict(vc, sink, msg, outdir, names)
