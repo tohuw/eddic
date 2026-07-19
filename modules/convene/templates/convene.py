@@ -122,10 +122,12 @@ def setup(client):
     STATE_FILE = HERE / os.environ.get("CONVENE_STATE",
                                        "convene_state.json")
     QUORUM = int(os.environ.get("SESSION_QUORUM", "3"))
-    REQUIRE_DM = os.environ.get("REQUIRE_DM", "1") != "0"
+    OWNER_ID = int(os.environ.get("OWNER_ID", "0"))
+    # require the DM only when we can actually recognize them; without
+    # OWNER_ID set, quorum could never be met
+    REQUIRE_DM = os.environ.get("REQUIRE_DM", "1") != "0" and OWNER_ID != 0
     RECAP_THREAD = int(os.environ.get("RECAP_THREAD_ID", "0"))
     ANNOUNCE_CHANNEL = int(os.environ.get("ANNOUNCE_CHANNEL_ID", "0"))
-    OWNER_ID = int(os.environ.get("OWNER_ID", "0"))
     PLAYER_ROLE = os.environ.get("PLAYER_ROLE", "")
     RECORDER = os.environ.get("RECORDER_NUDGE", "1") != "0"
     SITE_URL = os.environ.get("SITE_URL", "").rstrip("/")
