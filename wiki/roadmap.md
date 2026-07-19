@@ -234,6 +234,25 @@ under the contract.
   hosted tenant must always be able to walk away with their self-contained repo
   — hosting is a convenience, never lock-in. Trigger: a second party wanting to
   run a campaign without owning a domain, or demand for hosted onboarding.
+- **Private / off-the-web campaigns (Cloudflare Access).** Today a campaign's
+  projected sites are unlisted and noindex, and the player retrieval token
+  exposes exactly the public-wiki content — so URL-only reachability is a
+  deliberate, low-sensitivity default (a leaked player token reveals nothing
+  the public site doesn't). Some tables will want the whole campaign *off* the
+  unauthenticated web: no publicly reachable site, retrieval gated behind real
+  identity. Cloudflare Access (Zero Trust) is the fit — an identity gate (email
+  OTP, Google, etc.) in front of the Pages site and/or the Worker so only the
+  table's members reach it, layered on the same hostnames Eddic already
+  provisions. Likely shape: an Access application over the campaign hostname
+  (and paths) with an allowed-emails/allowed-domain policy; agents reach the
+  retrieval Worker either via Access **service tokens** or by keeping the
+  capability-token path as an Access bypass (bearer and Access coexist). Open
+  questions: how a claude.ai connector authenticates through Access (service
+  token vs a bypass rule on `/<token>/mcp`); whether to gate the whole campaign
+  or just the DM tier; and the free-tier Access seat limits for a table-sized
+  group. Non-negotiable: it stays a bolt-on over the self-contained repo —
+  turning it off returns the campaign to the plain unlisted default. Trigger: a
+  table wanting a campaign not reachable by URL alone.
 - **Eddic is not D&D-specific.** Eddic grew out of a D&D campaign and its
   framing still says "D&D" throughout (AGENTS.md, the [principles](design/principles.md), the site, the
   self-documenting wiki), but the machinery — the campaign knowledge
