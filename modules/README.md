@@ -7,7 +7,7 @@ contribs and companion layer on once the campaign is live.
 
 | module | facility | status |
 |---|---|---|
-| [cli](cli/) | the vendored `.eddic/` CLI: dispatcher, config, author declaration, manifest, local no-echo secrets intake | 0.3.0 |
+| [cli](cli/) | the vendored `.eddic/` CLI: dispatcher, config, author declaration, manifest, secrets intake, `eddic run` service launcher | 0.4.0 |
 | [lint](lint/) | wiki health check: links, anchors, absolute links, stubs, orphans, log format, spoiler firewall, contrib overlays | 0.3.0 |
 | [wiki](wiki/) | campaign knowledge architecture: schema, fail-closed visibility, twin pages, contributor attribution, overlays, player projection | 0.3.0 |
 | [render](render/) | purpose-built md→html renderer with a self-contained template and real 404 | 0.2.0 |

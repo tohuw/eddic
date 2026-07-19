@@ -1,5 +1,5 @@
 name: cli
-version: 0.3.0
+version: 0.4.0
 summary: >
   Stamps the vendored eddic CLI into a campaign: the dispatcher
   (.eddic/eddic.py), campaign config, the applied-patterns manifest,

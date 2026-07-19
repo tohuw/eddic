@@ -53,14 +53,24 @@ retire. Pin the versions as written below.
 
 2. Wire a minimal `bot.py` beside them (a py-cord `discord.Bot`
    that imports `recorder` and calls `recorder.setup(bot)` — you
-   know the five lines) and run it for the session:
+   know the five lines), then register it as a campaign **service**
+   so the owner never types a runtime incantation. Add to
+   `.eddic/config.json`:
 
-       uv run --with "py-cord[voice]==2.8.0" --with davey bot.py
+       "services": {
+         "recorder": {
+           "dir": "recorder-bot", "entry": "bot.py",
+           "python": "3.14",
+           "with": ["py-cord[voice]==2.8.0", "davey"]
+         }
+       }
 
-   Run it unbuffered when watching. **One process**: verify none is
-   already running before starting (match the child `bot.py`, not
-   the wrapper), and after killing one, check the bot has actually
-   left the voice channel — Discord-side ghosts outlive processes.
+   The owner launches a session with `eddic run recorder` — the
+   dispatcher supplies the pinned runtime and runs it in the
+   foreground, so **Ctrl-C stops it and exactly one copy runs by
+   construction** (the Discord-side ghost that outlives a hard kill
+   is why one-process discipline matters; the foreground launcher
+   gives it for free).
 
 3. The session: `/record start` in a voice channel plays an
    audible chime, sets a visible recording status on the channel

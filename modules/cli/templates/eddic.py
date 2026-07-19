@@ -16,6 +16,10 @@ Built-in verbs:
     manifest show       print the applied-patterns manifest
     manifest check      validate manifest shape and vendored libs
     manifest record --module M --version V [--params JSON]
+    run [<service>]     launch a local service (a session-time process
+                        like the recorder bot) with its pinned runtime;
+                        no name lists the services. Foreground: Ctrl-C
+                        stops it, so exactly one copy runs by construction.
 
 Every other verb dispatches to .eddic/lib/<verb>.py (vendored by the
 module that provides it), run with the same interpreter, remaining
@@ -131,9 +135,53 @@ def manifest(args):
     return 2
 
 
+def service_command(spec):
+    """Build the uv-run argv for a service spec. Pure: no exec, so it
+    is unit-testable. A service is a local process with pinned deps —
+    entry (default bot.py), python (optional), with (deps list)."""
+    cmd = ["uv", "run"]
+    if spec.get("python"):
+        cmd += ["--python", str(spec["python"])]
+    for dep in spec.get("with", []):
+        cmd += ["--with", dep]
+    cmd.append(spec.get("entry", "bot.py"))
+    return cmd
+
+
+def run(args):
+    cfg = load(CONFIG) or {}
+    services = cfg.get("services", {})
+    if not args:
+        if not services:
+            print("no services configured (a module that ships one "
+                  "adds it to config.json's `services`)")
+            return 0
+        print("services:")
+        for name, spec in services.items():
+            print(f"  {name} — {spec.get('dir', '.')}/"
+                  f"{spec.get('entry', 'bot.py')}")
+        return 0
+    name = args[0]
+    spec = services.get(name)
+    if not spec:
+        print(f"unknown service: {name} (configured: "
+              f"{', '.join(services) or 'none'})", file=sys.stderr)
+        return 2
+    import shutil
+    if not shutil.which("uv"):
+        print("uv is required to launch a service with pinned deps; "
+              "install it first (one-line installer).", file=sys.stderr)
+        return 1
+    workdir = ROOT / spec.get("dir", ".")
+    env = dict(os.environ, PYTHONUNBUFFERED="1")
+    print(f"launching {name} in {workdir} — Ctrl-C to stop")
+    return subprocess.run(service_command(spec), cwd=workdir, env=env,
+                          shell=False).returncode
+
+
 def main(argv):
     if not argv:
-        verbs = ["doctor", "manifest"] + list(lib_verbs())
+        verbs = ["doctor", "manifest", "run"] + list(lib_verbs())
         print(__doc__.strip())
         print(f"\navailable verbs here: {', '.join(verbs)}")
         return 0
@@ -142,6 +190,8 @@ def main(argv):
         return doctor()
     if verb == "manifest":
         return manifest(rest)
+    if verb == "run":
+        return run(rest)
     script = lib_verbs().get(verb)
     if not script:
         print(f"unknown verb: {verb} (lib verbs: "

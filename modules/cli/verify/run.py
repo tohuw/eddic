@@ -78,6 +78,26 @@ def main():
               "secrets fills slots, echoes fingerprint only")
         if not ok:
             return 1
+        import importlib.util as _u
+        _spec = _u.spec_from_file_location(
+            "eddic_disp", MODULES / "cli" / "templates" / "eddic.py")
+        _disp = _u.module_from_spec(_spec)
+        _spec.loader.exec_module(_disp)
+        cmd = _disp.service_command(
+            {"python": "3.14", "with": ["py-cord[voice]==2.8.0", "davey"],
+             "entry": "bot.py"})
+        ok_svc = (cmd == ["uv", "run", "--python", "3.14",
+                          "--with", "py-cord[voice]==2.8.0",
+                          "--with", "davey", "bot.py"])
+        print(("ok  " if ok_svc else "FAIL"),
+              "run: service_command builds the pinned uv invocation")
+        if not ok_svc:
+            return 1
+        cmd2 = _disp.service_command({})
+        print(("ok  " if cmd2 == ["uv", "run", "bot.py"] else "FAIL"),
+              "run: service_command defaults to bot.py, no pins")
+        if cmd2 != ["uv", "run", "bot.py"]:
+            return 1
         print("verify ok: cli module")
         return 0
     finally:

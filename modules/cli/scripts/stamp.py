@@ -25,7 +25,7 @@ import sys
 from datetime import date
 from pathlib import Path
 
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 TEMPLATE = Path(__file__).resolve().parent.parent / "templates" / "eddic.py"
 DEFAULTS = {"wiki_dir": "wiki", "projection_dir": "dist/player",
             "site_dir": "dist/site", "log": "log.md",
