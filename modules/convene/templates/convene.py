@@ -263,6 +263,10 @@ def setup(client):
                     state["announced"].append(p)
             live_ids = set()
             for guild in client.guilds:
+                # copy the (global) commands into the guild first, or
+                # the guild sync registers an empty set and nothing
+                # appears until global propagation (up to an hour)
+                tree.copy_global_to(guild=guild)
                 await tree.sync(guild=guild)
                 for event in await guild.fetch_scheduled_events():
                     live_ids.add(str(event.id))
