@@ -52,7 +52,9 @@ Never through the conversation. Four routes, in preference order:
    drives the portal with consent and moves the token straight into
    the gitignored config file — clipboard relay, wiped after,
    fingerprint only in chat — or, self-serve, the agent prepares the
-   file with named empty slots and the human pastes into the *file*.
+   file with named empty slots and the owner runs `eddic secrets` —
+   a local no-echo prompt that writes each value into place and
+   reports only fingerprints. (Editing the file by hand works too.)
 4. **Already-resident secrets**: the owner says where a key already
    lives (an env file, a shell profile); the agent points the
    process at it and never re-echoes it. Environment beats config

@@ -36,6 +36,15 @@ newer version against the manifest.
 2. Run `uv run <campaign>/.eddic/eddic.py doctor` and resolve anything
    it flags.
 
+   When the campaign needs a secret only the owner holds (a bot
+   token, an API key), never take it through the conversation: vendor
+   `scripts/secrets_fill.py` as `lib/secrets.py`, prepare the target
+   variables file with an empty `KEY=` slot, and have the owner run
+   `eddic secrets` in their own terminal — it prompts locally with
+   no-echo input, writes the value into place, and reports only a
+   fingerprint. That is intake route 3 with the folder navigation
+   and the editor removed (`docs/data-controls.md`).
+
 3. Vendoring a verb (done by *other* modules' patterns, recorded here
    for reference): copy the module's lib script into `.eddic/lib/`,
    then record it —

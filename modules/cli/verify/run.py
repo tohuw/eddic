@@ -61,6 +61,23 @@ def main():
             "# The Keep\n\nSee [nowhere](missing.md).\n", encoding="utf-8")
         run([cli, "lint"], 1, "vendored lint verb flags broken link")
         run([cli, "nosuchverb"], 2, "unknown verb rejected")
+        vdir = tmp / "campaign" / "bot"
+        vdir.mkdir(parents=True, exist_ok=True)
+        (vdir / "variables.txt").write_text(
+            "TOKEN_A=\nKEEP=asis\n", encoding="utf-8")
+        sp = subprocess.run(
+            [sys.executable,
+             str(MODULES / "cli" / "scripts" / "secrets_fill.py"),
+             str(tmp / "campaign")],
+            input="sekrit-value-123\n", capture_output=True, text=True)
+        filled = (vdir / "variables.txt").read_text(encoding="utf-8")
+        ok = ("TOKEN_A=sekrit-value-123" in filled
+              and "sekrit-value-123" not in sp.stdout
+              and "sekrit-v" in sp.stdout)
+        print(("ok  " if ok else "FAIL"),
+              "secrets fills slots, echoes fingerprint only")
+        if not ok:
+            return 1
         print("verify ok: cli module")
         return 0
     finally:
