@@ -24,6 +24,16 @@ import json
 import os
 from pathlib import Path
 
+
+def envint(key, default=0):
+    """Int from an env var, tolerant of a trailing inline comment
+    or stray whitespace — config files are edited by humans."""
+    raw = os.environ.get(key)
+    if raw is None:
+        return int(default)
+    raw = raw.split("#", 1)[0].strip()
+    return int(raw) if raw else int(default)
+
 # reminder keys, each fired at most once per event (persisted)
 CREATED, AT_RISK, IMMINENT, ENDED = (
     "created", "at_risk", "imminent", "ended")
@@ -147,10 +157,10 @@ def setup(client):
     HERE = Path(__file__).resolve().parent
     STATE_FILE = HERE / os.environ.get("CONVENE_STATE",
                                        "convene_state.json")
-    OWNER_ID = int(os.environ.get("OWNER_ID", "0"))   # maintainer
+    OWNER_ID = envint("OWNER_ID")                     # maintainer
     RECORDER = os.environ.get("RECORDER_NUDGE", "1") != "0"
     SITE_URL = os.environ.get("SITE_URL", "").rstrip("/")
-    TICK = int(os.environ.get("REFRESH_MINUTES", "5")) * 60
+    TICK = envint("REFRESH_MINUTES", 5) * 60
     MESSAGES = load_messages(
         HERE / os.environ.get("CONVENE_MESSAGES", "convene_messages.json"))
 
@@ -163,14 +173,13 @@ def setup(client):
     # while it lives. The DM is ALWAYS explicit config here — never
     # inferred from who created an event.
     defaults = {
-        "dm_id": int(os.environ.get("DM_ID", str(OWNER_ID))),
-        "quorum": int(os.environ.get("SESSION_QUORUM", "3")),
+        "dm_id": envint("DM_ID", OWNER_ID),
+        "quorum": envint("SESSION_QUORUM", 3),
         "require_dm": os.environ.get("REQUIRE_DM", "1") != "0",
         "player_role": os.environ.get("PLAYER_ROLE", ""),
-        "role_id": int(os.environ.get("SESSION_ROLE_ID", "0") or 0),
-        "announce_channel_id": int(os.environ.get(
-            "ANNOUNCE_CHANNEL_ID", "0")),
-        "recap_thread_id": int(os.environ.get("RECAP_THREAD_ID", "0")),
+        "role_id": envint("SESSION_ROLE_ID"),
+        "announce_channel_id": envint("ANNOUNCE_CHANNEL_ID"),
+        "recap_thread_id": envint("RECAP_THREAD_ID"),
     }
     cfg = {**defaults, **state.get("settings", {})}
 

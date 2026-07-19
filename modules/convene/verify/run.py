@@ -155,6 +155,20 @@ def main():
     checks.append(("¡Sesión! **X**" in out and out.startswith("<@&1> "),
                    "render uses the override with the ping"))
 
+    # envint tolerates inline comments and whitespace (the crash that
+    # took convene down on the live bot)
+    import os as _os
+    _os.environ["_CONV_T"] = "512169632195412010   # Tyson"
+    checks.append((convene.envint("_CONV_T") == 512169632195412010,
+                   "envint ignores an inline comment"))
+    _os.environ["_CONV_T2"] = "  7 "
+    checks.append((convene.envint("_CONV_T2") == 7,
+                   "envint strips whitespace"))
+    checks.append((convene.envint("_CONV_ABSENT", 3) == 3,
+                   "envint falls back to default when unset"))
+    for k in ("_CONV_T", "_CONV_T2"):
+        _os.environ.pop(k, None)
+
     # convene.py imports clean without discord (pure core only)
     import py_compile
     try:
