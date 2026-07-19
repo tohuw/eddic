@@ -12,18 +12,37 @@ dependencies in config and the same double-click picks them up.
 
 ## Two native forms, one generator
 
-On macOS the launcher is a `.app` bundle: an `Info.plist`, a `MacOS/<Name>`
-executable that opens Terminal, and a `Resources/run.sh` that holds the run
-verb. On Windows it is a `.cmd` file with CRLF line endings. A real Windows
-`.exe` would need a packager (pyinstaller, WinSW) and a build step; the
-`.cmd` is the dependency-free equivalent and is what this module ships,
-leaving a signed binary out of scope until a table has a hard need for one.
-A single generator stamps both forms; `--target auto` picks the launcher for
-the current OS and `both` stamps the pair side by side for a mixed table
-sharing one repo, where each seat regenerates locally because the campaign
-path is baked in per machine. Re-running the generator with the same
-arguments is idempotent — it overwrites the launcher in place with identical
-bytes — and an unknown service name is refused with no artifact written.
+On macOS the launcher is a real, code-signed `.app`: an `Info.plist` and a
+small compiled Swift supervisor at `MacOS/<Name>`. On Windows it is a `.cmd`
+file with CRLF line endings. A real Windows `.exe` would need a packager
+(pyinstaller, WinSW) and a build step; the `.cmd` is the dependency-free
+equivalent and is what this module ships, leaving a signed binary out of
+scope until a table has a hard need for one. A single generator stamps both
+forms; `--target auto` picks the launcher for the current OS and `both`
+stamps the pair side by side for a mixed table sharing one repo, where each
+seat regenerates locally because the campaign path is baked in per machine
+(and the macOS half only builds on a Mac, which needs `swiftc` and
+`codesign` from the Xcode command-line tools). Re-running the generator with
+the same arguments is idempotent — it rebuilds the launcher in place — and an
+unknown service name is refused with no artifact written.
+
+## The macOS app supervises, and owns its identity
+
+The macOS app is hand-built rather than an `osacompile` applet for two
+reasons. First, it supervises: the Swift executable is a real app with an
+event loop, so on launch it runs the run verb as its *own child* in a new
+session/process group, opens a Terminal window tailing the service's logfile,
+and stays resident. Quitting the app (Cmd-Q) or closing the log window
+terminates the whole child process group — the `uv`/python/recorder tree dies
+together, no orphan left recording. The earlier applet detached the bot under
+Terminal, so quitting the app did nothing to the bot; this owns the
+lifecycle. Second, it owns its identity: the bundle carries a per-app
+reverse-DNS `CFBundleIdentifier` (`quest.eddic.launcher.<slug>`), its own
+name, and an ad-hoc code signature, so macOS TCC pins the service's
+permissions — the recorder's microphone, above all — to this app on a stable
+designated requirement, not to the shared "Applet" identity an `osacompile`
+bundle reuses. Because the bot is the app's own child, TCC attributes it to
+the app, not to Terminal.
 
 ## Wrapping a working command, never debugging one
 
@@ -40,29 +59,37 @@ it.
 
 ## Visible by default
 
-The launcher opens a visible terminal by default, because the recorder bot
-posts consent and streams logs the owner must see, and a visible window
-makes Ctrl-C the obvious stop — exactly one copy runs, by construction of
-the run verb. A `--headless` mode redirects output to a logfile with no
-window, but only for a background service that needs no live interaction and
-whose stop is handled elsewhere; a consent-gated recorder should never be
-headless. The launcher lands in the campaign directory by default so it
-travels and versions with the campaign and its baked-in path stays correct;
-a `--dest` (macOS) or a Desktop shortcut (Windows) puts a copy in the OS
-launcher surface while the campaign copy remains the source of truth to
-restamp from.
+The launcher opens a live log window by default, because the recorder bot
+posts consent and streams logs the owner must see, and that window is also
+how the owner quits — close it, or Cmd-Q the app, and exactly one copy runs,
+by construction of the run verb. A `--headless` mode redirects output to a
+logfile with no window (an `LSUIElement` agent), but only for a background
+service that needs no live interaction and whose stop is handled elsewhere; a
+consent-gated recorder should never be headless. `--name` sets the app's
+label and, with it, the reverse-DNS identity TCC pins permissions to, so it
+stays stable across restamps; `--icon` brands the app. The launcher lands in
+the campaign directory by default so it travels and versions with the
+campaign and its baked-in path stays correct; a `--dest` (macOS) or a Desktop
+shortcut (Windows) puts a copy in the OS launcher surface while the campaign
+copy remains the source of truth to restamp from.
 
 ## Verify
 
-The module's verifier stamps launchers against a planted service spec and
-asserts the golden shape: the macOS `.app` has an `Info.plist` that parses
-and names its executable, a `MacOS/<Name>` executable marked executable on
-POSIX that references the service and delegates to `run.sh`, and a `run.sh`
-that execs the run verb from the campaign directory; the Windows path emits a
-CRLF `.cmd` invoking the same run verb; an unknown service refuses with no
-artifact; and `--headless` flips both to the logfile-and-detached shape. The
-live check is a double-click: a terminal opens, the service announces itself
-and runs, and Ctrl-C stops it — the owner never typed a command.
+The module's verifier golden-tests against a planted service spec. Across
+every OS it asserts the pure builders and the Windows path: the Swift
+supervisor source delegates to the run verb, launches the service as the
+app's own child in a new process group, and kills that group on quit; the
+`Info.plist` carries the per-app `quest.eddic.launcher.<slug>` identifier, the
+app's name as executable and display name, and a microphone usage string
+(with `LSUIElement` under `--headless`); the Windows path emits a CRLF `.cmd`
+invoking the same run verb; an unknown service refuses with no artifact. On
+macOS with the toolchain it also builds the `.app` and asserts a Mach-O
+executable, the per-app identifier in the on-disk plist, and an ad-hoc
+signature keyed on it (`codesign --verify` passes) — without launching the
+app. The live check is a double-click: a log window opens, the service
+announces itself, and `codesign -dvvv` confirms the app's own identity; then
+Cmd-Q or closing the window stops the service and its whole process group,
+leaving no orphan — the owner never typed a command.
 
 See the [module index](index.md), the services and run verb the
 [cli](cli.md) module provides, and the [recorder](recorder.md) and

@@ -3,20 +3,39 @@
 Turns a campaign's local service — the recorder bot, or a locally-run
 lore bot — into something the owner double-clicks, not something they
 open a terminal to type `uv run` into. The launcher is a thin native
-shell around the campaign's own run verb: it `cd`s into the campaign
-and execs `uv run .eddic/eddic.py run <service>`, nothing more. Because
-the run verb already builds the pinned uv invocation from the service's
+shell around the campaign's own run verb: it `cd`s into the campaign and
+runs `uv run .eddic/eddic.py run <service>`, nothing more. Because the
+run verb already builds the pinned uv invocation from the service's
 config, the launcher never duplicates or drifts from the run command —
 change a service's deps in config and the same double-click picks them
 up.
 
-Two native forms, one generator. On macOS the launcher is a `.app`
-bundle (an `Info.plist`, a `MacOS/<Name>` executable that opens
-Terminal, and a `Resources/run.sh` that holds the run verb). On Windows
-it is a `.cmd` file. A real Windows `.exe` would need a packager
-(pyinstaller, WinSW) and a build step; the `.cmd` is the dependency-free
-equivalent and is what this pattern ships — treat the `.exe` as
-out-of-scope until a table has a hard need for a signed binary.
+Two native forms, one generator. On macOS the launcher is a real,
+code-signed `.app` — an `Info.plist`, a small compiled Swift supervisor
+at `MacOS/<Name>`, and nothing else it does not own. On Windows it is a
+`.cmd` file. A real Windows `.exe` would need a packager (pyinstaller,
+WinSW) and a build step; the `.cmd` is the dependency-free equivalent
+and is what this pattern ships — treat the `.exe` as out-of-scope until
+a table has a hard need for a signed binary.
+
+The macOS app is hand-built rather than an `osacompile` applet on
+purpose, and it earns that cost twice over:
+
+- **It supervises.** The Swift executable is a real app with an event
+  loop. On launch it runs the run verb as *its own child* in a new
+  session/process group, opens a Terminal window tailing the service's
+  logfile (the live log window), and stays resident. Quitting the app
+  (Cmd-Q) *or* closing the log window terminates the whole child process
+  group — the `uv`/python/recorder tree dies together, no orphan left
+  recording. The old applet detached the bot under Terminal, so quitting
+  did nothing; this owns the lifecycle.
+- **It owns its identity.** The bundle carries a per-app reverse-DNS
+  `CFBundleIdentifier` (`quest.eddic.launcher.<slug>`), its own name, and
+  an ad-hoc code signature. macOS TCC therefore pins the service's
+  permissions — microphone, and the like — to *this app*, keyed on a
+  stable designated requirement, not to the shared "Applet" identity an
+  `osacompile` bundle reuses. And because the bot is the app's own child
+  (not a Terminal grandchild), TCC attributes it to the app.
 
 ## Preflight
 
@@ -24,14 +43,18 @@ out-of-scope until a table has a hard need for a signed binary.
   and the manifest exist. The launcher wraps the run verb, so the run
   verb must exist first.
 - The target service is configured and green by hand: `uv run
-  .eddic/eddic.py run <service>` starts it from a terminal. The
-  launcher automates a working command; it never debugs one. If `run`
-  with no argument does not list the service, stop and fix the service
-  config before packaging.
+  .eddic/eddic.py run <service>` starts it from a terminal. The launcher
+  automates a working command; it never debugs one. If `run` with no
+  argument does not list the service, stop and fix the service config
+  before packaging.
 - uv is on PATH (the launcher calls `uv run`; the run verb refuses
   without it). The owner's machine is the one the service runs on — the
-  DM's laptop for the recorder bot, whatever host runs a local lore
-  bot.
+  DM's laptop for the recorder bot, whatever host runs a local lore bot.
+- To build the macOS `.app` you are on macOS with `swiftc` and
+  `codesign` on PATH (the Xcode command-line tools; `xcode-select
+  --install` provides them). The generator refuses the macOS target
+  elsewhere rather than stamp a bundle it cannot compile or sign. The
+  Windows `.cmd` needs no toolchain.
 
 ## Procedure
 
@@ -43,27 +66,37 @@ out-of-scope until a table has a hard need for a signed binary.
    `--target auto` picks the launcher for the OS you are on; `both`
    stamps the `.app` and the `.cmd` side by side (for a mixed table
    sharing one repo, where each seat regenerates locally — the campaign
-   path is baked in per machine). The generator reads the service from
-   `.eddic/config.json`, refuses an unknown service by name, and writes
-   the launcher into the campaign directory by default.
+   path is baked in per machine, and the macOS half only builds on a
+   Mac). The generator reads the service from `.eddic/config.json`,
+   refuses an unknown service by name, and writes the launcher into the
+   campaign directory by default. Pass `--name <Label>` to name the app
+   (the app's identity derives from it), and `--icon <file.icns>` to give
+   it an icon. On macOS the generator compiles the Swift supervisor and
+   ad-hoc-signs the finished bundle last, after every payload byte is
+   final — never edit inside a stamped `.app`, restamp it.
 
-2. Hand the launcher to the owner where their OS expects it. On macOS
-   the `.app` is Spotlight- and Dock-droppable as-is; move or
-   `--dest ~/Applications` it if the owner wants it in Launchpad. On
-   Windows the `.cmd` can be right-click → *Send to → Desktop* for a
-   shortcut. The owner double-clicks; a terminal opens running the
-   service with its console visible, and Ctrl-C (or closing the window)
-   stops it — exactly one copy runs, by construction of the run verb.
+2. Hand the launcher to the owner where their OS expects it. On macOS the
+   `.app` is Spotlight- and Dock-droppable as-is; move or `--dest
+   ~/Applications` it if the owner wants it in Launchpad. On Windows the
+   `.cmd` can be right-click → *Send to → Desktop* for a shortcut. The
+   owner double-clicks: on macOS a log window opens streaming the
+   service, and Cmd-Q (or closing that window) stops it cleanly; on
+   Windows a console opens and Ctrl-C stops it. The first macOS launch
+   raises a one-time "<Name> wants to control Terminal" prompt (the app
+   opens the log window through Terminal) and, for a recorder, the
+   microphone prompt — both grant to this app's identity and persist.
 
 3. Record the application in the manifest so the campaign's shape knows
    it exists and an upgrade can restamp it:
 
        uv run <campaign>/.eddic/eddic.py manifest record \
-           --module launcher --version 0.1.0 \
+           --module launcher --version 0.2.0 \
            --params '{"service":"<service>","target":"<target>"}'
 
    Re-running the generator with the same arguments is idempotent: it
-   overwrites the launcher in place with identical bytes.
+   rebuilds the launcher in place. (The signed Mach-O bytes are not
+   reproducible byte-for-byte, but the bundle's shape, identity, and
+   behavior are.)
 
 ## Decision points
 
@@ -75,30 +108,46 @@ out-of-scope until a table has a hard need for a signed binary.
   Warden's own machine; a hosted service has no local process to launch
   and needs none.
 - **Terminal-visible vs headless.** Default: **visible** — the recorder
-  bot posts consent and streams logs the owner must see, and a visible
-  window makes Ctrl-C the obvious stop. Choose `--headless` (output to
-  `.eddic/<service>.log`, no window) only for a background service that
-  needs no live interaction and whose stop is handled elsewhere; a
-  consent-gated recorder should never be headless.
+  bot posts consent and streams logs the owner must see, and the log
+  window is also how the owner quits (close it, or Cmd-Q). Choose
+  `--headless` (LSUIElement agent, output to `.eddic/<service>.log`, no
+  window) only for a background service that needs no live interaction
+  and is stopped some other way; a consent-gated recorder should never be
+  headless.
+- **App name and icon.** Default: the app is named for the service,
+  title-cased (`recorder` → `Recorder`), with no custom icon. Pass
+  `--name <Label>` when the campaign has a name for its bot (the app's
+  reverse-DNS identity and its TCC permission pinning follow the name, so
+  keep it stable across restamps) and `--icon <file.icns>` to brand it.
 - **Where the launcher lands.** Default: the **campaign directory**,
-  beside `.eddic/` — it travels with the campaign, versions with it,
-  and its baked-in path stays correct. Pass `--dest ~/Applications`
-  (macOS) or drop a shortcut on the Desktop (Windows) when the owner
-  wants it in their OS launcher surface; the campaign copy remains the
-  source of truth to restamp from.
+  beside `.eddic/` — it travels with the campaign, versions with it, and
+  its baked-in path stays correct. Pass `--dest ~/Applications` (macOS)
+  or drop a shortcut on the Desktop (Windows) when the owner wants it in
+  their OS launcher surface; the campaign copy remains the source of
+  truth to restamp from.
 
 ## Verify
 
-- `uv run modules/launcher/verify/run.py` — stamps launchers against a
-  planted service spec and asserts the golden shape: the macOS `.app`
-  has an `Info.plist` that parses and names its executable, a
-  `MacOS/<Name>` executable (marked executable on POSIX) that
-  references the service and delegates to `run.sh`, and a `run.sh` that
-  execs `uv run .eddic/eddic.py run <service>` from the campaign
-  directory; the Windows path emits a CRLF `.cmd` invoking the same run
-  verb; an unknown service refuses with no artifact; and `--headless`
-  flips both to the logfile/detached shape.
-- Live: double-click the stamped launcher. A terminal opens, the
-  service announces itself and runs (for the recorder bot in the Sunken
-  City campaign, its consent post appears), and Ctrl-C stops it. The
-  owner never typed a command.
+- `uv run modules/launcher/verify/run.py` — golden tests against a
+  planted service spec. Cross-platform, it asserts the pure builders and
+  the Windows path: the Swift supervisor source delegates to the run verb
+  for the service, launches it as the app's own child in a new process
+  group, and kills that group on quit; the `Info.plist` carries the
+  per-app `quest.eddic.launcher.<slug>` identifier, the app's name as
+  executable and display name, and a microphone usage string (and
+  `LSUIElement` under `--headless`); the Windows target emits a CRLF
+  `.cmd` invoking the same run verb; an unknown service refuses with no
+  artifact. On macOS with the toolchain it additionally builds the `.app`
+  and asserts a Mach-O executable at `MacOS/<Name>`, the per-app
+  identifier in the on-disk `Info.plist`, and an ad-hoc signature keyed
+  on that identifier (`codesign --verify` passes). The app is never
+  launched by the verifier.
+- Live: double-click the stamped `.app`. A log window opens and the
+  service announces itself and streams (for the recorder bot in the
+  Sunken City campaign, its consent post appears in the log). Confirm the
+  ownership with `codesign -dvvv <App>.app` (Identifier is
+  `quest.eddic.launcher.<slug>`, Signature is adhoc) and `PlistBuddy -c
+  'Print CFBundleIdentifier' <App>.app/Contents/Info.plist`. Then Cmd-Q
+  the app, or close the log window: the service and its whole process
+  group exit — `pgrep -f <service>` shows nothing, no orphaned python or
+  recorder. The owner never typed a command.

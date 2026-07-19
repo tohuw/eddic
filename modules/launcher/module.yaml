@@ -1,11 +1,14 @@
 name: launcher
-version: 0.1.0
+version: 0.2.0
 summary: >
   Packages a campaign's local service (the recorder bot, or a
-  locally-run lore bot) as a native double-clickable launcher: a macOS
-  .app bundle or a Windows .cmd, each delegating to the campaign's run
-  verb (uv run .eddic/eddic.py run <service>) in a visible terminal so
-  it never duplicates the run command.
+  locally-run lore bot) as a native double-clickable launcher: a
+  hand-built, code-signed macOS .app that owns its identity and
+  supervises the service, or a Windows .cmd. Each delegates to the
+  campaign's run verb (uv run .eddic/eddic.py run <service>) so it never
+  duplicates the run command. On macOS the app runs the service as its
+  own child, opens a live log window, and quitting it (Cmd-Q or closing
+  the window) terminates the whole process group — no orphans.
 touches:
   - recorder
   - lore-bot
@@ -13,9 +16,10 @@ depends:
   - cli
 cost_posture:
   free: >
-    Entirely local and free: the launcher is a plain-text .app bundle
-    or .cmd stamped onto disk, wrapping the already-free run verb. No
-    hosting, no third-party packager.
+    Entirely local and free, wrapping the already-free run verb. No
+    hosting, no third-party packager. The macOS .app is built and
+    ad-hoc code-signed with swiftc and codesign, which ship free with
+    the Xcode command-line tools; the Windows .cmd is plain text.
   paid: none
   heuristic: >
     A real Windows .exe would need a packager (pyinstaller, WinSW);

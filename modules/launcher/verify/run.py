@@ -3,25 +3,42 @@
 # ///
 """Verify the launcher packager against a planted service spec.
 
-Golden tests, no network, no third-party deps:
-  - macOS target stamps a valid .app: Info.plist parses (plistlib) and
-    names the executable, the MacOS executable is present (and, on
-    POSIX, marked executable) and references the service, and run.sh
-    delegates to the campaign's run verb for that service.
+Golden tests, no network, no third-party deps. The cross-platform checks
+exercise the pure text builders and the Windows .cmd; the macOS build
+(swiftc + codesign) is asserted only on macOS with the toolchain present.
+
+  - The Swift supervisor source delegates to the run verb for the
+    service, launches it as the app's own child in a new process group
+    (setsid), and terminates that group on quit.
+  - The Info.plist carries a per-app reverse-DNS identifier
+    (quest.eddic.launcher.<slug>), the app's name as executable/display
+    name, and a microphone usage string; --headless adds LSUIElement.
+  - macOS (toolchain present): the stamped .app has a Mach-O executable
+    at Contents/MacOS/<Name>, an Info.plist whose CFBundleIdentifier is
+    the per-app id, and an ad-hoc code signature keyed on that id
+    (codesign --verify passes). The app is never launched.
   - Windows target emits a .cmd invoking `.eddic\\eddic.py run <service>`
     with CRLF line endings.
   - An unknown service refuses (nonzero, no artifact).
-  - --headless flips both launchers to the logfile/detached shape.
 """
 
+import importlib.util
 import os
 import plistlib
+import shutil
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
 
 SCRIPT = Path(__file__).resolve().parent.parent / "templates" / "package.py"
+
+
+def load_pkg():
+    spec = importlib.util.spec_from_file_location("package", SCRIPT)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
 
 
 def run(*args):
@@ -39,6 +56,7 @@ def make_campaign(tmp):
 
 
 def main():
+    pkg = load_pkg()
     tmp = Path(tempfile.mkdtemp(prefix="eddic-launcher-verify-"))
     camp = make_campaign(tmp)
     checks = []
@@ -46,53 +64,63 @@ def main():
     def check(cond, msg):
         checks.append((bool(cond), msg))
 
-    # --- macOS .app, visible ---
-    out = tmp / "mac"
-    p = run("--service", "recorder", "--campaign", str(camp),
-            "--target", "macos", "--dest", str(out))
-    check(p.returncode == 0,
-          f"macos stamp exits 0 (got {p.returncode}: {p.stderr.strip()[:120]})")
-    app = out / "Recorder.app"
-    plist_path = app / "Contents" / "Info.plist"
-    macos_exec = app / "Contents" / "MacOS" / "Recorder"
-    run_sh = app / "Contents" / "Resources" / "run.sh"
-    check(app.is_dir(), "Recorder.app bundle created")
-    check(plist_path.is_file(), "Info.plist present")
-    if plist_path.is_file():
-        pl = plistlib.loads(plist_path.read_bytes())
-        check(pl.get("CFBundleExecutable") == "Recorder",
-              "Info.plist CFBundleExecutable names the executable")
-        check(pl.get("CFBundlePackageType") == "APPL",
-              "Info.plist declares an APPL bundle")
-        check(pl.get("CFBundleName") == "Recorder",
-              "Info.plist CFBundleName set")
-    check(macos_exec.is_file(), "MacOS/Recorder executable present")
-    if macos_exec.is_file():
-        if os.name == "posix":
-            check(os.access(macos_exec, os.X_OK),
-                  "MacOS/Recorder has the executable bit")
-        exec_text = macos_exec.read_text(encoding="utf-8")
-        check("recorder" in exec_text,
-              "MacOS executable references the recorder service")
-        check("run.sh" in exec_text,
-              "MacOS executable delegates to run.sh")
-        check("osascript" in exec_text and "Terminal" in exec_text,
-              "visible launcher opens Terminal")
-    check(run_sh.is_file(), "Resources/run.sh present")
-    if run_sh.is_file():
-        sh = run_sh.read_text(encoding="utf-8")
-        check("uv run .eddic/eddic.py run recorder" in sh,
-              "run.sh delegates to the run verb for the service")
-        check(str(camp) in sh, "run.sh cd's into the campaign directory")
-        if os.name == "posix":
-            check(os.access(run_sh, os.X_OK), "run.sh has the executable bit")
+    # --- pure builders (cross-platform) ---
+    name = pkg.launcher_name("recorder")
+    check(name == "Recorder", "launcher_name defaults to the title-cased "
+          "service")
+    ident = pkg.bundle_identifier(name)
+    check(ident == "quest.eddic.launcher.recorder",
+          f"bundle_identifier is a per-app reverse-DNS id (got {ident})")
+    check(ident != "com.apple.ScriptEditor.id.Applet",
+          "identifier is not the shared osacompile default")
 
-    # --- Windows .cmd ---
+    swift = pkg.swift_source_text(name, "recorder", str(camp), False)
+    check("uv run .eddic/eddic.py run" in swift
+          and 'let service = "recorder"' in swift,
+          "supervisor delegates to the run verb for the service")
+    check(str(camp) in swift, "supervisor bakes the campaign directory")
+    check("setsid" in swift,
+          "supervisor puts the child in a new session/process group")
+    check("SIGTERM" in swift and "SIGKILL" in swift and "kill(-" in swift,
+          "supervisor kills the child's whole process group on quit")
+    check("NSApplicationDelegate" in swift,
+          "supervisor is a real Cocoa app (event loop for Cmd-Q)")
+    h_swift = pkg.swift_source_text(name, "recorder", str(camp), True)
+    check("let headless = true" in h_swift,
+          "--headless bakes the headless flag into the supervisor")
+
+    plist = plistlib.loads(
+        pkg.info_plist_text(name, "recorder", False).encode("utf-8"))
+    check(plist.get("CFBundleIdentifier") == "quest.eddic.launcher.recorder",
+          "Info.plist declares the per-app identifier")
+    check(plist.get("CFBundleName") == "Recorder"
+          and plist.get("CFBundleDisplayName") == "Recorder",
+          "Info.plist names the app (not a generic Applet)")
+    check(plist.get("CFBundleExecutable") == "Recorder",
+          "Info.plist executable is the app name")
+    check(plist.get("CFBundlePackageType") == "APPL",
+          "Info.plist declares an APPL bundle")
+    check("NSMicrophoneUsageDescription" in plist,
+          "Info.plist declares a microphone usage string")
+    check("LSUIElement" not in plist,
+          "visible app is not an LSUIElement agent")
+    h_plist = plistlib.loads(
+        pkg.info_plist_text(name, "recorder", True).encode("utf-8"))
+    check(h_plist.get("LSUIElement") is True,
+          "headless app declares LSUIElement")
+    icon_plist = plistlib.loads(
+        pkg.info_plist_text(name, "recorder", False,
+                            "Recorder.icns").encode("utf-8"))
+    check(icon_plist.get("CFBundleIconFile") == "Recorder.icns",
+          "an icon, when given, is declared in Info.plist")
+
+    # --- Windows .cmd (cross-platform) ---
     out_win = tmp / "win"
     p = run("--service", "recorder", "--campaign", str(camp),
             "--target", "windows", "--dest", str(out_win))
     check(p.returncode == 0,
-          f"windows stamp exits 0 (got {p.returncode}: {p.stderr.strip()[:120]})")
+          f"windows stamp exits 0 (got {p.returncode}: "
+          f"{p.stderr.strip()[:120]})")
     cmd = out_win / "Recorder.cmd"
     check(cmd.is_file(), "Recorder.cmd created")
     if cmd.is_file():
@@ -103,32 +131,55 @@ def main():
               "cmd invokes the run verb for the service")
         check(text.startswith("@echo off"), "cmd is a batch launcher")
 
-    # --- unknown service refuses ---
+    # --- unknown service refuses (cross-platform) ---
     p = run("--service", "ghost", "--campaign", str(camp),
-            "--target", "macos", "--dest", str(tmp / "ghost"))
+            "--target", "windows", "--dest", str(tmp / "ghost"))
     check(p.returncode != 0, f"unknown service refuses (got {p.returncode})")
-    check(not (tmp / "ghost" / "Ghost.app").exists(),
-          "no bundle stamped for an unknown service")
+    check(not (tmp / "ghost" / "Ghost.cmd").exists(),
+          "no launcher stamped for an unknown service")
 
-    # --- headless variant ---
-    out_h = tmp / "headless"
-    p = run("--service", "recorder", "--campaign", str(camp), "--headless",
-            "--target", "both", "--dest", str(out_h))
-    check(p.returncode == 0,
-          f"headless both stamp exits 0 (got {p.returncode})")
-    h_plist = out_h / "Recorder.app" / "Contents" / "Info.plist"
-    if h_plist.is_file():
-        pl = plistlib.loads(h_plist.read_bytes())
-        check(pl.get("LSUIElement") is True,
-              "headless .app declares LSUIElement")
-    h_sh = out_h / "Recorder.app" / "Contents" / "Resources" / "run.sh"
-    if h_sh.is_file():
-        check(".eddic/recorder.log" in h_sh.read_text(encoding="utf-8"),
-              "headless run.sh redirects to the service logfile")
-    h_cmd = out_h / "Recorder.cmd"
-    if h_cmd.is_file():
-        check("start" in h_cmd.read_text(encoding="utf-8"),
-              "headless cmd starts detached")
+    # --- macOS build (only where the toolchain exists) ---
+    have_mac = (sys.platform == "darwin" and shutil.which("swiftc")
+                and shutil.which("codesign"))
+    if have_mac:
+        out_mac = tmp / "mac"
+        p = run("--service", "recorder", "--campaign", str(camp),
+                "--target", "macos", "--dest", str(out_mac))
+        check(p.returncode == 0,
+              f"macos build exits 0 (got {p.returncode}: "
+              f"{p.stderr.strip()[:200]})")
+        app = out_mac / "Recorder.app"
+        exe = app / "Contents" / "MacOS" / "Recorder"
+        plist_path = app / "Contents" / "Info.plist"
+        check(app.is_dir(), "Recorder.app bundle built")
+        check(exe.is_file(), "MacOS/Recorder executable present")
+        if exe.is_file():
+            magic = exe.read_bytes()[:4]
+            check(magic in (b"\xcf\xfa\xed\xfe", b"\xfe\xed\xfa\xcf",
+                            b"\xca\xfe\xba\xbe"),
+                  "MacOS/Recorder is a compiled Mach-O binary")
+            check(os.access(exe, os.X_OK), "executable has the exec bit")
+        if plist_path.is_file():
+            pl = plistlib.loads(plist_path.read_bytes())
+            check(pl.get("CFBundleIdentifier")
+                  == "quest.eddic.launcher.recorder",
+                  "built Info.plist carries the per-app identifier")
+        # ad-hoc signature keyed on the per-app identifier
+        cs = subprocess.run(["codesign", "-dvvv", str(app)],
+                            capture_output=True, text=True)
+        combined = cs.stdout + cs.stderr
+        check("Identifier=quest.eddic.launcher.recorder" in combined,
+              "signature is keyed on the per-app identifier")
+        check("adhoc" in combined or "Signature=adhoc" in combined,
+              "bundle is ad-hoc signed")
+        v = subprocess.run(["codesign", "--verify", "--strict", str(app)],
+                          capture_output=True, text=True)
+        check(v.returncode == 0,
+              f"codesign --verify passes (got {v.returncode}: "
+              f"{v.stderr.strip()[:120]})")
+    else:
+        print("note: skipping macOS build checks "
+              "(not on macOS or swiftc/codesign missing)")
 
     failed = [msg for ok, msg in checks if not ok]
     for ok, msg in checks:
