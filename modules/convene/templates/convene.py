@@ -151,7 +151,9 @@ def setup(client):
 
     async def count_interested(event):
         players, dm_in = 0, False
-        async for u in event.users():
+        users = (event.users() if hasattr(event, "users")
+                 else event.fetch_users())
+        async for u in users:
             if OWNER_ID and u.id == OWNER_ID:
                 dm_in = True
                 continue                    # the DM is not a player
@@ -163,12 +165,12 @@ def setup(client):
                 players += 1
         return players, dm_in
 
-    _STATUS = {
-        discord.ScheduledEventStatus.scheduled: "scheduled",
-        discord.ScheduledEventStatus.active: "active",
-        discord.ScheduledEventStatus.completed: "completed",
-        discord.ScheduledEventStatus.cancelled: "canceled",
-    }
+    def status_name(event):
+        # read the status by name — the enum's attribute name differs
+        # across libraries (discord.py EventStatus vs py-cord
+        # ScheduledEventStatus); its members are the same words
+        raw = getattr(event.status, "name", str(event.status))
+        return "canceled" if raw == "cancelled" else raw
 
     async def tick():
         now = time.time()
@@ -183,8 +185,7 @@ def setup(client):
                     count, dm_in = await count_interested(event)
                     session = {"start": event.start_time.timestamp(),
                                "count": count, "dm_in": dm_in,
-                               "status": _STATUS.get(event.status,
-                                                     "scheduled"),
+                               "status": status_name(event),
                                "fired": rec["fired"]}
                     for key in evaluate(session, now, QUORUM,
                                         require_dm=REQUIRE_DM):
