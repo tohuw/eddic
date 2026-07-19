@@ -21,5 +21,5 @@ contribs and companion layer on once the campaign is live.
 | [routines](routines/) | the maintenance-routine contract and runner chain; freshness loop as the first routine | 0.1.0 |
 | [capture](capture/) | session audio by the table's route (free Craig default), staged for local transcription, no folder navigation | 0.1.0 |
 | [discord-setup](discord-setup/) | the server's standing spec: REST reconcile, lint-style drift, additive-only apply | 0.1.0 |
-| [convene](convene/) | session lifecycle on native scheduled events: quorum, lifecycle nudges, recap announce | 0.1.0 |
+| [convene](convene/) | session lifecycle on native scheduled events: quorum, lifecycle nudges, recap announce | 0.1.1 |
 | [recorder](recorder/) | the campaign's own recording bot: react-gated per-mic consent, DAVE receive via davey + pinned patches | 0.1.0 |
