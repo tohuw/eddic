@@ -40,9 +40,15 @@ with a stated reason.
 
 ## How to start
 
-Point your agent at the [repository](https://github.com/tohuw/eddic)
-and say what you want — "set up a campaign wiki for my table; do
+The fastest start is giving your agent the [For agents](for-agents.md)
+page — paste its URL into a chat and say what you want: "read
+https://eddic-site.pages.dev/for-agents and set up my campaign; do
 what you think is best" works. The instructions are written for the
 agent; every decision has a sane default; you'll be asked only what
 genuinely needs you. See [how it works](how-it-works.md) for the
 shape of the thing.
+
+<div class="copybox">
+<input type="text" readonly id="agent-line" value="Read https://eddic-site.pages.dev/for-agents and set up my campaign; do what you think is best." onclick="this.select()">
+<button title="Copy" aria-label="Copy the agent instruction" onclick="navigator.clipboard.writeText(document.getElementById('agent-line').value);var b=this;b.dataset.t=b.innerHTML;b.textContent='Copied';setTimeout(function(){b.innerHTML=b.dataset.t},1200)"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5"/></svg></button>
+</div>

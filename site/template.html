@@ -42,11 +42,22 @@ td, th { border: 1px solid var(--rule); padding: .45em .7em;
 hr { border: 0; border-top: 1px solid var(--rule); margin: 2.2em 0; }
 footer { max-width: 46rem; margin: 0 auto; padding: 0 1.2rem 2.5rem;
   color: var(--muted); font-size: .85em; }
+.copybox { display: flex; gap: .5rem; margin: 1rem 0; }
+.copybox input { flex: 1; font: inherit; font-size: .9em;
+  padding: .55em .8em; border: 1px solid var(--rule);
+  border-radius: 8px; background: var(--card); color: var(--fg);
+  min-width: 0; }
+.copybox button { border: 1px solid var(--rule); border-radius: 8px;
+  background: var(--card); color: var(--fg); cursor: pointer;
+  padding: .45em .7em; display: flex; align-items: center; }
+.copybox button:hover { border-color: var(--accent);
+  color: var(--accent); }
 </style>
 </head>
 <body>
 <nav>
   <a class="brand" href="index.html">Eddic</a>
+  <a href="for-agents.html">For agents</a>
   <a href="how-it-works.html">How it works</a>
   <a href="modules.html">Modules</a>
   <a href="principles.html">Principles</a>
