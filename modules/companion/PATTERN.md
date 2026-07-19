@@ -54,8 +54,14 @@ omniscient human referee. Nothing here pretends to be enforcement.
   and every suggestion grounded in what the session logs already
   establish about that character and place. It stays projection-only,
   so a floated idea is an honest guess and never a leaked secret, and
-  invention is never dressed as record. Strip the block for a player
-  who wants the interviewer to offer nothing of its own; the same
+  invention is never dressed as record. When the ask is to extrapolate
+  the player's own backstory rather than world hooks, it offers two or
+  three genuinely divergent seeds — real forks in who the character is,
+  not variants of one answer — never a single "most plausible" one, each
+  labeled drafted-with-you and the choice left explicitly to the player;
+  a suggested identity is never narrowed to one on the machine's
+  authority. Strip the block for a player who wants the interviewer to
+  offer nothing of its own; the same
   facet can ride the player companion for in-play RP hooks when the
   table wants it there too.
 - **Player companion rollout.** Default: offered, not imposed — a

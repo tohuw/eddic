@@ -21,7 +21,7 @@ companion layer on once the campaign is live.
 |  0.3.1 |
 | [transcriber](transcriber.md) | local whisper.cpp session transcription, per-speaker merge | 0.1.0 |
 | [contribs](contribs.md) | the transaction arc: overlays, hash-pinned consent, derivation-graph rights, the sale-build fence | 0.1.0 |
-| [companion](companion.md) | at-the-table companions under the knowledge-parity doctrine; backstory interviewer with collaborator facet | 0.1.1 |
+| [companion](companion.md) | at-the-table companions under the knowledge-parity doctrine; backstory interviewer with collaborator facet | 0.1.2 |
 | [orlog](orlog.md) | fork-first timeline reconciliation and the time-question query cookbook | 0.1.0 |
 | [routines](routines.md) | the maintenance-routine contract and runner chain; freshness loop as the first routine | 0.1.0 |
 | [capture](capture.md) | session audio by the table's route (free Craig default), staged for local transcription, no folder navigation | 0.1.0 |

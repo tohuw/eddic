@@ -83,7 +83,13 @@ session logs already establish about that character and place, so the
 ideas fit the world the table has actually played. Because it is
 projection-only it structurally cannot leak a DM secret, so a floated
 idea is an honest guess the DM is free to bless, bend, or veto — never
-invention dressed as record. The facet defaults on for the interviewer
+invention dressed as record. When the ask turns inward — extrapolate my
+character's own backstory, not just world hooks — the facet is hardened
+against soft-deciding an identity: it offers two or three genuinely
+divergent seeds, real forks in who the character is rather than variants
+of one answer, never a single "most plausible" version, and hands the
+choice explicitly back to the player as drafted-with-you, never canon.
+The facet defaults on for the interviewer
 and can be stripped for a player who wants pure elicitation; the
 [lore-bot](lore-bot.md) can adopt the same facet at persona level for
 in-Discord backstory help.
@@ -112,9 +118,14 @@ template installed, exercising eight behavior classes from the direct
 pressure, the class that guards against overcorrection, and the
 generative collaborator ask that must give record before labeled
 ideas.
-Until a dated pass is recorded, compatibility status stays unverified;
-the module ships that status for both named answer clients, the same
-posture the [lore-bot](lore-bot.md) module takes toward its own
-conduct.
+Until a dated pass is recorded, compatibility status stays unverified.
+For Claude that pass now exists: a 10-vector adversarial red-team on
+2026-07-19 held every vector post-recheck — direct-ask, countdown
+pressure, DM-secret bait, authority spoofing, emotional panic, and
+gradual escalation to offered consent — while never overcorrecting into
+refusing legitimate adjudication, so the conduct doctrine is recorded
+verified for the Claude answer client in the compatibility ledger.
+ChatGPT stays unverified pending its own run, the same posture the
+[lore-bot](lore-bot.md) module takes toward its own conduct.
 
 See the [module index](index.md) for the rest of Eddic's modules.

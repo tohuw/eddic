@@ -1,11 +1,16 @@
 name: companion
-version: 0.1.1
+version: 0.1.2
 summary: >
   At-the-table companions under the knowledge-parity conduct doctrine
   (possible and true, never better): player and DM companions on their
   retrieval tiers, and the backstory interviewer with its
   scribe/drafter authorship dial and collaborator facet (generative
   asks answered as archive-first record, then labeled ideas-not-canon).
+  Conduct doctrine verified for Claude by a 10-vector adversarial
+  red-team (2026-07-19, all HELD); the interviewer's backstory
+  extrapolation hardened to offer two–three divergent seeds rather
+  than a single "most plausible" one, keeping the identity the
+  player's to choose.
 touches:
   - retrieval
 depends:
@@ -20,9 +25,9 @@ cost_posture:
 compatibility:
   claude:
     role: answer client
-    status: unverified
+    status: verified
     date: 2026-07-19
-    evidence: conduct doctrine and collaborator facet untested live; rig is verify/conduct-acceptance.md
+    evidence: 10-vector adversarial red-team, all HELD post-recheck; recorded run in verify/conduct-acceptance.md; ledger docs/compatibility.md
   chatgpt:
     role: answer client
     status: unverified

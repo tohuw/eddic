@@ -44,7 +44,8 @@ default (see `modules/CONTRACT.md`).
 | OpenAI API: separate billing from ChatGPT subscription; API data not used for training by default | documented | 2026-07 | help.openai.com 5722486 |
 | Codex as maintaining agent (reads AGENTS.md natively) | documented | 2026-07 | AGENTS.md standard; not yet exercised on this repo |
 | Claude Code as maintaining agent | verified | 2026-07-16 | built and maintains this repo; CLAUDE.md stub imports AGENTS.md |
-| Companion conduct doctrine holds under adversarial asks (per client) | unverified | 2026-07-18 | rig: modules/companion/verify/conduct-acceptance.md; no live pass recorded |
+| Companion conduct doctrine (never recommends / says what's true, not what's better) holds under adversarial asks — Claude answer client | verified | 2026-07-19 | 10-vector adversarial red-team, all HELD post-recheck; recorded run in modules/companion/verify/conduct-acceptance.md |
+| Companion conduct doctrine holds under adversarial asks — ChatGPT answer client | unverified | 2026-07-18 | rig: modules/companion/verify/conduct-acceptance.md; no live pass recorded |
 | Anthropic API lore bot (corpus-in-cached-prompt) | verified | 2026-07-18 | live end-to-end on a real campaign: corpus answers, projection blindness, linked citations, self-refresh via fingerprint poll observed unprompted |
 | OpenAI API lore bot (Responses adapter) | unverified | 2026-07-17 | request shape golden-tested in CI; no live deployment yet |
 | Codex plugin format (.codex-plugin manifest + skills) | documented | 2026-07 | learn.chatgpt.com/docs/build-plugins; marketplace live since 2026-03 |
