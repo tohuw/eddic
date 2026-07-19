@@ -33,7 +33,7 @@ retire. Pin the versions as written below.
   Messages, Read Message History, Add Reactions, **Connect**, and
   **Speak** (only for the transparency chime it plays at record
   start) plus **Set Voice Channel Status** — integer
-  `316661499497536`.
+  `281477127408704`.
 - uv on the DM's machine; the bot runs at session time only.
 
 ## Procedure
