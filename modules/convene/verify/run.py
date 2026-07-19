@@ -105,6 +105,18 @@ def main():
                    == {"events": {}, "announced": []},
                    "missing state file loads empty"))
 
+    # settings persist through the state file (slash-set config)
+    st2 = {"events": {}, "announced": [],
+           "settings": {"dm_id": 512, "quorum": 4}}
+    convene.save_state(sf, st2)
+    checks.append((convene.load_state(sf).get("settings")
+                   == {"dm_id": 512, "quorum": 4},
+                   "slash-set settings survive the state file"))
+    st3 = {"events": {}, "announced": []}
+    convene.save_state(sf, st3)
+    checks.append(("settings" not in convene.load_state(sf),
+                   "no settings key written when there are none"))
+
     # announce detection over a growing projection corpus
     c1 = ("=== places/sunton.md ===\n# Sunton\n\ntext\n\n"
           "=== campaigns/ls/sessions/session-1.md ===\n# Session 1\n\nr")

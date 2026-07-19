@@ -35,12 +35,21 @@ now in its rightful always-on home.
    and calls `capability.on_corpus_refresh(corpus)` after each
    freshness reload. Nothing changes when convene is absent.
 
-2. Configure via the bot's environment (non-secret):
-   `SESSION_QUORUM` (default 3), `REQUIRE_DM` (default on),
-   `PLAYER_ROLE`, `OWNER_ID`, and a recap target
-   (`RECAP_THREAD_ID` or `ANNOUNCE_CHANNEL_ID`). Convene reuses the
-   bot's `REFRESH_MINUTES` as its poll cadence and its `SITE_URL` for
-   recap links.
+2. Configure two ways, and they compose. The **env baseline** is the
+   durable floor (survives a host redeploy that wipes local state):
+   `OWNER_ID` (the maintainer — gates the commands), `DM_ID` (who
+   counts as the DM for quorum — **explicit, never inferred from who
+   created an event**; defaults to `OWNER_ID` when the maintainer and
+   DM are the same person), `SESSION_QUORUM`, `REQUIRE_DM`,
+   `PLAYER_ROLE`, `SESSION_ROLE_ID`, and a target
+   (`ANNOUNCE_CHANNEL_ID` for reminders, `RECAP_THREAD_ID` for
+   recaps). Then the DM tunes it live with **slash commands** using
+   Discord's native pickers — no IDs to paste: `/session dm @person`,
+   `/session quorum N`, `/session role @Players`, `/session channel
+   #reminders`, `/session recap-channel #recaps`. Slash settings
+   persist and win over env until a redeploy wipes them, then env
+   is the fallback. Convene reuses `REFRESH_MINUTES` for its poll
+   cadence and `SITE_URL` for recap links.
 
 3. Redeploy the bot. On connect convene syncs its `/session`
    commands per guild, snapshots the recaps already in the projection

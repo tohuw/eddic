@@ -123,10 +123,11 @@ def load_state(path):
 
 
 def save_state(path, state):
-    Path(path).write_text(
-        json.dumps({"events": state["events"],
-                    "announced": sorted(state["announced"])}, indent=1),
-        encoding="utf-8")
+    out = {"events": state["events"],
+           "announced": sorted(state["announced"])}
+    if state.get("settings"):
+        out["settings"] = state["settings"]     # slash-set config
+    Path(path).write_text(json.dumps(out, indent=1), encoding="utf-8")
 
 
 def reconcile(state, live_event_ids):
@@ -136,7 +137,6 @@ def reconcile(state, live_event_ids):
 
 
 # ---- discord wiring (only touched at runtime) ----------------------
-
 def setup(client):
     import asyncio
     import time
@@ -147,24 +147,40 @@ def setup(client):
     HERE = Path(__file__).resolve().parent
     STATE_FILE = HERE / os.environ.get("CONVENE_STATE",
                                        "convene_state.json")
-    QUORUM = int(os.environ.get("SESSION_QUORUM", "3"))
-    OWNER_ID = int(os.environ.get("OWNER_ID", "0"))
-    # require the DM only when we can actually recognize them; without
-    # OWNER_ID set, quorum could never be met
-    REQUIRE_DM = os.environ.get("REQUIRE_DM", "1") != "0" and OWNER_ID != 0
-    RECAP_THREAD = int(os.environ.get("RECAP_THREAD_ID", "0"))
-    ANNOUNCE_CHANNEL = int(os.environ.get("ANNOUNCE_CHANNEL_ID", "0"))
-    PLAYER_ROLE = os.environ.get("PLAYER_ROLE", "")
+    OWNER_ID = int(os.environ.get("OWNER_ID", "0"))   # maintainer
     RECORDER = os.environ.get("RECORDER_NUDGE", "1") != "0"
-    SESSION_ROLE = os.environ.get("SESSION_ROLE_ID", "")
-    MESSAGES = load_messages(
-        HERE / os.environ.get("CONVENE_MESSAGES",
-                              "convene_messages.json"))
     SITE_URL = os.environ.get("SITE_URL", "").rstrip("/")
     TICK = int(os.environ.get("REFRESH_MINUTES", "5")) * 60
+    MESSAGES = load_messages(
+        HERE / os.environ.get("CONVENE_MESSAGES", "convene_messages.json"))
 
     tree = app_commands.CommandTree(client)
     state = load_state(STATE_FILE)
+
+    # Config is an env baseline overlaid with slash-set settings. Env is
+    # the durable floor (survives a Railway redeploy that wipes the
+    # state file); the slash setters persist to the state file and win
+    # while it lives. The DM is ALWAYS explicit config here — never
+    # inferred from who created an event.
+    defaults = {
+        "dm_id": int(os.environ.get("DM_ID", str(OWNER_ID))),
+        "quorum": int(os.environ.get("SESSION_QUORUM", "3")),
+        "require_dm": os.environ.get("REQUIRE_DM", "1") != "0",
+        "player_role": os.environ.get("PLAYER_ROLE", ""),
+        "role_id": int(os.environ.get("SESSION_ROLE_ID", "0") or 0),
+        "announce_channel_id": int(os.environ.get(
+            "ANNOUNCE_CHANNEL_ID", "0")),
+        "recap_thread_id": int(os.environ.get("RECAP_THREAD_ID", "0")),
+    }
+    cfg = {**defaults, **state.get("settings", {})}
+
+    def save():
+        state["settings"] = cfg
+        save_state(STATE_FILE, state)
+
+    def may_configure(user_id):
+        allowed = {i for i in (OWNER_ID, cfg["dm_id"]) if i}
+        return not allowed or user_id in allowed
 
     async def _channel(cid):
         if not cid:
@@ -172,33 +188,32 @@ def setup(client):
         return client.get_channel(cid) or await client.fetch_channel(cid)
 
     async def reminder_channel():
-        # momentary nudges (rally, go-ahead, wrap) — the busy channel
-        return await _channel(ANNOUNCE_CHANNEL or RECAP_THREAD)
+        return await _channel(cfg["announce_channel_id"]
+                              or cfg["recap_thread_id"])
 
     async def recap_channel():
-        # permanent recap announcements — the recap thread/channel
-        return await _channel(RECAP_THREAD or ANNOUNCE_CHANNEL)
+        return await _channel(cfg["recap_thread_id"]
+                              or cfg["announce_channel_id"])
 
     async def count_interested(event):
         players, dm_in = 0, False
         users = (event.users() if hasattr(event, "users")
                  else event.fetch_users())
         async for u in users:
-            if OWNER_ID and u.id == OWNER_ID:
+            if cfg["dm_id"] and u.id == cfg["dm_id"]:
                 dm_in = True
                 continue                    # the DM is not a player
             member = event.guild.get_member(u.id)
-            if not PLAYER_ROLE:
+            if not cfg["player_role"]:
                 players += 1
-            elif member and any(r.name == PLAYER_ROLE
+            elif member and any(r.name == cfg["player_role"]
                                 for r in member.roles):
                 players += 1
         return players, dm_in
 
     def status_name(event):
-        # read the status by name — the enum's attribute name differs
-        # across libraries (discord.py EventStatus vs py-cord
-        # ScheduledEventStatus); its members are the same words
+        # read the status by name — the enum's attribute differs across
+        # libraries (discord.py EventStatus vs py-cord ScheduledEventStatus)
         raw = getattr(event.status, "name", str(event.status))
         return "canceled" if raw == "cancelled" else raw
 
@@ -206,6 +221,7 @@ def setup(client):
         now = time.time()
         try:
             chan = await reminder_channel()
+            require_dm = cfg["require_dm"] and cfg["dm_id"] != 0
             live_ids = set()
             for guild in client.guilds:
                 for event in await guild.fetch_scheduled_events():
@@ -217,23 +233,23 @@ def setup(client):
                                "count": count, "dm_in": dm_in,
                                "status": status_name(event),
                                "fired": rec["fired"]}
-                    ping = (f"<@&{SESSION_ROLE}> " if SESSION_ROLE
+                    ping = (f"<@&{cfg['role_id']}> " if cfg["role_id"]
                             else "")
-                    for key in evaluate(session, now, QUORUM,
-                                        require_dm=REQUIRE_DM):
+                    for key in evaluate(session, now, cfg["quorum"],
+                                        require_dm=require_dm):
                         if chan:
-                            await chan.send(allowed_mentions=discord.
-                                AllowedMentions(roles=True, users=True),
+                            await chan.send(
+                                allowed_mentions=discord.AllowedMentions(
+                                    roles=True, users=True),
                                 content=render(
-                                key, title=event.name, ping=ping,
-                                when=discord.utils.format_dt(
-                                    event.start_time, "F"),
-                                start=session["start"], now=now,
-                                count=count, quorum=QUORUM,
-                                dm_mention=(f" <@{OWNER_ID}>"
-                                            if OWNER_ID else ""),
-                                recorder=RECORDER,
-                                templates=MESSAGES))
+                                    key, title=event.name, ping=ping,
+                                    when=discord.utils.format_dt(
+                                        event.start_time, "F"),
+                                    start=session["start"], now=now,
+                                    count=count, quorum=cfg["quorum"],
+                                    dm_mention=(f" <@{cfg['dm_id']}>"
+                                                if cfg["dm_id"] else ""),
+                                    recorder=RECORDER, templates=MESSAGES))
                         rec["fired"].append(key)
             state["events"] = reconcile(state, live_ids)
             save_state(STATE_FILE, state)
@@ -248,28 +264,76 @@ def setup(client):
     grp = app_commands.Group(name="session",
                              description="Session scheduling (DM)")
 
-    @grp.command(name="quorum",
-                 description="How many are needed for a session to run")
-    async def quorum_cmd(inter, players: int):
-        nonlocal QUORUM
-        if OWNER_ID and inter.user.id != OWNER_ID:
-            await inter.response.send_message("DM only.", ephemeral=True)
-            return
-        QUORUM = players
-        await inter.response.send_message(f"Quorum set to {players}.",
+    async def _gate(inter):
+        if may_configure(inter.user.id):
+            return True
+        await inter.response.send_message("The DM runs this one.",
                                           ephemeral=True)
+        return False
 
-    @grp.command(name="status", description="Sessions and who is in")
+    @grp.command(name="dm", description="Set who counts as the DM for "
+                 "quorum (explicit — never guessed)")
+    async def dm_cmd(inter, member: discord.Member):
+        if not await _gate(inter):
+            return
+        cfg["dm_id"] = member.id
+        save()
+        await inter.response.send_message(
+            f"DM set to {member.mention}.", ephemeral=True)
+
+    @grp.command(name="quorum",
+                 description="Players needed (besides the DM)")
+    async def quorum_cmd(inter, players: int):
+        if not await _gate(inter):
+            return
+        cfg["quorum"] = players
+        save()
+        await inter.response.send_message(
+            f"Quorum set to {players} player(s) plus the DM.",
+            ephemeral=True)
+
+    @grp.command(name="role", description="Role to ping about sessions")
+    async def role_cmd(inter, role: discord.Role):
+        if not await _gate(inter):
+            return
+        cfg["role_id"] = role.id
+        save()
+        await inter.response.send_message(
+            f"Sessions will ping {role.mention}.", ephemeral=True)
+
+    @grp.command(name="channel",
+                 description="Channel for session reminders")
+    async def channel_cmd(inter, channel: discord.TextChannel):
+        if not await _gate(inter):
+            return
+        cfg["announce_channel_id"] = channel.id
+        save()
+        await inter.response.send_message(
+            f"Reminders will post in {channel.mention}.", ephemeral=True)
+
+    @grp.command(name="recap-channel",
+                 description="Channel/thread for recap announcements")
+    async def recap_cmd(inter, channel: discord.TextChannel):
+        if not await _gate(inter):
+            return
+        cfg["recap_thread_id"] = channel.id
+        save()
+        await inter.response.send_message(
+            f"Recaps will announce in {channel.mention}.", ephemeral=True)
+
+    @grp.command(name="status", description="Sessions, quorum, and config")
     async def status_cmd(inter, debug: bool = False):
-        # defer first: fetching events and attendees can exceed the
-        # 3-second interaction deadline ("app did not respond")
         await inter.response.defer(ephemeral=True)
-        lines = []
+        dm = f"<@{cfg['dm_id']}>" if cfg["dm_id"] else "unset"
+        role = f"<@&{cfg['role_id']}>" if cfg["role_id"] else "none"
+        lines = [f"DM: {dm} · quorum: {cfg['quorum']} player(s)"
+                 f"{' + DM required' if cfg['require_dm'] else ''}"
+                 f" · ping: {role}"]
         for guild in client.guilds:
             for event in await guild.fetch_scheduled_events():
                 count, dm_in = await count_interested(event)
                 lines.append(
-                    f"**{event.name}** — {count}/{QUORUM} in"
+                    f"**{event.name}** — {count}/{cfg['quorum']} in"
                     f"{' (DM in)' if dm_in else ''}")
                 if debug:
                     users = (event.users() if hasattr(event, "users")
@@ -277,18 +341,14 @@ def setup(client):
                     ids = [f"{u.id} ({u.display_name})"
                            async for u in users]
                     lines.append(
-                        f"  configured OWNER_ID (DM): `{OWNER_ID}`\n"
-                        f"  interested user id(s): "
-                        f"{', '.join(ids) or 'none'}\n"
-                        f"  you: `{inter.user.id}` ({inter.user})")
-        await inter.followup.send(
-            "\n".join(lines) or "no sessions on the calendar.",
-            ephemeral=True)
+                        f"  DM_ID `{cfg['dm_id']}`; interested: "
+                        f"{', '.join(ids) or 'none'}; "
+                        f"you `{inter.user.id}`")
+        await inter.followup.send("\n".join(lines), ephemeral=True)
 
     tree.add_command(grp)
 
     async def announce_new_recaps(corpus):
-        """Called by bot.py after a freshness reload."""
         new = botlib.new_session_pages(corpus, set(state["announced"]))
         if not new:
             return
@@ -305,16 +365,13 @@ def setup(client):
 
     class Capability:
         async def ready(self, corpus=""):
-            # snapshot existing recaps as already-announced, so a
-            # restart never re-announces the back catalogue
             for p in botlib.page_paths(corpus):
                 if "sessions/" in p and p not in state["announced"]:
                     state["announced"].append(p)
             live_ids = set()
             for guild in client.guilds:
-                # copy the (global) commands into the guild first, or
-                # the guild sync registers an empty set and nothing
-                # appears until global propagation (up to an hour)
+                # copy globals into the guild first, or the guild sync
+                # registers an empty set and nothing appears
                 tree.copy_global_to(guild=guild)
                 await tree.sync(guild=guild)
                 for event in await guild.fetch_scheduled_events():
@@ -322,8 +379,8 @@ def setup(client):
             state["events"] = reconcile(state, live_ids)
             save_state(STATE_FILE, state)
             client.loop.create_task(tick_loop())
-            print(f"convene ready: quorum {QUORUM}, "
-                  f"{len(state['announced'])} recap(s) known")
+            print(f"convene ready: DM {cfg['dm_id']}, quorum "
+                  f"{cfg['quorum']}, {len(state['announced'])} recap(s)")
 
         async def on_corpus_refresh(self, corpus):
             await announce_new_recaps(corpus)
