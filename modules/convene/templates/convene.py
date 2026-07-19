@@ -193,7 +193,9 @@ def setup(client):
                     for key in evaluate(session, now, QUORUM,
                                         require_dm=REQUIRE_DM):
                         if chan:
-                            await chan.send(render(
+                            await chan.send(allowed_mentions=discord.
+                                AllowedMentions(roles=True, users=True),
+                                content=render(
                                 key, title=event.name, ping=ping,
                                 when=discord.utils.format_dt(
                                     event.start_time, "F"),
