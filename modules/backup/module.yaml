@@ -1,0 +1,47 @@
+name: backup
+version: 0.1.0
+summary: >
+  Tier-2 blob backup: large binary assets (session audio) live in object
+  storage (Cloudflare R2 by default, any S3/B2 via rclone), gitignored,
+  never in history — the repo tracks only a path/size/sha256 inventory
+  (.eddic/assets.json). Two thin git hooks over a Python worker make it
+  hands-off: pre-commit refreshes the inventory, pre-push rclone-syncs the
+  blob dirs and warns-and-continues so a text push never blocks.
+touches:
+  - .githooks/
+  - .eddic/assets.json
+  - .eddic/lib/backup/
+depends:
+  - cli
+cost_posture:
+  free: >
+    Cloudflare R2's free tier (10 GB-month storage, zero egress) holds a
+    table's session-audio archive with room to spare; rclone is free and
+    open-source; git hooks cost nothing. The whole tier-2 path runs on the
+    free rung.
+  paid: >
+    Only if the blob archive outgrows the free tier — many FLAC sessions,
+    long retention. R2 bills storage past 10 GB-month cheaply and keeps
+    egress free; any S3/B2 remote is a drop-in via rclone. A retention
+    window on the bucket bounds growth before it bites.
+  heuristic: >
+    Stay free: keep blobs to Opus-scale audio and set a bucket retention
+    window; reach for paid storage only when a real archive demands it.
+compatibility:
+  cloudflare-r2:
+    role: object storage
+    status: verified
+    date: 2026-07-19
+    evidence: >
+      generalized from a live campaign's working .githooks setup —
+      pre-push rclone-syncs the blob dirs to an R2 bucket on every push,
+      the tracked .eddic/assets.json inventory carries path/size/sha256,
+      and restore round-trips against those hashes
+  rclone:
+    role: sync transport
+    status: verified
+    date: 2026-07-19
+    evidence: >
+      same live setup: an rclone s3 remote (provider=Cloudflare) syncs
+      blob_dirs on push; the worker's warn-and-continue on absent
+      rclone/remote is golden-tested in verify/run.py

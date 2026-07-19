@@ -112,6 +112,12 @@ file injected after the cache breakpoint, never in the corpus.
   know who plays whom, `PLAYERS_FILE` holds it (privacy profile:
   `wiki/reference/data-controls.md`) — real names never
   enter the corpus, the repo, or the wiki.
+- **Native launcher.** Default: when the bot runs locally (see
+  *Where it runs*), package it as a double-clickable launcher via
+  the launcher module (a macOS `.app`, a Windows `.cmd`) so the
+  owner starts it without a terminal. It wraps this service's own
+  run verb, so the launched command never drifts; a worker-hosted
+  bot has no local process to launch and needs none.
 
 ## Verify
 

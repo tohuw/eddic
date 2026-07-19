@@ -1,0 +1,11 @@
+#!/bin/sh
+# Eddic tier-2 backup: sync the blob dirs to object storage before pushing.
+# Thin POSIX-sh shim — all logic is in the Python worker, which warns and
+# continues if rclone or the remote is absent so a text push is never
+# blocked. One-time object-store setup: the backup README.
+root=$(git rev-parse --show-toplevel) || exit 0
+worker="$root/.eddic/lib/backup/backup_sync.py"
+[ -f "$worker" ] || exit 0
+py=$(command -v python3 || command -v python) || exit 0
+"$py" "$worker" --root "$root" || exit 0
+exit 0

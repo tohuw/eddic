@@ -28,6 +28,8 @@ companion layer on once the campaign is live.
 | [discord-setup](discord-setup.md) | the server's standing spec: REST reconcile, lint-style drift, additive-only apply | 0.1.0 |
 | [convene](convene.md) | session lifecycle on native scheduled events: quorum, lifecycle nudges, recap announce, prep ask | 0.2.0 |
 | [recorder](recorder.md) | the campaign's own recording bot: react-gated per-mic consent, DAVE receive via davey + pinned patches | 0.1.0 |
+| [backup](backup.md) | tier-2 blob backup: session audio in object storage (R2 default) via rclone, gitignored, tracked by a path/size/sha256 inventory; two hooks over one worker, text push never blocks | 0.1.0 |
+| [launcher](launcher.md) | native double-clickable launcher for a local service (macOS `.app`, Windows `.cmd`) wrapping the campaign's run verb | 0.1.0 |
 
 For the design tenets these modules answer to, see [principles](../design/principles.md);
 for the concepts they build on, see [concepts](../concepts/index.md); for what

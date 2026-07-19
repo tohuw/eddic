@@ -99,6 +99,12 @@ retire. Pin the versions as written below.
 - **When it runs.** Default: launched for the session, stopped
   after. It is not a resident service; nothing needs it between
   sessions.
+- **Native launcher.** Default: package the bot as a
+  double-clickable launcher via the launcher module (a macOS
+  `.app`, a Windows `.cmd`) so the DM starts a session without
+  opening a terminal. It wraps this service's own run verb, so the
+  recorded command never drifts; skip it only for a DM who prefers
+  `uv run` by hand.
 
 ## Verify
 

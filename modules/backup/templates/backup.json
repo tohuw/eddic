@@ -1,0 +1,8 @@
+{
+ "provider": "cloudflare-r2",
+ "rclone_remote": "r2",
+ "bucket": "{{BUCKET}}",
+ "endpoint": "https://{{ACCOUNT_ID}}.r2.cloudflarestorage.com",
+ "blob_dirs": ["sessions/raw"],
+ "note": "Tier-2 blobs (large binary assets: session audio) live in object storage, not git. The pre-push hook rclone-syncs each blob_dir to <bucket>/<dir> on every push; the pre-commit hook refreshes .eddic/assets.json (the tracked path/size/sha256 inventory). One-time rclone remote setup: see the backup README. Any S3/B2 provider works — set provider, rclone_remote, bucket, and endpoint to match."
+}
