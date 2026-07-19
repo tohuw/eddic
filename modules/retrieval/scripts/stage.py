@@ -69,6 +69,17 @@ COMPANION_STYLE = (
     "#copy-link:hover { background: var(--glow, #b07d3a); }\n"
     "#copy-link.copied { background: var(--faint, #857d6d); }\n"
     ".copy-hint { font-size: 0.6em; color: var(--faint, #857d6d); }\n"
+    ".copy-wrap { position: relative; }\n"
+    ".copy-wrap > .companion-pre, .copy-wrap > .persona { margin: 0; "
+    "padding-right: 3.2rem; }\n"
+    ".copy-icon { position: absolute; top: 0.5rem; right: 0.5rem; "
+    "display: inline-flex; align-items: center; justify-content: center; "
+    "width: 2rem; height: 2rem; padding: 0; cursor: pointer; "
+    "color: var(--paper, #fff); background: var(--accent, #8a5a24); "
+    "border: 0; border-radius: 6px; line-height: 0; }\n"
+    ".copy-icon:hover { background: var(--glow, #b07d3a); }\n"
+    ".copy-icon.copied { background: var(--faint, #857d6d); }\n"
+    ".copy-icon svg { width: 1.05rem; height: 1.05rem; display: block; }\n"
     "</style>\n")
 
 # A prominent copy-to-clipboard button that copies THIS page's own live
@@ -97,6 +108,53 @@ COMPANION_COPY = (
     "navigator.clipboard.writeText(u).then(flash,function(){"
     "fallback(u);flash();});}else{fallback(u);flash();}});})();\n"
     "</script>\n")
+
+# The stacked-pages "copy code" glyph, inline so the strict artifact-
+# style CSP a served page runs under never blocks an external asset.
+COPY_SVG = (
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+    'aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2">'
+    '</rect><path d="M5 15V5a2 2 0 0 1 2-2h8"></path></svg>')
+
+# Delegated handler for the inline copy-icon buttons on the two
+# copyable blocks (persona, connection URL). Copies the associated
+# block's textContent — the exact string, no markup — with an
+# execCommand fallback, and flips the icon to a check for ~2s.
+COMPANION_ICON_JS = (
+    "<script>\n"
+    "(function(){var CHECK='<svg viewBox=\"0 0 24 24\" fill=\"none\" "
+    "stroke=\"currentColor\" stroke-width=\"2.5\" stroke-linecap=\"round\" "
+    "stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M20 6 9 17l"
+    "-5-5\"></path></svg>';"
+    "function fb(x){var t=document.createElement('textarea');t.value=x;"
+    "t.setAttribute('readonly','');t.style.position='absolute';"
+    "t.style.left='-9999px';document.body.appendChild(t);t.select();"
+    "try{document.execCommand('copy');}catch(e){}"
+    "document.body.removeChild(t);}"
+    "document.addEventListener('click',function(e){"
+    "var btn=e.target.closest&&e.target.closest('.copy-icon');if(!btn)return;"
+    "var blk=btn.parentElement.querySelector('.persona,.companion-pre');"
+    "if(!blk)return;var txt=blk.textContent.replace(/\\s+$/,'');"
+    "var orig=btn.innerHTML;"
+    "function done(){btn.classList.add('copied');btn.innerHTML=CHECK;"
+    "setTimeout(function(){btn.classList.remove('copied');"
+    "btn.innerHTML=orig;},2000);}"
+    "if(navigator.clipboard&&navigator.clipboard.writeText){"
+    "navigator.clipboard.writeText(txt).then(done,function(){"
+    "fb(txt);done();});}else{fb(txt);done();}});})();\n"
+    "</script>\n")
+
+
+def copy_block(inner, label):
+    """Wrap a copyable block (a <pre>) in a positioned container with an
+    inline copy-icon button. The button copies the block's own
+    textContent at click time, so the wired target is exactly the
+    block's text — including the runtime-filled MCP URL — never markup."""
+    return ('<div class="copy-wrap">' + inner
+            + '<button class="copy-icon" type="button" aria-label="'
+            + label + '" title="' + label + '">' + COPY_SVG
+            + "</button></div>")
 
 
 def split_frontmatter(text):
@@ -210,14 +268,24 @@ def companion_html(kit_md, persona_md, site, shell):
         persona = persona_md.replace("{{SITE_NAME}}", site).strip()
         block = ('<pre class="persona">'
                  + _html.escape(persona, quote=False) + "</pre>")
-        body = body.replace("<p>{{PLAYER_COMPANION}}</p>", block)
-    # The copy button is the whole primary instruction — put it right
-    # under the first heading, prominent near the very top.
+        body = body.replace("<p>{{PLAYER_COMPANION}}</p>",
+                            copy_block(block, "Copy the personality text"))
+    # The manual-path connection URL block (rendered from the kit's
+    # indented {{PLAYER_MCP_URL}} code block) gets its own copy icon; the
+    # worker fills the sentinel per request, so the icon copies the real
+    # /<token>/mcp URL at click time.
+    mcp_pre = ('<pre class="companion-pre"><code>{{PLAYER_MCP_URL}}'
+               "</code></pre>")
+    if mcp_pre in body:
+        body = body.replace(
+            mcp_pre, copy_block(mcp_pre, "Copy the connection link"), 1)
+    # The primary Copy-my-link button is the whole main instruction —
+    # put it right under the first heading, prominent near the very top.
     if "</h1>" in body:
         body = body.replace("</h1>", "</h1>\n" + COMPANION_COPY, 1)
     else:
         body = COMPANION_COPY + body
-    body = COMPANION_STYLE + body
+    body = COMPANION_STYLE + body + COMPANION_ICON_JS
     return (shell.replace("{{TITLE}}", "Your companion")
                  .replace("{{SITE_NAME}}", site)
                  .replace("{{BODY}}", body))
