@@ -136,17 +136,25 @@ def setup(client):
     tree = app_commands.CommandTree(client)
     state = load_state(STATE_FILE)
 
-    async def target_channel():
-        cid = RECAP_THREAD or ANNOUNCE_CHANNEL
+    async def _channel(cid):
         if not cid:
             return None
         return client.get_channel(cid) or await client.fetch_channel(cid)
+
+    async def reminder_channel():
+        # momentary nudges (rally, go-ahead, wrap) — the busy channel
+        return await _channel(ANNOUNCE_CHANNEL or RECAP_THREAD)
+
+    async def recap_channel():
+        # permanent recap announcements — the recap thread/channel
+        return await _channel(RECAP_THREAD or ANNOUNCE_CHANNEL)
 
     async def count_interested(event):
         players, dm_in = 0, False
         async for u in event.users():
             if OWNER_ID and u.id == OWNER_ID:
                 dm_in = True
+                continue                    # the DM is not a player
             member = event.guild.get_member(u.id)
             if not PLAYER_ROLE:
                 players += 1
@@ -165,7 +173,7 @@ def setup(client):
     async def tick():
         now = time.time()
         try:
-            chan = await target_channel()
+            chan = await reminder_channel()
             live_ids = set()
             for guild in client.guilds:
                 for event in await guild.fetch_scheduled_events():
@@ -235,7 +243,7 @@ def setup(client):
         new = botlib.new_session_pages(corpus, set(state["announced"]))
         if not new:
             return
-        chan = await target_channel()
+        chan = await recap_channel()
         for path in new:
             title = botlib.page_title(corpus, path)
             url = (f"{SITE_URL}/{path.removesuffix('.md')}"
