@@ -18,7 +18,7 @@ companion layer on once the campaign is live.
 | [render](render.md) | purpose-built md→html renderer with a self-contained template, real 404, and served `static/` branding | 0.2.1 |
 | [publish](publish.md) | Cloudflare Pages deploy behind the lint→project→build safety pipeline | 0.1.0 |
 | [retrieval](retrieval.md) | unified-host Worker: player site at /, MCP + Actions REST facade behind two bearer tokens (DM tier = master, player tier = projection) | 0.4.2 |
-| [lore-bot](lore-bot.md) | Discord lore-keeper over the projection, self-refreshing corpus, Anthropic/OpenAI providers, capability seam | 0.3.0 |
+|  0.3.1 |
 | [transcriber](transcriber.md) | local whisper.cpp session transcription, per-speaker merge | 0.1.0 |
 | [contribs](contribs.md) | the transaction arc: overlays, hash-pinned consent, derivation-graph rights, the sale-build fence | 0.1.0 |
 | [companion](companion.md) | at-the-table companions under the knowledge-parity doctrine; backstory interviewer with collaborator facet | 0.1.1 |

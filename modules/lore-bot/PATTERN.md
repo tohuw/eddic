@@ -74,7 +74,11 @@ file injected after the cache breakpoint, never in the corpus.
    own. Tell the owner plainly: **the bot's character is theirs to
    change by just telling you what they want.** "Make it talk like
    a goblin" is a complete instruction — write the voice yourself;
-   that is your craft, not a template's. Whatever the character,
+   that is your craft, not a template's. Describe the *quality* of the
+   voice, not a specific move: a persona that names one flourish ("a
+   well-placed 'ah'") gets it pattern-matched into a tic — the model
+   opens every single reply with it. Ask for the register (theatrical,
+   curt, wry) and let the wording vary. Whatever the character,
    the hard rules stay (corpus-only, real citations, no invention,
    no future-speculation, length caps) — personality rides on top
    of them, never instead of them — and log persona changes as
