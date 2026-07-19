@@ -29,12 +29,12 @@ CREATED, AT_RISK, IMMINENT, ENDED = (
     "created", "at_risk", "imminent", "ended")
 
 REMINDERS = {
-    CREATED:  "A session is on the calendar: **{title}**, {when}. "
+    CREATED:  "{ping}A session is on the calendar: **{title}**, {when}. "
               "React *interested* on the event so we can call quorum.",
     AT_RISK:  "Heads up{dm_mention} — **{title}** is {hours}h out and "
               "only {count} of {quorum} are in. Rally the table, or "
               "pick a new night while there's time.",
-    IMMINENT: "**{title}** is on tonight — quorum met ({count}/"
+    IMMINENT: "{ping}**{title}** is on tonight — quorum met ({count}/"
               "{quorum}). {recorder_line}See you at the table.",
     ENDED:    "That's a wrap on **{title}**. When you get a moment: "
               "stage the recording and transcribe it, and the recap "
@@ -77,13 +77,13 @@ def evaluate(session, now, quorum, require_dm=True,
 
 
 def render(key, *, title, when="", start=None, now=None, count=0,
-           quorum=0, dm_mention="", recorder=True):
+           quorum=0, dm_mention="", recorder=True, ping=""):
     hours = int(round((start - now) / 3600.0)) if start and now else 0
     recorder_line = ("Bring the recorder into the voice channel. "
                      if recorder else "")
     return REMINDERS[key].format(
         title=title, when=when, hours=hours, count=count, quorum=quorum,
-        dm_mention=dm_mention, recorder_line=recorder_line)
+        dm_mention=dm_mention, recorder_line=recorder_line, ping=ping)
 
 
 def load_state(path):
@@ -130,6 +130,7 @@ def setup(client):
     ANNOUNCE_CHANNEL = int(os.environ.get("ANNOUNCE_CHANNEL_ID", "0"))
     PLAYER_ROLE = os.environ.get("PLAYER_ROLE", "")
     RECORDER = os.environ.get("RECORDER_NUDGE", "1") != "0"
+    SESSION_ROLE = os.environ.get("SESSION_ROLE_ID", "")
     SITE_URL = os.environ.get("SITE_URL", "").rstrip("/")
     TICK = int(os.environ.get("REFRESH_MINUTES", "5")) * 60
 
@@ -187,11 +188,13 @@ def setup(client):
                                "count": count, "dm_in": dm_in,
                                "status": status_name(event),
                                "fired": rec["fired"]}
+                    ping = (f"<@&{SESSION_ROLE}> " if SESSION_ROLE
+                            else "")
                     for key in evaluate(session, now, QUORUM,
                                         require_dm=REQUIRE_DM):
                         if chan:
                             await chan.send(render(
-                                key, title=event.name,
+                                key, title=event.name, ping=ping,
                                 when=discord.utils.format_dt(
                                     event.start_time, "F"),
                                 start=session["start"], now=now,
