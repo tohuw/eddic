@@ -33,7 +33,13 @@ retire. Pin the versions as written below.
   Messages, Read Message History, Add Reactions, **Connect**, and
   **Speak** (only for the transparency chime it plays at record
   start) plus **Set Voice Channel Status** — integer
-  `281477127408704`.
+  `281477127408704`. Build the invite URL yourself with BOTH scopes:
+  Discord's default install link omits the `bot` scope, and the
+  resulting "Success! authorized and added" dialog is
+  indistinguishable from a real invite while adding only slash
+  commands — the bot never joins the member list, and it sees zero
+  guilds. If the bot is "authorized" but absent, this is why;
+  re-invite with `scope=bot%20applications.commands`.
 - uv on the DM's machine; the bot runs at session time only.
 
 ## Procedure
