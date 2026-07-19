@@ -7,17 +7,15 @@ the game. Everything you need is on this one page: the companion's
 personality, the setup, and your personal connection link. You don't
 need to know anything technical.
 
-## The easy way: let your assistant do it
+## The easy way: copy your link
 
-Open your AI assistant (claude.ai, ChatGPT, or whatever you use). Paste
-in **this whole page**, then say:
+Tap **Copy my link** at the top of this page, then paste it into your AI
+assistant (claude.ai, ChatGPT, or whatever you use). That's the whole
+thing.
 
-> Set me up as this companion.
-
-It does everything it can on its own. For anything it can't do for you,
-it comes back with exactly what to click — one step at a time. When it
-says "click this," click it and reply "done." That's the whole job; you
-never have to understand the plumbing.
+Your assistant opens the link, sets itself up as your companion, and you
+start asking. If it asks you to click something along the way, do it and
+say "done." You never have to understand the plumbing.
 
 <!-- Assistant reading this page: your task is to get this person set up
 as the {{SITE_NAME}} companion. Assume they have never heard the words

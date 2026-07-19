@@ -60,7 +60,43 @@ COMPANION_STYLE = (
     "padding: 0.9rem 1.1rem; font-size: 0.62em; line-height: 1.5; "
     "font-family: ui-monospace, monospace; }\n"
     ".persona { font-family: inherit; font-size: 0.66em; }\n"
+    ".copy-cta { margin: 1.3rem 0 2rem; display: flex; flex-wrap: wrap; "
+    "align-items: center; gap: 0.6rem 0.9rem; }\n"
+    "#copy-link { cursor: pointer; font: inherit; font-size: 0.74em; "
+    "font-weight: 600; padding: 0.75rem 1.5rem; color: var(--paper, #fff); "
+    "background: var(--accent, #8a5a24); border: 0; border-radius: 7px; "
+    "letter-spacing: 0.02em; }\n"
+    "#copy-link:hover { background: var(--glow, #b07d3a); }\n"
+    "#copy-link.copied { background: var(--faint, #857d6d); }\n"
+    ".copy-hint { font-size: 0.6em; color: var(--faint, #857d6d); }\n"
     "</style>\n")
+
+# A prominent copy-to-clipboard button that copies THIS page's own live
+# URL (window.location.href — the /<token>/companion capability URL,
+# token already in the path). The whole player instruction: copy, paste
+# into your assistant. Inline JS; the worker sets its own headers (no
+# CSP), so this runs. clipboard API with an execCommand fallback.
+COMPANION_COPY = (
+    '<div class="copy-cta">\n'
+    '<button id="copy-link" type="button">Copy my link</button>\n'
+    '<span class="copy-hint">then paste it into your AI assistant</span>\n'
+    "</div>\n"
+    "<script>\n"
+    "(function(){var b=document.getElementById('copy-link');if(!b)return;"
+    "var label=b.textContent;"
+    "function flash(){b.textContent='Copied!';b.classList.add('copied');"
+    "setTimeout(function(){b.textContent=label;"
+    "b.classList.remove('copied');},2000);}"
+    "function fallback(u){var t=document.createElement('textarea');"
+    "t.value=u;t.setAttribute('readonly','');t.style.position='absolute';"
+    "t.style.left='-9999px';document.body.appendChild(t);t.select();"
+    "try{document.execCommand('copy');}catch(e){}"
+    "document.body.removeChild(t);}"
+    "b.addEventListener('click',function(){var u=window.location.href;"
+    "if(navigator.clipboard&&navigator.clipboard.writeText){"
+    "navigator.clipboard.writeText(u).then(flash,function(){"
+    "fallback(u);flash();});}else{fallback(u);flash();}});})();\n"
+    "</script>\n")
 
 
 def split_frontmatter(text):
@@ -175,6 +211,12 @@ def companion_html(kit_md, persona_md, site, shell):
         block = ('<pre class="persona">'
                  + _html.escape(persona, quote=False) + "</pre>")
         body = body.replace("<p>{{PLAYER_COMPANION}}</p>", block)
+    # The copy button is the whole primary instruction — put it right
+    # under the first heading, prominent near the very top.
+    if "</h1>" in body:
+        body = body.replace("</h1>", "</h1>\n" + COMPANION_COPY, 1)
+    else:
+        body = COMPANION_COPY + body
     body = COMPANION_STYLE + body
     return (shell.replace("{{TITLE}}", "Your companion")
                  .replace("{{SITE_NAME}}", site)
