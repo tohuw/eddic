@@ -27,26 +27,27 @@ rclone; only the remote's `provider`/`endpoint` differ.
    **R2 -> Manage R2 API Tokens -> Create** with **Object Read & Write**
    scoped to that bucket. Copy the Access Key ID and Secret Access Key.
    Note your account's S3 endpoint (`https://<account_id>.r2.cloudflarestorage.com`).
-3. Create the rclone remote (name it to match `rclone_remote` in
-   `.eddic/backup.json` — `r2` by default):
+3. Fill `bucket` and `endpoint` in `.eddic/backup.json` (the values from
+   step 2). Leave `rclone_remote` as `r2` unless you prefer another name.
+4. Run the guided setup — it asks for the two keys (the secret is hidden as
+   you type) and creates the rclone remote for you:
 
    ```
-   rclone config create r2 s3 \
-     provider=Cloudflare \
-     endpoint=https://<ACCOUNT_ID>.r2.cloudflarestorage.com \
-     access_key_id=<ACCESS_KEY_ID> \
-     secret_access_key=<SECRET_ACCESS_KEY> \
-     acl=private
+   uv run .eddic/lib/backup/backup_setup.py
    ```
 
-4. Fill `bucket` and `endpoint` in `.eddic/backup.json`.
+   No hand-editing of config files: the script reads `rclone_remote`,
+   `bucket`, and `endpoint` from `.eddic/backup.json`, prompts for the
+   Access Key ID and Secret Access Key, and runs `rclone config create`.
+   If rclone isn't installed it tells you how to install it and stops. Your
+   typed secret is never printed back.
 
 That's it — `git push` now backs up the blob dirs. The first push does the
 initial upload.
 
 Credentials live only in rclone's own config, never in the repo, a URL, or
 a chat transcript. If a key is ever exposed, revoke it in the provider
-console, mint a fresh one, and re-run the `rclone config create` above.
+console, mint a fresh one, and re-run `backup_setup.py`.
 
 ## On a fresh clone
 

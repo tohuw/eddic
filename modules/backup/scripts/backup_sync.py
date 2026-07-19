@@ -87,7 +87,8 @@ def main():
             continue
         dst = f"{remote}:{bucket}/{d}"
         cmd = ["rclone", "sync", str(src), dst,
-               "--transfers", "4", "--s3-no-check-bucket"]
+               "--transfers", "4", "--s3-no-check-bucket",
+               "--exclude", ".DS_Store"]
         if args.dry_run:
             print(" ".join(cmd))
             continue

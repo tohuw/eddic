@@ -31,9 +31,10 @@ bucket — must never block a tier-1 push.
 1. Vendor the deterministic core and stamp the config:
 
        mkdir -p <campaign>/.eddic/lib/backup
-       cp scripts/assets.py       <campaign>/.eddic/lib/backup/assets.py
-       cp scripts/backup_sync.py  <campaign>/.eddic/lib/backup/backup_sync.py
-       cp templates/backup.json   <campaign>/.eddic/backup.json
+       cp scripts/assets.py         <campaign>/.eddic/lib/backup/assets.py
+       cp scripts/backup_sync.py    <campaign>/.eddic/lib/backup/backup_sync.py
+       cp templates/backup_setup.py <campaign>/.eddic/lib/backup/backup_setup.py
+       cp templates/backup.json     <campaign>/.eddic/backup.json
        uv run <campaign>/.eddic/eddic.py manifest record \
            --module backup --version 0.1.0 \
            --verbs backup-inventory,backup-sync
@@ -63,12 +64,23 @@ bucket — must never block a tier-1 push.
    setup.
 
 4. Walk the one-time object-store setup from `templates/README.md`: create
-   the private bucket, mint a bucket-scoped read-write token, and
-   `rclone config create` the remote whose name matches `rclone_remote`.
-   Credentials live only in rclone's own config — never in the repo, a
-   URL, or a chat transcript; an exposed key is revoked-and-reminted, not
-   patched. On exposure, follow the same doctrine the retrieval and
-   recorder patterns use for their tokens.
+   the private bucket, mint a bucket-scoped read-write token, and fill
+   `bucket` and `endpoint` in `.eddic/backup.json`. Then hand the owner one
+   guided command — no hand-editing of config files, no `printf` into a
+   secrets file:
+
+       uv run <campaign>/.eddic/lib/backup/backup_setup.py
+
+   `backup_setup.py` reads `rclone_remote`/`bucket`/`endpoint` from
+   `.eddic/backup.json`, prompts for the Access Key ID and Secret Access
+   Key (the secret hidden on a TTY, read as a piped line otherwise so it is
+   scriptable and never hangs on Windows), and runs `rclone config create`
+   for you. It fails gracefully with an install hint if rclone is absent
+   and never echoes the secret. Credentials live only in rclone's own
+   config — never in the repo, a URL, or a chat transcript; an exposed key
+   is revoked-and-reminted (re-run the setup), not patched. On exposure,
+   follow the same doctrine the retrieval and recorder patterns use for
+   their tokens.
 
 5. Confirm the loop end to end (see Verify), then hand off. The first
    push does the initial upload; thereafter every commit refreshes the
@@ -109,7 +121,10 @@ bucket — must never block a tier-1 push.
   safe no-op that warns-and-continues when rclone is absent (the text-push
   guarantee) and when the repo isn't backup-configured; and
   `backup_sync.py --dry-run` composes the correct `remote:bucket/dir` sync
-  command from config with no rclone and no network.
+  command from config (excluding `.DS_Store`) with no rclone and no network;
+  and `backup_setup.py`'s pure `build_rclone_argv` composes the correct
+  `rclone config create` argv from a sample config and sample keys (no
+  rclone, no network, no prompt).
 - Live, after the object-store setup: drop a small file into a blob dir,
   `git commit`, and confirm `.eddic/assets.json` gained the entry (path,
   size, sha256) and was staged. Then `git push` and watch the pre-push

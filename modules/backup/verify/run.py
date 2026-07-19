@@ -11,10 +11,15 @@ dep-free, no network:
     absent (a text push must never block) and when the repo isn't
     backup-configured;
   - backup_sync.py --dry-run composes the correct rclone sync command
-    (remote:bucket/dir) from config, no rclone and no network needed.
+    (remote:bucket/dir, excluding .DS_Store) from config, no rclone and no
+    network needed;
+  - backup_setup.py's pure build_rclone_argv composes the correct
+    `rclone config create` argv from a sample config and sample keys, no
+    rclone, no network, no prompt.
 
 Exit 0 on success, nonzero on any failure."""
 import hashlib
+import importlib.util
 import json
 import os
 import subprocess
@@ -25,6 +30,14 @@ from pathlib import Path
 MOD = Path(__file__).resolve().parent.parent
 ASSETS = MOD / "scripts" / "assets.py"
 SYNC = MOD / "scripts" / "backup_sync.py"
+SETUP = MOD / "templates" / "backup_setup.py"
+
+
+def load_module(path, name):
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def run(script, *args, env=None):
@@ -103,6 +116,31 @@ def main():
                    f"(got {p.stdout.strip()[:160]})"))
     checks.append(("rclone sync" in p.stdout,
                    "dry-run emits an rclone sync command"))
+    checks.append(("--exclude .DS_Store" in p.stdout,
+                   f"dry-run excludes .DS_Store from the sync "
+                   f"(got {p.stdout.strip()[:160]})"))
+
+    # --- backup_setup.py: build_rclone_argv golden (pure, no rclone) ---
+    setup = load_module(SETUP, "backup_setup")
+    sample_cfg = {
+        "provider": "cloudflare-r2",
+        "rclone_remote": "r2",
+        "bucket": "warden-sunken-city",
+        "endpoint": "https://ACCT.r2.cloudflarestorage.com",
+        "blob_dirs": ["sessions/raw"],
+    }
+    argv = setup.build_rclone_argv(sample_cfg, "AKIDEXAMPLE", "s3cr3t-key")
+    expected = [
+        "rclone", "config", "create", "r2", "s3",
+        "provider", "Cloudflare",
+        "endpoint", "https://ACCT.r2.cloudflarestorage.com",
+        "access_key_id", "AKIDEXAMPLE",
+        "secret_access_key", "s3cr3t-key",
+        "acl", "private",
+    ]
+    checks.append((argv == expected,
+                   f"build_rclone_argv composes the correct config-create "
+                   f"argv (got {argv})"))
 
     failed = [m for ok, m in checks if not ok]
     for ok, m in checks:
