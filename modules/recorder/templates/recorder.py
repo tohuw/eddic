@@ -207,9 +207,9 @@ def setup(bot):
                 f"{EMOJI} Recording — react to the consent post")
             sessions[ctx.guild_id]["status_set"] = True
         await ctx.respond(
-            f"Recording session open — consent post is up in "
-            f"{voice.channel.mention}. Nobody is captured until they "
-            f"react.", ephemeral=True)
+            f"Recording session open — [the consent post]"
+            f"({msg.jump_url}) is up in the channel's text chat. "
+            f"Nobody is captured until they react.", ephemeral=True)
 
     @record.command(name="stop",
                     description="Close the recording session and "
