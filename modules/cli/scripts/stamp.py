@@ -44,7 +44,10 @@ def main(argv):
         else:
             pos.append(argv[i])
             i += 1
-    if len(pos) != 1 or "--site-name" not in opts:
+    config_exists = (len(pos) == 1 and
+                     (Path(pos[0]) / ".eddic" / "config.json").is_file())
+    if len(pos) != 1 or ("--site-name" not in opts
+                         and not config_exists):
         print(__doc__.strip(), file=sys.stderr)
         return 2
     root = Path(pos[0])
