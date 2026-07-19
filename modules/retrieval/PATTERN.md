@@ -54,7 +54,7 @@ like the lore bot.
        printf %s "$T" | wrangler secret put TOKEN_DM
        # repeat with a fresh value for TOKEN_PLAYER
 
-   Token hygiene (`docs/data-controls.md` has the full profile):
+   Token hygiene (`wiki/reference/data-controls.md` has the full profile):
    when you can configure the consuming client directly (a
    consented browser session, a config file you write), do that and
    never print the token at all; when the user must paste, show each
@@ -184,6 +184,20 @@ like the lore bot.
   that expectation up front so nobody blames the worker. Small-model
   chat tiers handle the tools well, so retrieval quality doesn't
   hinge on the top model.
+- **Custom domain.** Default: the `<name>.workers.dev` host works out
+  of the box. A custom domain (e.g. `campaign.example.com`) gives a
+  stable, memorable MCP URL — but the zone's security then sits in
+  front of the Worker, and **Cloudflare's AI-bot controls block MCP
+  connectors**: the connector fetches with the `Claude-User` /
+  `ChatGPT-User` user-agent, which "Block AI bots" / Bot Fight Mode
+  `403`s — while a browser and curl pass, so the block is invisible to
+  ordinary testing (test with `curl -A Claude-User`, not a bare curl).
+  On the zone, set Cloudflare's AI-bot policy Agent = **Allow** and
+  disable the legacy "Block AI bots" rule for the worker host — this is
+  a domain built to serve agents. (Connectors also require CORS on
+  every response and `/.well-known/oauth-*` returning `404` not `401`,
+  so the client uses the URL token instead of attempting OAuth
+  registration — both handled by the worker template as of 0.4.1.)
 
 ## Verify
 
