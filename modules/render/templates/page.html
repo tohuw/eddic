@@ -7,43 +7,83 @@
 <title>{{TITLE}} — {{SITE_NAME}}</title>
 <style>
   :root {
-    --ink: #24211c; --paper: #f6f1e7; --accent: #7a5c2e;
-    --faint: #8a8375; --rule: #d9d0bf;
+    --ink: #26221b; --paper: #f7f2e8; --card: #fffdf7;
+    --accent: #8a5a24; --glow: #b07d3a; --faint: #857d6d;
+    --rule: #ddd3bf; --rule-strong: #c9bda3;
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --ink: #e8e2d4; --paper: #17150f; --accent: #cfa85e;
-      --faint: #97907f; --rule: #3a3527;
+      --ink: #eae3d3; --paper: #141210; --card: #1c1915;
+      --accent: #d8ab5e; --glow: #edc887; --faint: #9c937f;
+      --rule: #37311f; --rule-strong: #4d4429;
     }
   }
   * { box-sizing: border-box; }
   body {
     margin: 0; background: var(--paper); color: var(--ink);
-    font: 1.0625rem/1.65 Georgia, 'Times New Roman', serif;
+    font: 2.125rem/1.6 Iowan Old Style, Palatino, Georgia, serif;
   }
   header {
-    border-bottom: 1px solid var(--rule);
-    padding: 0.9rem 1.25rem; font-variant: small-caps;
-    letter-spacing: 0.06em;
+    border-bottom: 2px double var(--rule-strong);
+    padding: 1.1rem 1.4rem; font-variant: small-caps;
+    letter-spacing: 0.14em; text-align: center;
+    font-size: 0.55em;
   }
   header a { color: var(--faint); text-decoration: none; }
   header a:hover { color: var(--accent); }
-  main { max-width: 42rem; margin: 0 auto; padding: 1.5rem 1.25rem 4rem; }
-  h1, h2, h3 { line-height: 1.25; font-weight: 600; }
-  h1 { font-size: 1.9rem; margin: 1.2rem 0 0.8rem; }
-  h2 { font-size: 1.3rem; margin-top: 2rem; }
-  a { color: var(--accent); }
-  blockquote {
-    margin: 1.2rem 0; padding-left: 1rem;
-    border-left: 3px solid var(--rule); color: var(--faint);
-    font-style: italic;
+  main {
+    max-width: 62rem; margin: 0 auto; padding: 1.8rem 1.4rem 5rem;
   }
-  table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
-  th, td { border: 1px solid var(--rule); padding: 0.4rem 0.6rem;
+  h1, h2, h3 { line-height: 1.2; font-weight: 600; }
+  h1 {
+    font-size: 1.6em; margin: 1rem 0 0.4rem;
+    letter-spacing: 0.01em;
+  }
+  h1::after {
+    content: ""; display: block; width: 5.5rem; height: 0;
+    border-bottom: 3px solid var(--accent); margin-top: 0.35em;
+  }
+  h2 {
+    font-size: 1.05em; margin-top: 1.8em;
+    font-variant: small-caps; letter-spacing: 0.05em;
+    color: var(--accent);
+  }
+  h1 + p::first-letter {
+    float: left; font-size: 3.1em; line-height: 0.85;
+    padding: 0.04em 0.08em 0 0; color: var(--accent);
+    font-weight: 600;
+  }
+  a { color: var(--accent); text-decoration-color: var(--rule-strong); }
+  a:hover { color: var(--glow); }
+  ul, ol { padding-left: 1.2em; }
+  li { margin: 0.25em 0; }
+  blockquote {
+    margin: 1.2rem 0; padding: 0.4rem 0 0.4rem 1.1rem;
+    border-left: 4px solid var(--accent); color: var(--faint);
+    font-style: italic; background: var(--card);
+  }
+  table {
+    border-collapse: collapse; width: 100%; margin: 1rem 0;
+    background: var(--card); font-size: 0.85em;
+  }
+  th { font-variant: small-caps; letter-spacing: 0.04em; }
+  th, td { border: 1px solid var(--rule); padding: 0.45rem 0.7rem;
            text-align: left; }
-  img { max-width: 100%; }
-  code { font-family: ui-monospace, monospace; font-size: 0.9em; }
-  hr { border: 0; border-top: 1px solid var(--rule); margin: 2rem 0; }
+  img {
+    max-width: 100%; border: 1px solid var(--rule-strong);
+    border-radius: 3px;
+  }
+  code { font-family: ui-monospace, monospace; font-size: 0.85em; }
+  hr {
+    border: 0; margin: 2.4rem auto; width: 40%;
+    border-top: 1px solid var(--rule-strong);
+    position: relative;
+  }
+  footer {
+    max-width: 62rem; margin: 0 auto; padding: 0 1.4rem 2.5rem;
+    color: var(--faint); font-size: 0.5em; text-align: center;
+    font-variant: small-caps; letter-spacing: 0.1em;
+  }
 </style>
 </head>
 <body>
@@ -51,5 +91,6 @@
 <main>
 {{BODY}}
 </main>
+<footer>{{SITE_NAME}}</footer>
 </body>
 </html>
