@@ -30,8 +30,10 @@ retire. Pin the versions as written below.
   a default intent. The Message Content toggle is the lore bot's
   need, not this bot's. Invite with scopes
   `bot applications.commands` and permissions View Channels, Send
-  Messages, Read Message History, Add Reactions, **Connect** (it
-  listens; it never needs Speak) — permissions integer `1117248`.
+  Messages, Read Message History, Add Reactions, **Connect**, and
+  **Speak** (only for the transparency chime it plays at record
+  start) plus **Set Voice Channel Status** — integer
+  `316661499497536`.
 - uv on the DM's machine; the bot runs at session time only.
 
 ## Procedure
@@ -54,9 +56,11 @@ retire. Pin the versions as written below.
    the wrapper), and after killing one, check the bot has actually
    left the voice channel — Discord-side ghosts outlive processes.
 
-3. The session: `/record start` in a voice channel posts the
-   consent message (announcement, privacy-posture link, live roster
-   of who is being recorded); reacts open each member's gate;
+3. The session: `/record start` in a voice channel plays an
+   audible chime, sets a visible recording status on the channel
+   (opt out per-session with the `channel_status` option), and posts
+   the consent message (announcement, privacy-posture link, live
+   roster of who is being recorded); reacts open each member's gate;
    `/record stop` stages per-speaker WAV into
    `sessions/raw/<date>/` and appends a `witness` log entry.
    Transcription stays a deliberate step (transcriber pattern).

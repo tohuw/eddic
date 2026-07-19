@@ -12,8 +12,11 @@ PRIVACY_URL (default the Eddic site's posture page), WIKI_LOG
 (default ../wiki/log.md).
 """
 
+import array
 import asyncio
 import datetime
+import io
+import math
 import os
 import re
 import threading
@@ -39,6 +42,34 @@ sessions = {}  # guild_id -> dict(vc, sink, msg, outdir, names)
 
 def is_consent_emoji(emoji):
     return str(emoji).replace("️", "") == EMOJI.replace("️", "")
+
+
+def chime_pcm():
+    """A two-note rising chime, synthesized: 48 kHz 16-bit stereo,
+    the transparency sound played into the channel at record start."""
+    rate = 48000
+    out = array.array("h")
+    for freq, dur in ((660, 0.18), (880, 0.28)):
+        n = int(rate * dur)
+        for i in range(n):
+            env = min(1.0, i / (rate * 0.01), (n - i) / (rate * 0.06))
+            v = int(11000 * env * math.sin(2 * math.pi * freq * i / rate))
+            out.append(v)
+            out.append(v)
+    return out.tobytes()
+
+
+async def set_channel_status(bot, channel_id, status):
+    """Voice-channel status via REST (py-cord has no wrapper yet).
+    Best-effort: transparency machinery must never break recording."""
+    try:
+        route = discord.http.Route(
+            "PUT", "/channels/{channel_id}/voice-status",
+            channel_id=channel_id)
+        await bot.http.request(route, json={"status": status})
+    except Exception as e:
+        print(f"recorder: channel status not set ({e!r}) — recording "
+              f"proceeds; consent post remains the source of truth")
 
 
 class ConsentSink(discord.sinks.Sink):
@@ -120,7 +151,10 @@ def setup(bot):
     @record.command(name="start",
                     description="Open a recording session in your "
                                 "current voice channel")
-    async def start(ctx: discord.ApplicationContext):
+    async def start(ctx: discord.ApplicationContext,
+                    channel_status: discord.Option(
+                        bool, "Show a recording status on the voice "
+                        "channel (default: yes)", default=True)):
         _age = (discord.utils.utcnow()
                 - ctx.interaction.created_at).total_seconds()
         print(f'/start: interaction age at entry: {_age:.2f}s')
@@ -158,8 +192,20 @@ def setup(bot):
         msg = await voice.channel.send(consent_text(set()))
         await msg.add_reaction(EMOJI)
         sessions[ctx.guild_id] = {"vc": vc, "sink": sink, "msg": msg,
-                                  "outdir": outdir, "names": set()}
+                                  "outdir": outdir, "names": set(),
+                                  "status_set": False}
         vc.start_recording(sink, finished)
+        # transparency: an audible chime in-channel, and (unless
+        # declined) a visible status on the channel itself
+        try:
+            vc.play(discord.PCMAudio(io.BytesIO(chime_pcm())))
+        except Exception as e:
+            print(f"recorder: start chime failed ({e!r})")
+        if channel_status:
+            await set_channel_status(
+                bot, voice.channel.id,
+                f"{EMOJI} Recording — react to the consent post")
+            sessions[ctx.guild_id]["status_set"] = True
         await ctx.respond(
             f"Recording session open — consent post is up in "
             f"{voice.channel.mention}. Nobody is captured until they "
@@ -180,6 +226,8 @@ def setup(bot):
         await ctx.defer()
         sessions.pop(ctx.guild_id, None)
         s["vc"].stop_recording()
+        if s.get("status_set"):
+            await set_channel_status(bot, s["vc"].channel.id, "")
         await s["vc"].disconnect()
         s["sink"].close_all()
         files = sorted(s["outdir"].glob("*.wav"))
