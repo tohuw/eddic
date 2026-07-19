@@ -297,6 +297,14 @@ def setup(bot):
 
     class Capability:
         async def ready(self):
+            # per-guild sync: global command propagation can take up
+            # to an hour; a session bot needs /record NOW
+            try:
+                await bot.sync_commands(
+                    guild_ids=[g.id for g in bot.guilds])
+            except Exception as e:
+                print(f"recorder: guild sync failed ({e!r}); "
+                      f"global commands will appear eventually")
             print(f"recorder ready: /record in "
                   f"{len(bot.guilds)} guild(s)")
             # temporary spike scaffolding: unattended DAVE receive check
