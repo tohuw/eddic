@@ -60,7 +60,8 @@ transcript is a source, and a source is not rewritten; corrections
 accumulate in the "Known mishearings" section as annotations on it.
 This keeps the raw machine output intact and auditable while still
 letting the ingest apply the accumulated fixes downstream. Respecting
-that authorship boundary is a firewall-adjacent instance of Eddic's
+that authorship boundary is a
+[firewall](../concepts/the-firewall.md)-adjacent instance of Eddic's
 broader rule against stylistically rewriting non-agent content.
 
 ## The model ladder

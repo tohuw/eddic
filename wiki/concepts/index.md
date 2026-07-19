@@ -1,6 +1,6 @@
 # Concepts
 
-The load-bearing ideas behind Eddic: the principles and invariants that its modules manifest and that every pattern assumes. Each page states one settled idea in encyclopedia form. Return to the [wiki index](../index.md).
+The load-bearing ideas behind Eddic: the principles and invariants that its [modules](../modules/index.md) manifest and that every pattern assumes. They restate, in encyclopedia form, the tiebreakers set out in the [design principles](../design/principles.md); each page settles one idea. Return to the [wiki index](../index.md).
 
 - [Patterns, not code](patterns-not-code.md) — why Eddic ships facilities as agent-applied patterns rather than installable applications.
 - [Deterministic core, agent shell](deterministic-core.md) — the division of labor between machinery and judgment: scripts do the repeatable, agents decide only at marked points.

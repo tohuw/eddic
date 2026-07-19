@@ -37,7 +37,7 @@ in interest is caught within one cycle and a restart loses nothing. It
 reuses the lore bot's refresh cadence for the tick interval. Four reminders
 exist, each fired at most once per event and persisted so it never repeats:
 a created notice when an event first appears; an at-risk flag to the DM
-when the session is short of quorum inside a roughly thirty-six-hour window,
+when the session is short of quorum inside a roughly thirty-six-hour window —
 a rally-or-reschedule prompt while there is still time; an imminent go-ahead
 once quorum is met near the start, carrying by default a line to bring the
 recorder into the voice channel; and an ended nudge to stage the recording

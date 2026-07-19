@@ -43,8 +43,9 @@ print "Ørlǫg"). The recorder build was deliberately deferred to a session with
 the owner awake: voice capture needs live testing, lore-bot-style.
 
 **Transaction arc, 2026-07-18:** contribs (14) and companion (13) shipped at
-0.1.0; the author role is declared config (it may differ from the DM — DESIGN
-records the consequences); wiki 0.3.0 applies contributor overlays across every
+0.1.0; the author role is declared config (it may differ from the DM — the
+[principles](design/principles.md) record the consequences); wiki 0.3.0 applies
+contributor overlays across every
 surface, lint 0.3.0 checks them, retrieval 0.4.0 stages the effective corpus;
 `eddic bundle` is the sale-build fence (hash-pinned consent, derivation-graph
 rights, stale-clearance refusal). `tools/verify_e2e.py` proves the full
@@ -79,7 +80,7 @@ decision.
    and inbox (bidirectionality).
 7. **lore-bot** — snorri absorbed and parameterized: corpus-in-cached-prompt
    Discord Q&A over the player projection, a forum CLI, session announce. Must
-   satisfy DESIGN.md's freshness contract from day one: the bot self-refreshes
+   satisfy the [freshness contract](design/principles.md) from day one: the bot self-refreshes
    by watching the projection's version (HEAD poll) rather than relying on
    deploy chaining, webhooks, or an owner-gated reload command — the source
    stack's bot went stale on every wiki publish for lack of exactly this.
@@ -99,9 +100,9 @@ decision.
    blocked-status context: Discord voice receive is broken
    Python-ecosystem-wide by DAVE E2EE enforcement; the module ships when
    Pycord-Development/pycord#3139 lands and a live capture passes. Everything
-   human-facing was proven live (consent flow, commands, staging — see
-   `notes/recorder-learnings.md`; cloud/R2 design in
-   `notes/cloud-recorder-plan.md`); no module ships non-working capture, because
+   human-facing was proven live (consent flow, commands, staging — see the
+   [recorder learnings](reference/recorder-learnings.md); cloud/R2 design in the
+   [cloud-recorder plan](reference/cloud-recorder-plan.md)); no module ships non-working capture, because
    modules hold only what is proven to work. The brief (owner, 2026-07-18;
    **revised the same day: the recorder is its own bot**, reversing the earlier
    one-bot call): the lore bot is always-on and cloud-cheap; the recorder is
@@ -110,7 +111,7 @@ decision.
    different hosts, so separate applications and tokens. The capability code
    shape, consent machinery, and staging layout are unchanged; the driven portal
    flow makes the second app cheap. Local, session-time execution is the
-   default; the R2/cloud design (`notes/cloud-recorder-plan.md`) becomes this
+   default; the R2/cloud design (the [cloud-recorder plan](reference/cloud-recorder-plan.md)) becomes this
    bot's optional cloud mode. Audio arrives over the Discord voice gateway (no
    OS mic permission); the voice sink runs on its own thread writing straight to
    disk so answer latency can never drop frames. Summon/dismiss via slash
@@ -154,11 +155,11 @@ decision.
     on Node ≥ 24): the reconciler skill (wiki facts → validated mutations on a
     fork), and `validate` as the story's test suite. Unblocked.
 13. **companion** — the at-the-table module family under the knowledge-parity
-    conduct doctrine (DESIGN: "Companions at the table"): player and DM
+    conduct doctrine ([principles](design/principles.md): "Companions at the table"): player and DM
     companions on their respective retrieval tiers, and the backstory
     interviewer with its scribe/drafter authorship dial. Conduct claims verified
     adversarially per answer client before any default.
-14. **contribs** — the transaction arc's machinery (DESIGN: "The transaction
+14. **contribs** — the transaction arc's machinery ([principles](design/principles.md): "The transaction
     arc"), landing as wiki/lint/publish extensions: contributor overlays with
     `replaces:` shadowing, a `derived-from:` derivation graph, the pure-corpus
     projection with its full = pure + attribution-log invariant, the
@@ -186,8 +187,8 @@ under the contract.
   copies inside campaign repos stay clean; it carries a patent grant; §5 makes
   inbound contributions self-licensing with no CLA needed.
 - **Compression accelerators.** headroom/thlibo guidance lands inside the
-  routines and transcriber modules as decision points with heuristics, per
-  DESIGN.md — never as dependencies.
+  routines and transcriber modules as decision points with heuristics, per the
+  [principles](design/principles.md) — never as dependencies.
 - **Eddic website.** First trigger fired 2026-07-18: live at
   eddic-site.pages.dev (source in `site/`, rendered by the render module),
   carrying the privacy posture the recorder's consent post links. Remaining
@@ -234,7 +235,7 @@ under the contract.
   — hosting is a convenience, never lock-in. Trigger: a second party wanting to
   run a campaign without owning a domain, or demand for hosted onboarding.
 - **Eddic is not D&D-specific.** Eddic grew out of a D&D campaign and its
-  framing still says "D&D" throughout (AGENTS.md, DESIGN.md, the site, the
+  framing still says "D&D" throughout (AGENTS.md, the [principles](design/principles.md), the site, the
   self-documenting wiki), but the machinery — the campaign knowledge
   architecture, the deterministic player projection, retrieval, the lore/session
   bots, the session lifecycle, publishing — is system-neutral: it manages a

@@ -11,7 +11,7 @@ that packages what is cleared and refuses everything else,
 all-or-nothing. The module is entirely local and free, stdlib Python run
 through uv; the fence is a build refusal, not a service. It touches the
 [wiki](wiki.md) and [lint](lint.md) surfaces and depends on
-[cli](cli.md), [wiki](wiki.md), and [lint](lint.md). The schema side —
+[cli](cli.md), wiki, and lint. The schema side —
 the contribs directory layout, the `replaces:` and `derived-from:` keys,
 the transactability axis, the log types — is defined in the wiki module's
 stamped instructions; contribs provides the verb that enforces it.

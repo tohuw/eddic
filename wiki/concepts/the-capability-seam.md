@@ -4,8 +4,8 @@ The capability seam is the fail-safe attachment surface a long-lived
 Eddic service exposes so that optional capability modules ride the same
 process rather than standing up their own. Its worked instance is the
 always-on [lore bot](../modules/lore-bot.md): a resident Q&A service that
-already holds a Discord connection, a corpus built from the player
-projection, and a freshness poll. A capability such as
+already holds a Discord connection, a corpus built from the
+[player projection](projection-and-visibility.md), and a freshness poll. A capability such as
 [convene](../modules/convene.md) — session lifecycle: scheduled events,
 quorum, recap announcements — is not a second bot but a rider on that one
 process, gaining the client, the credentials, the corpus, and the refresh

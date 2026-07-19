@@ -38,7 +38,7 @@ The bot survives DAVE by being a legitimate end-to-end-encrypted *participant*: 
 
 **Silence-gap padding.** Per-speaker tracks receive only speech frames, so over a long session the tracks drift out of cross-track alignment. The gaps must be padded by packet timestamps — as Craig does — or the transcriber's merge-by-ordering degrades.
 
-**Prefer Opus/OGG over PCM-WAV.** Prefer capturing the Opus-encoded stream into OGG rather than decoding to PCM-WAV. See `notes/cloud-recorder-plan.md` for the R2/cloud, two-token direction this points toward. Both of these are noted against the [transcriber](../modules/transcriber.md)'s downstream needs and remain open on the [roadmap](../roadmap.md).
+**Prefer Opus/OGG over PCM-WAV.** Prefer capturing the Opus-encoded stream into OGG rather than decoding to PCM-WAV. See the [cloud-recorder plan](cloud-recorder-plan.md) for the R2/cloud, two-token direction this points toward. Both of these are noted against the [transcriber](../modules/transcriber.md)'s downstream needs and remain open on the [roadmap](../roadmap.md).
 
 ## Related
 
@@ -48,3 +48,4 @@ The bot survives DAVE by being a legitimate end-to-end-encrypted *participant*: 
 - [the deterministic core](../concepts/deterministic-core.md) — why the consent gate is code in the sink's write path rather than agent judgment.
 - [the firewall](../concepts/the-firewall.md) — the discipline that keeps the privacy commitment honest across surfaces.
 - [roadmap](../roadmap.md) — where the residual pin-lift and cloud-recorder direction live.
+- [reference index](index.md) — the rest of Eddic's reference material.

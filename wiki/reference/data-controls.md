@@ -22,7 +22,8 @@ authorship-and-rights frame lives in the [design principles](../design/principle
 ## Anthropic (profile dated 2026-07)
 
 - Consumer (claude.ai): training-related settings live in the user's account
-  controls; the posture taken in DESIGN.md is to set them deliberately and
+  controls; the posture taken in the [design principles](../design/principles.md)
+  is to set them deliberately and
   accept the black-box trust, named honestly.
 - API: not used for training by default per Anthropic's commercial terms. The
   lore bot's traffic is API traffic.
@@ -84,3 +85,4 @@ Related: [the firewall](../concepts/the-firewall.md),
 [projection and visibility](../concepts/projection-and-visibility.md),
 [retrieval](../modules/retrieval.md), [lore bot](../modules/lore-bot.md),
 [cli](../modules/cli.md), and the [design principles](../design/principles.md).
+Back to the [reference index](index.md).

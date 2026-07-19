@@ -70,7 +70,8 @@ Two decisions are marked. The capture source defaults to free Craig; the
 recorder bot and premium Craig are the alternatives, and the real trade
 between them is consent machinery, not audio quality. Raw audio retention
 defaults to keeping the source until the session's wiki ingest is done,
-but is the owner's call. Verification stages a planted Craig zip and
+but is the owner's call, per
+[data controls](../reference/data-controls.md). Verification stages a planted Craig zip and
 confirms that per-speaker tracks land in the dated layout, the
 folder-named-`.flac` quirk flattens to a real file carrying the true
 audio, non-audio extras are reported untouched, the Safari-mangled

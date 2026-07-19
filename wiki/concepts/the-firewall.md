@@ -21,7 +21,8 @@ page under the canonical name and a `.dm` twin holding the withheld
 material. Any path containing `.dm` is treated as secret regardless of
 frontmatter. Visibility is the game master's axis, concerned with spoiler
 management, and is distinct from the transactability axis that governs
-rights; the firewall answers only the question of what players may see.
+rights (see [the capability seam](the-capability-seam.md)); the firewall
+answers only the question of what players may see.
 See [projection and visibility](projection-and-visibility.md).
 
 ## Enforced by projection, not judgment
