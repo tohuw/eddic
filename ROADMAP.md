@@ -227,3 +227,30 @@ community PR under the contract.
   lore-bot corpus and recap thread already per-campaign. Do not
   half-build it before the second tenant is real — the single-tenant
   path must stay zero-config.
+- **eddic.quest subdomain hosting (multi-tenant hosting service).**
+  Self-hosting is and stays the default — a campaign is a self-contained
+  repo the owner controls on their own domain (or a free Pages/Workers
+  deploy). This is a convenience for people who won't buy or manage a
+  domain: give a tenant `<campaign>.eddic.quest` with their site,
+  retrieval/MCP endpoint, and other services all hung off that one
+  subdomain. Proven at N=1 (`landofsong.eddic.quest` runs a real
+  campaign's retrieval Worker plus site today); the decision is how to
+  generalize to arbitrary tenants correctly. This is the convene
+  multi-tenant problem widened — from one bot over many campaigns to one
+  platform over many campaigns on shared `eddic.quest` infrastructure —
+  and it reuses the same isolation seam: hard per-tenant separation of
+  corpus and DM/player tokens, the firewall enforced across tenants so A
+  can never read B. Likely shape: wildcard `*.eddic.quest` DNS + wildcard
+  TLS, a routing Worker mapping `<tenant>` to that tenant's Pages site,
+  retrieval Worker, and tokens, and automated provisioning (create the
+  campaign dir, stage the corpus, deploy, mint tokens, add the DNS/route
+  — one flow). Open questions: per-tenant Workers vs one shared
+  multi-tenant Worker (isolation vs cost/ops); token/secret management at
+  scale (today tokens are per-Worker Cloudflare secrets); cert strategy
+  (wildcard vs per-hostname custom domains); billing, quotas, and abuse
+  limits if it is a real service; and how tenants author content (the
+  same agent-applied module flow as self-hosted). Non-negotiable: a
+  hosted tenant must always be able to walk away with their
+  self-contained repo — hosting is a convenience, never lock-in. Trigger:
+  a second party wanting to run a campaign without owning a domain, or
+  demand for hosted onboarding.
