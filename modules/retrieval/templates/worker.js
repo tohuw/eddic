@@ -39,6 +39,15 @@ const PROTOCOL = "2025-06-18";
 const SNIPPET = 120;
 const MAX_HITS = 8;
 
+// Per-field length caps on witness writes: the review inbox is a queue,
+// not a content store, and a player-token holder must not be able to
+// park megabytes in KV. Oversize is a clean argError, never a store.
+const FIELD_CAP = { path: 512, title: 256, suggestion: 16384,
+                    content: 16384, rationale: 4096 };
+// Refuse new suggestions once the pending queue is this deep, so a
+// token holder cannot flood the inbox with unbounded entries.
+const MAX_PENDING = 500;
+
 // Resolve the request's tier and the concrete token it authenticated
 // with — the token is what the companion page needs to build a caller's
 // own capability URL, so we return it rather than discarding it.
@@ -179,6 +188,14 @@ function searchHits(pages, q) {
   });
 }
 
+// Own-property lookup only. A corpus is a plain object, so a bare
+// pages[key] resolves __proto__/constructor/hasOwnProperty/etc. to
+// Object.prototype members and returns "# undefined" garbage instead of
+// a clean miss. hasOwn keeps the closed world closed.
+function getPage(pages, key) {
+  return Object.hasOwn(pages, key) ? pages[key] : undefined;
+}
+
 function text(s) { return { content: [{ type: "text", text: s }] }; }
 
 function structured(s, obj) {
@@ -200,7 +217,7 @@ async function callTool(env, tier, corpus, name, args) {
     if (typeof (args && args.path) !== "string" || !args.path) {
       return argError("read_page requires 'path' (string)");
     }
-    const entry = pages[args.path];
+    const entry = getPage(pages, args.path);
     if (!entry) return text(`no such page: ${args.path}`);
     return text(`# ${entry.title}\n(${args.path})\n\n${entry.text}`);
   }
@@ -208,7 +225,7 @@ async function callTool(env, tier, corpus, name, args) {
     if (typeof (args && args.id) !== "string" || !args.id) {
       return argError("fetch requires 'id' (string)");
     }
-    const entry = pages[args.id];
+    const entry = getPage(pages, args.id);
     if (!entry) return text(`no such page: ${args.id}`);
     return structured(
       `# ${entry.title}\n(${args.id})\n\n${entry.text}`,
@@ -286,15 +303,41 @@ async function readInbox(env) {
   return out;
 }
 
+// Validate one write-tool field: required fields must be non-empty
+// strings; any string field must fit its cap. Returns an argError
+// message on failure, or null when the field is acceptable.
+function capMiss(name, field, value, required) {
+  if (required && (typeof value !== "string" || !value.trim())) {
+    return `${name} requires '${field}' (non-empty string)`;
+  }
+  if (typeof value === "string" && value.length > FIELD_CAP[field]) {
+    return `${name} '${field}' exceeds the ${FIELD_CAP[field]}-character ` +
+           "limit";
+  }
+  return null;
+}
+
+// Is the pending queue already at its ceiling? Counts pending entries in
+// the (small by nature) review inbox so a token holder cannot flood it.
+async function pendingFull(env) {
+  let pending = 0;
+  for (const s of await readInbox(env)) {
+    if (s.status === "pending") pending++;
+  }
+  return pending >= MAX_PENDING;
+}
+
+const INBOX_FULL = `the review inbox is full (${MAX_PENDING} pending); ` +
+  "ask the DM to clear it before filing more suggestions";
+
 async function writeTool(env, tier, name, args) {
   if (name === "suggest_edit") {
-    if (typeof args.path !== "string" || !args.path.trim()) {
-      return argError("suggest_edit requires 'path' (non-empty string)");
+    for (const [f, req] of [["path", true], ["suggestion", true],
+                            ["rationale", false]]) {
+      const err = capMiss(name, f, args[f], req);
+      if (err) return argError(err);
     }
-    if (typeof args.suggestion !== "string" || !args.suggestion.trim()) {
-      return argError(
-        "suggest_edit requires 'suggestion' (non-empty string)");
-    }
+    if (await pendingFull(env)) return argError(INBOX_FULL);
     // NO existence oracle: the path is stored verbatim and never checked
     // against the corpus. A player must not be able to probe which
     // DM-only pages exist by watching suggest_edit succeed or fail.
@@ -304,12 +347,12 @@ async function writeTool(env, tier, name, args) {
     return confirm(id);
   }
   if (name === "suggest_page") {
-    if (typeof args.title !== "string" || !args.title.trim()) {
-      return argError("suggest_page requires 'title' (non-empty string)");
+    for (const [f, req] of [["title", true], ["content", true],
+                            ["path", false], ["rationale", false]]) {
+      const err = capMiss(name, f, args[f], req);
+      if (err) return argError(err);
     }
-    if (typeof args.content !== "string" || !args.content.trim()) {
-      return argError("suggest_page requires 'content' (non-empty string)");
-    }
+    if (await pendingFull(env)) return argError(INBOX_FULL);
     const id = await appendSuggestion(env, {
       kind: "page", tier, title: args.title, content: args.content,
       path: typeof args.path === "string" ? args.path : "",
@@ -343,7 +386,11 @@ async function writeTool(env, tier, name, args) {
     }
     const raw = await env.INBOX.get(`sug:${args.id}`);
     if (!raw) return argError(`no such suggestion: ${args.id}`);
-    const rec = JSON.parse(raw);
+    let rec;
+    try { rec = JSON.parse(raw); }
+    catch {
+      return argError(`suggestion ${args.id} is unreadable (corrupt entry)`);
+    }
     rec.status = args.action === "accept" ? "accepted" : "dropped";
     rec.resolved = new Date().toISOString();
     if (typeof args.note === "string" && args.note) rec.note = args.note;
@@ -354,13 +401,19 @@ async function writeTool(env, tier, name, args) {
   return argError(`unknown tool: ${name}`);
 }
 
+// no-store on every tiered JSON-RPC response: a tier's answers are
+// token-scoped and must never be edge- or shared-cached and replayed
+// across tiers. Defense-in-depth alongside the auth walls.
+const NO_STORE = { "Cache-Control": "no-store" };
+
 function rpcResponse(id, result) {
-  return Response.json({ jsonrpc: "2.0", id, result });
+  return Response.json({ jsonrpc: "2.0", id, result }, { headers: NO_STORE });
 }
 
 function rpcError(id, code, message, status = 200) {
   return Response.json(
-    { jsonrpc: "2.0", id, error: { code, message } }, { status });
+    { jsonrpc: "2.0", id, error: { code, message } },
+    { status, headers: NO_STORE });
 }
 
 // REST facade for clients that speak OpenAPI, not MCP (Custom GPT
@@ -374,7 +427,7 @@ function rest(corpus, url) {
   }
   if (route === "/page") {
     const id = url.searchParams.get("id") || "";
-    const entry = corpus.pages[id];
+    const entry = getPage(corpus.pages, id);
     if (!entry) {
       return Response.json({ error: `no such page: ${id}` },
                            { status: 404 });
@@ -460,7 +513,9 @@ export default {
         return new Response("read-only API: GET only",
                             { status: 405, headers: { Allow: "GET" } });
       }
-      return rest(t === "dm" ? CORPUS_DM : CORPUS_PLAYER, url);
+      const r = rest(t === "dm" ? CORPUS_DM : CORPUS_PLAYER, url);
+      r.headers.set("Cache-Control", "no-store");
+      return r;
     }
     if (request.method !== "POST") {
       return new Response("MCP endpoint: POST JSON-RPC here",
@@ -488,8 +543,15 @@ export default {
     }
     if (msg.method === "tools/call") {
       const { name, arguments: args } = msg.params || {};
-      return rpcResponse(msg.id,
-        await callTool(env, t, corpus, name, args || {}));
+      // Any throw from a tool (a corrupt KV value, a failing binding)
+      // must return a JSON-RPC error envelope through withCors — never
+      // an unhandled reject that yields a bare 500 with no CORS headers.
+      try {
+        return rpcResponse(msg.id,
+          await callTool(env, t, corpus, name, args || {}));
+      } catch {
+        return rpcError(msg.id ?? null, -32603, "internal error");
+      }
     }
     if (msg.method === "ping") return rpcResponse(msg.id, {});
     return rpcError(msg.id ?? null, -32601,

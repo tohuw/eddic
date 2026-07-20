@@ -35,12 +35,29 @@ Exit codes: 0 done, 1 runtime error (network/auth/config), 2 usage.
 
 import json
 import os
+import re
 import sys
 import urllib.error
 import urllib.request
 from pathlib import Path
 
 VALID_STATUS = ("pending", "accepted", "dropped", "all")
+
+# A plain YAML scalar we can emit unquoted: a simple token with no
+# YAML-significant or line-breaking characters. Anything else (a colon,
+# a hash, a quote, and crucially a newline or carriage return) is routed
+# through json.dumps, which yields a valid double-quoted YAML flow
+# scalar with those characters escaped — so player-controlled path/title
+# can never inject a new frontmatter line.
+_SAFE_PLAIN = re.compile(r"^[A-Za-z0-9_./\- ]+$")
+
+
+def _yaml_scalar(v):
+    s = str(v)
+    if s and _SAFE_PLAIN.match(s) and not s.startswith(" ") \
+            and not s.endswith(" "):
+        return s
+    return json.dumps(s, ensure_ascii=False)
 
 
 def die(msg, code=1):
@@ -124,9 +141,7 @@ def render(sug):
 
     lines = ["---"]
     for k, v in fm.items():
-        vs = json.dumps(v, ensure_ascii=False) if (":" in str(v)
-                                                   or "#" in str(v)) else v
-        lines.append(f"{k}: {vs}")
+        lines.append(f"{k}: {_yaml_scalar(v)}")
     lines.append("---")
     lines.append("")
 

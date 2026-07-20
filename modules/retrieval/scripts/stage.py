@@ -186,11 +186,33 @@ def frontmatter_field(text, key):
     return ""
 
 
+def _safe_href(url):
+    """True for a link scheme we will emit: http(s), mailto, or a
+    schemeless (relative/anchor/protocol-relative) URL. Anything with an
+    explicit scheme we do not allow — javascript:, data:, vbscript:,
+    file: — is rejected so a hostile link never becomes a live href."""
+    m = re.match(r"^([a-zA-Z][a-zA-Z0-9+.\-]*):", url.strip())
+    return (m.group(1).lower() in ("http", "https", "mailto")) if m else True
+
+
+def _link_sub(m):
+    """Emit a link only for an allowlisted scheme, with the URL's quotes
+    neutralized so it cannot break out of the href attribute. A rejected
+    scheme falls back to the literal (already-escaped) markdown text —
+    no link, nothing executable."""
+    label, url = m.group(1), m.group(2)
+    if not _safe_href(url):
+        return m.group(0)
+    href = url.replace('"', "%22").replace("'", "%27")
+    return f'<a href="{href}">{label}</a>'
+
+
 def _inline(s):
-    """Inline markdown on already-escaped text: code, bold, links."""
+    """Inline markdown on already-escaped text: code, bold, links. Links
+    are scheme-allowlisted and their href quotes are neutralized."""
     s = re.sub(r"`([^`]+)`", r"<code>\1</code>", s)
     s = re.sub(r"\*\*([^*]+?)\*\*", r"<strong>\1</strong>", s)
-    s = re.sub(r"\[([^\]]+)\]\(([^)\s]+)\)", r'<a href="\2">\1</a>', s)
+    s = re.sub(r"\[([^\]]+)\]\(([^)\s]+)\)", _link_sub, s)
     return s
 
 
@@ -295,8 +317,12 @@ def companion_html(kit_md, persona_md, site, shell):
     else:
         body = COMPANION_COPY + body
     body = COMPANION_STYLE + body + COMPANION_ICON_JS
+    # The shell drops {{SITE_NAME}} straight into <title>/attributes, so
+    # it must be HTML-escaped here (the markdown-body substitutions above
+    # are escaped by render_md; this is the one raw-HTML context).
+    site_html = _html.escape(site, quote=True)
     return (shell.replace("{{TITLE}}", "Your companion")
-                 .replace("{{SITE_NAME}}", site)
+                 .replace("{{SITE_NAME}}", site_html)
                  .replace("{{BODY}}", body))
 
 

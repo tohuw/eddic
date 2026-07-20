@@ -363,4 +363,93 @@ check(sugNoKV.body?.result?.isError === true &&
       textOf(sugNoKV).includes("not enabled"),
       "INBOX unbound: suggest_edit returns a clean not-enabled error");
 
+// ---- bug 2: prototype-key pages are a clean miss, not garbage ----
+// pages[key] would resolve __proto__/constructor/hasOwnProperty to
+// Object.prototype and return "# undefined"; hasOwn must reject them.
+for (const key of ["__proto__", "constructor", "hasOwnProperty",
+                   "toString"]) {
+  const r = await rpc("dm-secret", callBody(40, "read_page", { path: key }));
+  check(textOf(r).startsWith("no such page"),
+        `read_page("${key}") is a clean miss, not prototype garbage`);
+  const f = await rpc("dm-secret", callBody(41, "fetch", { id: key }));
+  check(textOf(f).startsWith("no such page") &&
+        f.body?.result?.structuredContent === undefined,
+        `fetch("${key}") is a clean miss with no structured leak`);
+  const rp = await restGet("dm-secret", `/api/page?id=${key}`);
+  check(rp.status === 404, `REST /page?id=${key} is 404, not prototype garbage`);
+}
+
+// ---- bug 1: witness writes are length- and count-bounded ----
+const bigSug = await rpc("player-secret",
+  callBody(42, "suggest_edit",
+    { path: "keep.md", suggestion: "x".repeat(20000) }), false, envKV);
+check(bigSug.body?.result?.isError === true &&
+      textOf(bigSug).includes("limit"),
+      "suggest_edit rejects an oversize suggestion (per-field length cap)");
+const bigPath = await rpc("player-secret",
+  callBody(43, "suggest_edit",
+    { path: "k".repeat(600), suggestion: "ok" }), false, envKV);
+check(bigPath.body?.result?.isError === true &&
+      textOf(bigPath).includes("limit"),
+      "suggest_edit rejects an oversize path");
+const bigContent = await rpc("player-secret",
+  callBody(44, "suggest_page",
+    { title: "t", content: "y".repeat(20000) }), false, envKV);
+check(bigContent.body?.result?.isError === true &&
+      textOf(bigContent).includes("limit"),
+      "suggest_page rejects oversize content (per-field length cap)");
+const bigRat = await rpc("player-secret",
+  callBody(45, "suggest_edit",
+    { path: "keep.md", suggestion: "ok", rationale: "z".repeat(5000) }),
+  false, envKV);
+check(bigRat.body?.result?.isError === true,
+      "suggest_edit rejects an oversize rationale");
+
+// ---- bug 3: a corrupt KV value degrades gracefully, never crashes ----
+envKV.INBOX._store.set("sug:corrupt", "{ this is not valid json");
+const resCorrupt = await rpc("dm-secret",
+  callBody(46, "resolve_suggestion", { id: "corrupt", action: "drop" }),
+  false, envKV);
+check(resCorrupt.body?.result?.isError === true,
+      "resolve_suggestion on a corrupt entry is a clean isError (guarded parse)");
+const listCorrupt = await rpc("dm-secret",
+  callBody(47, "list_suggestions", { status: "all" }), false, envKV);
+check(Array.isArray(listCorrupt.body?.result?.structuredContent?.suggestions),
+      "list_suggestions skips a corrupt entry without throwing");
+
+// a handler throw returns a JSON-RPC error envelope THROUGH withCors —
+// not a bare 500 with no CORS headers. A binding that throws forces it.
+const envThrow = { ...env, INBOX: {
+  get() { throw new Error("boom"); },
+  put() { throw new Error("boom"); },
+  list() { throw new Error("boom"); },
+} };
+const throwRes = await worker.fetch(
+  new Request("https://w.example/mcp", {
+    method: "POST",
+    headers: { "content-type": "application/json",
+               Authorization: "Bearer dm-secret" },
+    body: JSON.stringify(callBody(48, "list_suggestions", {})) }), envThrow);
+check(throwRes.headers.get("Access-Control-Allow-Origin") === "*",
+      "a thrown handler error still carries CORS headers");
+const throwBody = await throwRes.json();
+check(throwBody?.error?.code === -32603 && throwBody?.jsonrpc === "2.0",
+      "a thrown handler error returns a JSON-RPC error envelope, not bare 500");
+
+// ---- bug 5: tiered MCP + REST responses set Cache-Control: no-store ----
+const ccMcp = await worker.fetch(
+  new Request("https://w.example/mcp", {
+    method: "POST",
+    headers: { "content-type": "application/json",
+               Authorization: "Bearer dm-secret" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 49, method: "tools/list" }) }),
+  env);
+check(ccMcp.headers.get("Cache-Control") === "no-store",
+      "MCP responses set Cache-Control: no-store");
+const ccRest = await worker.fetch(
+  new Request("https://w.example/api/pages", {
+    method: "GET", headers: { Authorization: "Bearer dm-secret" } }), env);
+check(ccRest.headers.get("Cache-Control") === "no-store",
+      "REST responses set Cache-Control: no-store");
+
 process.exit(failures ? 1 : 0);

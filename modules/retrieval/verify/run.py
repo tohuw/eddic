@@ -6,6 +6,7 @@ stage the corpora, copy the worker template beside them, then drive
 the worker's fetch handler in node (auth, both token styles, tier
 isolation, search). Skips gracefully if node is absent (CI has it)."""
 
+import importlib.util
 import json
 import shutil
 import subprocess
@@ -17,6 +18,76 @@ MOD = Path(__file__).resolve().parent.parent
 PLAYER_FM = "---\nvisibility: player\n---\n\n"
 
 
+def load(rel, name):
+    """Import a module verb (stage.py / suggestions.py) from its file
+    path so its pure functions can be unit-tested here without a shell."""
+    spec = importlib.util.spec_from_file_location(
+        name, MOD / "scripts" / rel)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def unit_checks():
+    """Pure-function hardening checks for the two Python verbs. Returns
+    the number of failures (0 clean)."""
+    fails = 0
+
+    def ck(ok, msg):
+        nonlocal fails
+        print(("ok   " if ok else "FAIL ") + msg)
+        if not ok:
+            fails += 1
+
+    stage = load("stage.py", "eddic_stage")
+    # bug 4: a hostile site_name must be HTML-escaped in the shell, never
+    # land as a live <script> in the rendered companion page.
+    page = stage.companion_html(
+        stage.FALLBACK_KIT, None, "<script>alert(1)</script>",
+        stage.FALLBACK_SHELL)
+    ck("<script>alert(1)</script>" not in page,
+       "stage: hostile site_name is not emitted raw into the page")
+    ck("&lt;script&gt;" in page,
+       "stage: hostile site_name is HTML-escaped in the shell/title")
+    # bug 4: a javascript: link is not turned into a live href; a safe
+    # link is; an href with a quote cannot break out of the attribute.
+    ck('href="javascript' not in stage._inline("[x](javascript:alert(1))"),
+       "stage: javascript: link is not emitted as a live href")
+    ck('<a href="https://ok">x</a>' == stage._inline("[x](https://ok)"),
+       "stage: an http(s) link is still rendered")
+    ck('<a href="page.md">x</a>' == stage._inline("[x](page.md)"),
+       "stage: a relative link is still rendered")
+    quoted = stage._inline('[x](http://a"onmouseover=b)')
+    ck('href="http://a"onmouseover' not in quoted and "%22" in quoted,
+       "stage: a quote in a link URL is neutralized in the href")
+
+    sug = load("suggestions.py", "eddic_suggestions")
+    # bug 6: a newline-bearing title must not inject a new frontmatter
+    # line; it is quoted into a single YAML scalar.
+    doc = sug.render({
+        "id": "abcdef12", "kind": "page",
+        "title": "Evil\ninjected: pwned", "content": "body",
+        "status": "pending", "tier": "player",
+        "created": "2026-07-20T00:00:00"})
+    fm = doc.split("---")[1]
+    fm_lines = [ln for ln in fm.strip().split("\n") if ln.strip()]
+    ck(not any(ln.startswith("injected:") for ln in fm_lines),
+       "suggestions: a newline in a title injects no frontmatter key")
+    ck(len([ln for ln in fm_lines if ln.startswith("title:")]) == 1,
+       "suggestions: the title is a single YAML scalar (no line break)")
+    # a colon-bearing path is quoted, not emitted as a bare mapping
+    doc2 = sug.render({
+        "id": "beef", "kind": "edit", "path": "a: b\nfake: x",
+        "suggestion": "s", "status": "pending", "tier": "player",
+        "created": "2026-07-20T00:00:00"})
+    fm2 = [ln for ln in doc2.split("---")[1].strip().split("\n")
+           if ln.strip()]
+    ck(not any(ln.startswith("fake:") for ln in fm2),
+       "suggestions: a newline in a path injects no frontmatter key")
+
+    return fails
+
+
 def write(root, rel, text):
     p = root / rel
     p.parent.mkdir(parents=True, exist_ok=True)
@@ -24,6 +95,8 @@ def write(root, rel, text):
 
 
 def main():
+    if unit_checks():
+        return 1
     node = shutil.which("node")
     if not node:
         print("SKIP: node not on PATH (worker harness needs it)")
