@@ -1,5 +1,5 @@
 name: recorder
-version: 0.2.2
+version: 0.3.0
 summary: >
   The campaign's own session-recording Discord bot: react-gated
   per-microphone consent enforced in the audio sink, per-speaker

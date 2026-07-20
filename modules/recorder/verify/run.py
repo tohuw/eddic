@@ -232,6 +232,42 @@ def main():
     checks.append((ok_wav, "consented audio lands as a well-formed "
                            "per-speaker WAV under the display name"))
 
+    # Feature: recording-suffix nickname computation (pure, 32-char cap).
+    suffix = recorder.NICK_SUFFIX
+    checks.append((recorder.apply_recording_suffix("Muninn")
+                   == "Muninn" + suffix,
+                   "short base gets the recording suffix appended verbatim"))
+    long_base = "X" * 40
+    capped = recorder.apply_recording_suffix(long_base)
+    checks.append((len(capped) == recorder.NICK_MAX
+                   and capped.endswith(suffix),
+                   "over-long base is truncated so base+suffix is exactly 32, "
+                   "suffix preserved"))
+    checks.append((all(len(recorder.apply_recording_suffix("Y" * n))
+                       <= recorder.NICK_MAX
+                       for n in range(0, 60)),
+                   "the suffixed nick never exceeds 32 chars for any base"))
+    once = recorder.apply_recording_suffix("Muninn")
+    checks.append((recorder.apply_recording_suffix(once) == once,
+                   "applying the suffix to an already-suffixed nick is "
+                   "idempotent (no double-append)"))
+    checks.append((recorder.strip_recording_suffix("Muninn" + suffix)
+                   == "Muninn",
+                   "stripping the suffix recovers the base"))
+    checks.append((recorder.strip_recording_suffix("Muninn") == "Muninn",
+                   "stripping a nick without the suffix is a no-op "
+                   "(idempotent)"))
+
+    # Feature: empty-channel disconnect decision (pure arm/cancel).
+    bot_m = types.SimpleNamespace(bot=True)
+    human = types.SimpleNamespace(bot=False)
+    checks.append((recorder.channel_is_empty([]),
+                   "a channel with no members is empty (arm the timer)"))
+    checks.append((recorder.channel_is_empty([bot_m, bot_m]),
+                   "a channel with only bots is empty (arm the timer)"))
+    checks.append((not recorder.channel_is_empty([bot_m, human]),
+                   "one non-bot member present ⇒ not empty (cancel/hold)"))
+
     # loopback control surface router
     checks += control_router_checks()
 

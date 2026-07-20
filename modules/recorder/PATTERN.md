@@ -32,8 +32,9 @@ retire. Pin the versions as written below.
   `bot applications.commands` and permissions View Channels, Send
   Messages, Read Message History, Add Reactions, **Connect**, and
   **Speak** (only for the transparency chime it plays at record
-  start) plus **Set Voice Channel Status** — integer
-  `281477127408704`. Build the invite URL yourself with BOTH scopes:
+  start), **Set Voice Channel Status**, and **Change Nickname** (so it
+  can wear a `(RECORDING)` badge on its own name while capturing) —
+  integer `281477194517568`. Build the invite URL yourself with BOTH scopes:
   Discord's default install link omits the `bot` scope, and the
   resulting "Success! authorized and added" dialog is
   indistinguishable from a real invite while adding only slash
@@ -87,7 +88,14 @@ retire. Pin the versions as written below.
    Transcription stays a deliberate step (transcriber pattern). The
    same start/stop/status run through a loopback control surface too
    (see the `streamdeck` module) — one shared session core, so button
-   and slash never diverge.
+   and slash never diverge. While at least one consented mic is
+   capturing, the bot appends `(RECORDING)` to its own guild nickname
+   (dropped when the session stops or the last react is removed;
+   truncated to fit Discord's 32-char nick limit, and best-effort — a
+   missing Change Nickname permission never breaks recording). If the
+   recorded voice channel empties of non-bot members for the
+   auto-disconnect timeout, the session auto-stops down the same clean
+   path as `/record stop` and posts a brief note in the channel.
 
 4. First run on a new setup: record a short test with one consenting
    and one non-consenting member and play both outcomes back to the
@@ -119,6 +127,15 @@ retire. Pin the versions as written below.
 - **When it runs.** Default: launched for the session, stopped
   after. It is not a resident service; nothing needs it between
   sessions.
+- **Empty-channel auto-stop.** Default: **60 seconds**. When the
+  recorded voice channel has no non-bot members left, the bot arms a
+  timer and, if nobody rejoins before it fires, runs the same clean
+  stop path as `/record stop` (stage tracks, log the witness line,
+  drop the nickname badge, tear down) and posts a note that it
+  auto-ended on an empty channel. Any rejoin before the timer fires
+  cancels it. Tune with `EMPTY_DISCONNECT_SECONDS` in `variables.txt`
+  (seconds); it exists so a session is never left silently capturing an
+  empty room after the table disperses.
 - **Native launcher.** Default: package the bot as a
   double-clickable launcher via the launcher module (a macOS
   `.app`, a Windows `.cmd`) so the DM starts a session without
@@ -147,7 +164,11 @@ retire. Pin the versions as written below.
   It also asserts, by source inspection, that the consent post is a
   public `channel.send` and never an ephemeral interaction reply, and
   unit-tests the control router (loopback auth, method/path dispatch,
-  the `409`/`404` codes).
+  the `409`/`404` codes). It pure-tests the two session-badge features:
+  the `(RECORDING)` nickname computation (append, the 32-char cap that
+  truncates an over-long base, and add/strip idempotence) and the
+  empty-channel decision (no non-bot members ⇒ arm, a present member ⇒
+  hold).
 - Live, once per setup: the two-member test in step 4 — consented
   audio present and transcribable, non-consenting member absent
   from every track.

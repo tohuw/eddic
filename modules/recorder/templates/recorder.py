@@ -75,11 +75,58 @@ EMOJI = "🎙️"
 CONSENT_PING_ROLE = os.environ.get("CONSENT_PING_ROLE", "").strip()
 CONSENT_PING_STATE = HERE / "consent_ping.json"
 
+# While at least one consented mic is capturing, the bot wears this suffix
+# on its own guild nickname so anyone glancing at the member list sees the
+# session is live. Discord caps a nickname at 32 chars; a long base name is
+# truncated to fit rather than rejected.
+NICK_SUFFIX = " (RECORDING)"
+NICK_MAX = 32
+
+# Auto-stop a session whose voice channel has gone empty (no non-bot
+# members) for this long. Guards against a session left running after
+# everyone has left; runs the same clean stop path as `/record stop`.
+EMPTY_DISCONNECT_SECONDS = int(
+    os.environ.get("EMPTY_DISCONNECT_SECONDS", "60"))
+
 sessions = {}  # guild_id -> dict(vc, sink, msg, outdir, names)
 
 
 def is_consent_emoji(emoji):
     return str(emoji).replace("️", "") == EMOJI.replace("️", "")
+
+
+def apply_recording_suffix(base, suffix=NICK_SUFFIX, limit=NICK_MAX):
+    """Return the recording nickname: `base` with `suffix` appended, never
+    exceeding `limit` characters. If base + suffix would overflow, the base
+    is truncated (the suffix is preserved whole, since it carries the
+    signal). Idempotent: a base that already ends with the suffix is
+    returned unchanged. Pure — no Discord, safe to unit-test."""
+    base = base or ""
+    if base.endswith(suffix):
+        return base[:limit]
+    room = limit - len(suffix)
+    if room <= 0:
+        # Suffix alone meets or exceeds the limit; nothing else fits.
+        return suffix[:limit]
+    return base[:room] + suffix
+
+
+def strip_recording_suffix(nick, suffix=NICK_SUFFIX):
+    """Remove exactly one trailing `suffix` from `nick` if present, else
+    return it unchanged. Idempotent. Pure. This is the fallback when the
+    stored base nickname is unavailable; the primary restore path replays
+    the exact base captured when the suffix was first applied."""
+    if nick and nick.endswith(suffix):
+        return nick[:-len(suffix)]
+    return nick
+
+
+def channel_is_empty(members):
+    """True when a voice channel holds no non-bot members. `members` is an
+    iterable of objects with a `.bot` attribute (Discord Members). Pure —
+    this is the whole arm/cancel decision for the empty-channel timer:
+    empty ⇒ arm the disconnect timer, non-empty ⇒ cancel it."""
+    return not any(not getattr(m, "bot", False) for m in members)
 
 
 def chime_pcm():
@@ -108,6 +155,48 @@ async def set_channel_status(bot, channel_id, status):
     except Exception as e:
         print(f"recorder: channel status not set ({e!r}) — recording "
               f"proceeds; consent post remains the source of truth")
+
+
+async def set_recording_nick(guild, s):
+    """Append the recording suffix to the bot's own guild nickname, once
+    per session. Stores the exact base nick on the session for a faithful
+    restore. Best-effort: a nick edit that fails (no Change Nickname
+    permission, etc.) is logged and swallowed — it must never break
+    recording."""
+    if guild is None or s.get("nick_set"):
+        return
+    me = getattr(guild, "me", None)
+    if me is None:
+        return
+    base_nick = getattr(me, "nick", None)  # None when no guild nick is set
+    base_display = base_nick if base_nick else getattr(me, "name", "")
+    s["base_nick"] = base_nick
+    try:
+        await me.edit(nick=apply_recording_suffix(base_display))
+        s["nick_set"] = True
+    except Exception as e:
+        print(f"recorder: could not set recording nickname ({e!r}); "
+              f"recording proceeds unaffected")
+
+
+async def clear_recording_nick(guild, s):
+    """Restore the bot's nickname to the base captured when the suffix was
+    applied (None resets to the username). Falls back to stripping the exact
+    suffix if no base was stored. Best-effort, same as setting it."""
+    if guild is None or not s.get("nick_set"):
+        return
+    me = getattr(guild, "me", None)
+    if me is None:
+        return
+    if "base_nick" in s:
+        target = s["base_nick"]
+    else:
+        target = strip_recording_suffix(getattr(me, "nick", None)) or None
+    try:
+        await me.edit(nick=target)
+        s["nick_set"] = False
+    except Exception as e:
+        print(f"recorder: could not clear recording nickname ({e!r})")
 
 
 class ConsentSink(discord.sinks.Sink):
@@ -275,7 +364,8 @@ async def open_session(bot, guild_id, channel, channel_status=True):
                           "add reactions here")}
     sessions[guild_id] = {"vc": vc, "sink": sink, "msg": msg,
                           "outdir": outdir, "names": set(),
-                          "status_set": False, "ping": ping}
+                          "status_set": False, "ping": ping,
+                          "nick_set": False, "empty_task": None}
     vc.start_recording(sink, finished)
     # transparency: an audible chime in-channel, and (unless declined) a
     # visible status on the channel itself
@@ -301,9 +391,15 @@ async def close_session(bot, guild_id):
     if not s:
         return {"ok": False, "error": "no open recording session"}
     sessions.pop(guild_id, None)
+    # Cancel any armed empty-channel timer so it can't fire after teardown.
+    empty_task = s.pop("empty_task", None)
+    if empty_task is not None:
+        empty_task.cancel()
     s["vc"].stop_recording()
     if s.get("status_set"):
         await set_channel_status(bot, s["vc"].channel.id, "")
+    # Drop the recording suffix from the bot's nickname (best-effort).
+    await clear_recording_nick(bot.get_guild(guild_id), s)
     await s["vc"].disconnect()
     s["sink"].close_all()
     files = sorted(s["outdir"].glob("*.wav"))
@@ -328,6 +424,54 @@ async def close_session(bot, guild_id):
               "stats": stats, "consented": sorted(s["names"])}
     if log_error:
         result["log_error"] = log_error
+    return result
+
+
+def _evaluate_empty_channel(bot, guild_id, s, ch):
+    """Arm or cancel the empty-channel disconnect timer for a session,
+    from the channel's current membership. Idempotent: an already-armed
+    timer is left running while the channel stays empty, and a running
+    timer is cancelled the moment a non-bot member is present."""
+    if channel_is_empty(getattr(ch, "members", [])):
+        if s.get("empty_task") is None:
+            s["empty_task"] = asyncio.ensure_future(
+                _empty_channel_disconnect(bot, guild_id))
+    else:
+        task = s.pop("empty_task", None)
+        if task is not None:
+            task.cancel()
+
+
+async def _empty_channel_disconnect(bot, guild_id):
+    """After the channel has been empty for EMPTY_DISCONNECT_SECONDS, run
+    the same clean stop path as `/record stop` and post a brief note.
+    Races are guarded: a cancel during the wait aborts, and a session that
+    closed or re-populated in the meantime is left alone."""
+    try:
+        await asyncio.sleep(EMPTY_DISCONNECT_SECONDS)
+    except asyncio.CancelledError:
+        return
+    s = sessions.get(guild_id)
+    if not s:
+        return
+    ch = getattr(s["vc"], "channel", None)
+    # Re-check: someone may have rejoined in the final instant.
+    if ch is not None and not channel_is_empty(getattr(ch, "members", [])):
+        s.pop("empty_task", None)
+        return
+    # Clear our own handle first so close_session's cancel is a no-op on us.
+    s.pop("empty_task", None)
+    result = await close_session(bot, guild_id)
+    if result.get("ok") and ch is not None:
+        try:
+            mins = EMPTY_DISCONNECT_SECONDS // 60
+            span = (f"{mins} minute(s)" if mins
+                    else f"{EMPTY_DISCONNECT_SECONDS} second(s)")
+            await ch.send(
+                f"{EMOJI} Recording auto-ended: the voice channel was "
+                f"empty for {span}. Tracks are staged.")
+        except Exception as e:
+            print(f"recorder: auto-end note not posted ({e!r})")
     return result
 
 
@@ -505,6 +649,11 @@ def setup(bot):
         s["sink"].namehints[payload.user_id] = hint
         s["sink"].consented.add(payload.user_id)
         s["names"].add(hint)
+        # First consented mic in this session ⇒ wear the recording suffix.
+        if s["sink"].consented and not s.get("nick_set"):
+            guild = getattr(member, "guild", None) \
+                or bot.get_guild(payload.guild_id)
+            await set_recording_nick(guild, s)
         await s["msg"].edit(content=consent_text(s["names"], ping=s.get("ping", "")))
 
     @bot.event
@@ -516,10 +665,30 @@ def setup(bot):
             return
         s["sink"].consented.discard(payload.user_id)
         guild = bot.get_guild(payload.guild_id)
+        # Last consented mic gone ⇒ drop the recording suffix.
+        if not s["sink"].consented and s.get("nick_set"):
+            await clear_recording_nick(guild, s)
         member = guild.get_member(payload.user_id) if guild else None
         if member:
             s["names"].discard(member.display_name)
             await s["msg"].edit(content=consent_text(s["names"], ping=s.get("ping", "")))
+
+    @bot.event
+    async def on_voice_state_update(member, before, after):
+        # Auto-stop a session whose recorded channel has emptied out. A
+        # voice-state change that touches a recorded channel re-evaluates
+        # that channel: no non-bot members left ⇒ arm a disconnect timer;
+        # anyone (re)joins before it fires ⇒ cancel it.
+        if getattr(member, "bot", False):
+            return
+        for guild_id, s in list(sessions.items()):
+            ch = getattr(s["vc"], "channel", None)
+            if ch is None:
+                continue
+            if getattr(before, "channel", None) != ch \
+                    and getattr(after, "channel", None) != ch:
+                continue
+            _evaluate_empty_channel(bot, guild_id, s, ch)
 
     def _start_control_surface():
         """Bring up the loopback control surface (Stream Deck etc.),
