@@ -72,6 +72,48 @@ def main():
     checks.append((proc3.returncode == 1,
                    f"dangling player link refuses (got {proc3.returncode})"))
 
+    # Reference-style links breach the firewall too: the [id]: definition
+    # names the DM twin, so it must refuse just like an inline link.
+    write(src, "characters/warden.md", PLAYER_FM + "# The Warden\n\n"
+          "See [the full truth][t].\n\n[t]: warden.dm.md\n")
+    proc_ref = run(src, out)
+    checks += [
+        (proc_ref.returncode == 1,
+         f"reference-style link to DM twin refuses (got {proc_ref.returncode})"),
+        ("warden.dm.md" in proc_ref.stderr,
+         "reference-style breach names the DM target"),
+    ]
+
+    # Inline-HTML anchors breach the firewall too.
+    write(src, "characters/warden.md", PLAYER_FM + "# The Warden\n\n"
+          'See <a href="warden.dm.md">the full truth</a>.\n')
+    proc_html = run(src, out)
+    checks += [
+        (proc_html.returncode == 1,
+         f"inline-HTML link to DM twin refuses (got {proc_html.returncode})"),
+        ("warden.dm.md" in proc_html.stderr,
+         "inline-HTML breach names the DM target"),
+    ]
+
+    # DM-only frontmatter must never ride into player output: a
+    # visibility: player page still projects, but its other keys are
+    # stripped so no DM secret reaches the projection.
+    write(src, "characters/warden.md",
+          "---\nvisibility: player\n"
+          "dm_secret: the Warden is secretly the last Reaver\n---\n\n"
+          "# The Warden\n\nKeeper of the gate, sworn to the "
+          "[realm](../index.md).\n")
+    proc_fm = run(src, out)
+    projected = (out / "characters/warden.md").read_text(encoding="utf-8")
+    checks += [
+        (proc_fm.returncode == 0,
+         f"page with dm_secret frontmatter still projects (got {proc_fm.returncode})"),
+        ("dm_secret" not in projected and "last Reaver" not in projected,
+         "dm_secret frontmatter stripped from the projected page"),
+        (projected.startswith("# The Warden"),
+         "projected page starts at the H1 — frontmatter gone, body intact"),
+    ]
+
     # Contributor overlays: shadow wins on the built surface, base
     # stays in the tree; a second claim on the target refuses.
     write(src, "characters/warden.md", PLAYER_FM + "# The Warden\n\n"

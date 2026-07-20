@@ -37,11 +37,20 @@ def main():
     (proj / "characters" / "warden.md").write_text(
         "# The Warden\n\nkeeper of the gate\n", encoding="utf-8")
     (proj / "AGENTS.md").write_text("# schema\n", encoding="utf-8")
+    # A page that still carries frontmatter with a DM-only key: the
+    # corpus must strip it so the bot never serves a frontmatter secret.
+    (proj / "characters" / "vault.md").write_text(
+        "---\nvisibility: player\ndm_secret: the true name of the Warden\n"
+        "---\n\n# The Vault\n\nwhat lies beneath\n", encoding="utf-8")
     corpus = botlib.corpus_from_dir(proj)
     checks.append(("=== characters/warden.md ===" in corpus,
                    "corpus heads pages with their paths"))
     checks.append(("keeper of the gate" in corpus, "corpus holds page text"))
     checks.append(("schema" not in corpus, "non-content excluded"))
+    checks.append(("dm_secret" not in corpus and "true name" not in corpus,
+                   "frontmatter stripped from the corpus (no DM key served)"))
+    checks.append(("what lies beneath" in corpus,
+                   "page body survives frontmatter stripping"))
 
     # fingerprint change detection
     fp1 = botlib.dir_fingerprint(proj)

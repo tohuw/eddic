@@ -13,6 +13,19 @@ from pathlib import Path
 NON_CONTENT = {"CLAUDE.md", "AGENTS.md", "README.md", "log.md"}
 
 
+def strip_frontmatter(text):
+    """Drop a leading `--- ... ---` YAML block. The corpus is served to
+    players, and frontmatter can carry DM-only keys; the projection strips
+    it too, but this is the belt-and-suspenders so the bot never serves a
+    frontmatter secret even if fed a page that still has one."""
+    lines = text.splitlines()
+    if len(lines) >= 3 and lines[0].strip() == "---":
+        for i in range(1, len(lines)):
+            if lines[i].strip() == "---":
+                return "\n".join(lines[i + 1:])
+    return text
+
+
 def load_variables(path):
     """KEY=VALUE file into os.environ with setdefault — real env wins,
     so platform config (Railway, launchd) overrides the file."""
@@ -36,8 +49,9 @@ def corpus_from_dir(root):
         if p.name in NON_CONTENT:
             continue
         rel = p.relative_to(root).as_posix()
-        parts.append(f"=== {rel} ===\n"
-                     + p.read_text(encoding="utf-8", errors="replace").strip())
+        text = strip_frontmatter(
+            p.read_text(encoding="utf-8", errors="replace"))
+        parts.append(f"=== {rel} ===\n" + text.strip())
     return "\n\n".join(parts)
 
 
@@ -87,7 +101,8 @@ def corpus_from_tarball(repo, token, subdir, branch="master"):
             name = rel.rsplit("/", 1)[-1]
             if not name.endswith(".md") or name in NON_CONTENT:
                 continue
-            text = tar.extractfile(member).read().decode("utf-8", "replace")
+            text = strip_frontmatter(
+                tar.extractfile(member).read().decode("utf-8", "replace"))
             inner = rel[len(subdir.rstrip("/")) + 1:]
             parts.append(f"=== {inner} ===\n{text.strip()}")
     return "\n\n".join(parts)

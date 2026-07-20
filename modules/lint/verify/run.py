@@ -18,11 +18,15 @@ REPORTER = HERE.parent / "scripts" / "eddic_lint.py"
 SEMANTIC = HERE.parent / "scripts" / "semantic_review.py"
 
 EXPECTED = Counter({
-    "broken-link": 1,        # sunken-city -> ghost-quarter.md
+    "broken-link": 2,        # sunken-city -> ghost-quarter.md (inline);
+                             # sunken-city -> depths/hidden.dm.md (<a href>,
+                             # proving HTML links are resolved too)
     "broken-anchor": 1,      # sunken-city -> warden.md#no-such-heading
     "absolute-link": 1,      # sunken-city -> /maps/atlas.html
     "missing-h1": 1,         # lost-shrine
-    "firewall-breach": 2,    # index and warden link the DM-only vault
+    "firewall-breach": 3,    # index and warden link the DM-only vault
+                             # (inline); sunken-city links it via a
+                             # reference-style [the vault][v] link
     "log-malformed": 2,      # unknown type 'conjure'; freeform ## header
     "orphan": 2,             # lost-shrine; contributed field-notes
     "unreachable": 2,        # lost-shrine; contributed field-notes

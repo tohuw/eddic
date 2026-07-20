@@ -1,5 +1,5 @@
 name: lore-bot
-version: 0.3.1
+version: 0.3.2
 summary: >
   The Discord lore-keeper: answers the table's questions from the
   player projection (corpus in a prompt-cached system block),

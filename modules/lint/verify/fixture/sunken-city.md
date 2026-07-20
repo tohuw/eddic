@@ -9,4 +9,9 @@ Its bells still ring beneath the water, or so travelers claim; see the
 [missing page](ghost-quarter.md) and [the docks](warden.md#no-such-heading).
 A site-rooted [atlas link](/maps/atlas.html) that resolves nowhere.
 
+The vault's secret is sworn via [the vault][v], and
+<a href="depths/hidden.dm.md">a hidden annex</a> that resolves nowhere.
+
+[v]: depths/secret-vault.md
+
 STUB

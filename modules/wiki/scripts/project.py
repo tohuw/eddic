@@ -8,7 +8,8 @@ Usage:
     (bare, as a vendored eddic verb: paths come from EDDIC_CONFIG)
 
 Copies every page marked `visibility: player` from the DM master into
-the projection directory, preserving the tree. Visibility fails
+the projection directory, preserving the tree, with frontmatter
+stripped so no DM-only key rides into player output. Visibility fails
 closed: a page without frontmatter, or without the marker, is DM-only
 and never projects.
 
@@ -43,6 +44,29 @@ from pathlib import Path
 
 NON_CONTENT = {"CLAUDE.md", "AGENTS.md", "README.md"}
 LINK = re.compile(r"(?<!\!)\[[^\]]*\]\(([^)\s]+)\)")
+# Inline HTML anchor and Markdown reference-definition targets — the two
+# link forms the inline LINK regex misses. link_targets mirrors
+# eddic_lint.py so the firewall sees exactly the links the linter does:
+# a DM target can hide in an inline link, a reference definition, or an
+# <a href>, and every one trips the same refusal.
+HREF = re.compile(r"""<a\b[^>]*?\shref\s*=\s*["']([^"'>\s]+)["']""", re.I)
+REFDEF = re.compile(r"""^\s{0,3}\[[^\]]+\]:\s+<?([^>\s]+)>?""")
+
+
+def link_targets(body):
+    """(line_no, target) for every link target: inline [text](url),
+    reference definitions [id]: target (which carry the URL a [text][id]
+    use resolves to), and inline HTML <a href>. Mirrors
+    eddic_lint.link_targets so projection and lint cannot diverge."""
+    out = []
+    for i, line in enumerate(body.splitlines()):
+        for m in LINK.finditer(line):
+            out.append((i + 1, m.group(1)))
+        if (m := REFDEF.match(line)):
+            out.append((i + 1, m.group(1)))
+        for m in HREF.finditer(line):
+            out.append((i + 1, m.group(1)))
+    return out
 
 
 def split_frontmatter(text):
@@ -148,8 +172,7 @@ def main(argv):
         _, path = pages[rel]
         _, body = split_frontmatter(path.read_text(encoding="utf-8",
                                                    errors="replace"))
-        for m in LINK.finditer(body):
-            target = m.group(1)
+        for _line, target in link_targets(body):
             if re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*:", target):
                 continue
             raw = target.partition("#")[0]
@@ -180,7 +203,15 @@ def main(argv):
     for rel in sorted(player):
         dest = out / rel
         dest.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(pages[rel][1], dest)
+        # Strip frontmatter: projected pages are player output. Only
+        # `visibility` was ever read, and downstream consumers take the
+        # body alone (render uses the H1, the corpus uses the body, the
+        # player Atlas rests on the projection's closure). Any other
+        # frontmatter key — a DM note, a secret — would otherwise ride
+        # verbatim into player hands, so none of it ships.
+        _, body = split_frontmatter(
+            pages[rel][1].read_text(encoding="utf-8", errors="replace"))
+        dest.write_text(body.lstrip("\n"), encoding="utf-8")
     assets = src / "assets"
     if assets.is_dir():
         for p in sorted(assets.rglob("*")):

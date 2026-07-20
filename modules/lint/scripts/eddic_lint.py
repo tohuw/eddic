@@ -39,6 +39,11 @@ TRANSACTABILITY = {"transactable", "transactable-with-attribution",
 GENERIC_AUTHORSHIP = {"human", "agent", "machine", "transcript"}
 LOG_HEADER = re.compile(r"^## \[\d{4}-\d{2}-\d{2}\] (\S+) \| .+$")
 LINK = re.compile(r"(?<!\!)\[[^\]]*\]\(([^)\s]+)\)")
+# Inline HTML anchor and Markdown reference-definition targets. These
+# are the two link forms the inline LINK regex misses; both can name a
+# DM page just as an inline link can, so both must feed the firewall.
+HREF = re.compile(r"""<a\b[^>]*?\shref\s*=\s*["']([^"'>\s]+)["']""", re.I)
+REFDEF = re.compile(r"""^\s{0,3}\[[^\]]+\]:\s+<?([^>\s]+)>?""")
 HEADING = re.compile(r"^(#{1,6})\s+(.*?)\s*$")
 FENCE = re.compile(r"^(```|~~~)")
 STUB_WORD_LIMIT = 150
@@ -96,9 +101,21 @@ def strip_code(body):
 
 
 def link_targets(body):
-    """(line_no, target) pairs for markdown links in the body."""
-    return [(i + 1, m.group(1)) for i, line in enumerate(body.splitlines())
-            for m in LINK.finditer(line)]
+    """(line_no, target) pairs for every link target in the body: inline
+    [text](url), reference definitions [id]: target (whose URL is what a
+    [text][id] use resolves to, so harvesting the definitions covers the
+    uses without a second pass), and inline HTML <a href>. All three
+    forms flow through the same resolution and firewall check, so a DM
+    target can hide in none of them."""
+    out = []
+    for i, line in enumerate(body.splitlines()):
+        for m in LINK.finditer(line):
+            out.append((i + 1, m.group(1)))
+        if (m := REFDEF.match(line)):
+            out.append((i + 1, m.group(1)))
+        for m in HREF.finditer(line):
+            out.append((i + 1, m.group(1)))
+    return out
 
 
 def lint(root, log_name, contribs=None):
