@@ -1,16 +1,27 @@
 name: lint
-version: 0.3.0
+version: 0.4.0
 summary: >
   Wiki health check: deterministic reporter for broken links and anchors,
   site-rooted (absolute) links, missing titles, stub drift, orphaned/
   unreachable pages, malformed operation logs, and spoiler-firewall
-  breaches (player-visible pages referencing DM-only pages).
+  breaches (player-visible pages referencing DM-only pages); plus the
+  semantic pass — a deterministic review-packet builder and findings-
+  schema validator that realize the model-triage seam for what regex
+  cannot see (firewall-in-prose leaks, tonal drift, contradictions,
+  dangling references, naming drift, overgrown stubs).
 touches:
   - wiki
 depends: []
 cost_posture:
   free: >
-    Entirely local and free: a stdlib-only Python reporter run via uv.
-    No paid path exists or is needed.
-  paid: none
-  heuristic: n/a
+    The structural reporter and the semantic-review packet builder and
+    validator are stdlib-only Python run via uv — entirely local and free.
+  paid: >
+    The semantic pass spends model tokens when a maintaining agent reads
+    the packet and works the checklist; the deterministic scaffolding is
+    free and the pass is off by default.
+  heuristic: >
+    Run the semantic pass only when manual consistency review stops
+    scaling (many pages, several contributors, spoilers in prose);
+    pre-compress inputs for a large wiki. The structural reporter alone
+    suffices for a small campaign.

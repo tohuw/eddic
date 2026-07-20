@@ -191,9 +191,10 @@ under the contract.
   [principles](design/principles.md) — never as dependencies.
 - **Eddic website.** First trigger fired 2026-07-18: live at
   eddic-site.pages.dev (source in `site/`, rendered by the render module),
-  carrying the privacy posture the recorder's consent post links. Remaining
-  owner calls: a real domain, and whether the site grows a docs/marketplace face
-  beyond the current five pages.
+  carrying the privacy posture the recorder's consent post links. The
+  real-domain call is now resolved: the site is live at **eddic.quest** (apex +
+  www, proxied, alongside eddic-site.pages.dev). Remaining owner call: whether
+  the site grows a docs/marketplace face beyond the current five pages.
 - **Payment gateway.** Choose when the marketplace module (15) starts: a gateway
   with checkout-and-download and no inventory overhead; cost posture per
   principle 4. Until then the transaction arc is rights machinery, not commerce.
@@ -253,8 +254,15 @@ under the contract.
   group. Non-negotiable: it stays a bolt-on over the self-contained repo —
   turning it off returns the campaign to the plain unlisted default. Trigger: a
   table wanting a campaign not reachable by URL alone.
-- **Agentic ("Claude") lint routine.** The [lint](modules/lint.md) module is a
-  deterministic reporter with a stated model-triage seam; the
+- **Agentic ("Claude") lint routine.** **Shipped v1 — lint 0.4.0 + routines
+  0.2.0:** a deterministic `semantic_review.py` scaffold builds a reproducible
+  review packet (master pages, plus the player projection gathered *separately*
+  for firewall-in-prose) with a pinned findings schema; the routines contract
+  packages the agent pass as a safe-to-miss/double-run routine; findings file
+  into the witness inbox as `suggest_edit`s (or a plain report). Kept
+  agent-agnostic — no unbacked vendor claim. Remaining: cadence/cost tuning and
+  a live LLM pass on a real campaign. Original framing: the [lint](modules/lint.md)
+  module is a deterministic reporter with a stated model-triage seam; the
   [routines](modules/routines.md) module gives the idempotent,
   safe-to-miss/safe-to-double-run contract to hang recurring maintenance off.
   The gap between them is a packaged **agent-run semantic lint**: a routine that

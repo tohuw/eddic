@@ -15,8 +15,14 @@ import yaml
 MOD = Path(__file__).resolve().parent.parent
 
 
+FIVE_SECTIONS = ("**Purpose.**", "**Idempotency.**", "**Safe to miss.**",
+                 "**Safe to double-run.**", "**Refusal behavior.**")
+
+
 def main():
     contract = (MOD / "templates" / "routine-freshness.md").read_text(
+        encoding="utf-8")
+    semantic = (MOD / "templates" / "routine-semantic-review.md").read_text(
         encoding="utf-8")
     wf = yaml.safe_load((MOD / "templates" / "gh-actions-freshness.yml")
                         .read_text(encoding="utf-8"))
@@ -41,12 +47,19 @@ def main():
          "no continue-on-error: refusals stop the chain"),
         ("wiki/**" in str(trigger) and "contribs/**" in str(trigger),
          "event-driven on wiki and contribs changes"),
-        (all(h in contract for h in
-             ("**Purpose.**", "**Idempotency.**", "**Safe to miss.**",
-              "**Safe to double-run.**", "**Refusal behavior.**")),
-         "contract states all five required sections"),
+        (all(h in contract for h in FIVE_SECTIONS),
+         "freshness contract states all five required sections"),
         ("--strict" in contract and "lint" in contract,
          "contract demands strict lint"),
+        (all(h in semantic for h in FIVE_SECTIONS),
+         "semantic-review contract states all five required sections"),
+        ("semantic-review" in semantic and "--validate" in semantic,
+         "semantic-review contract builds and validates the packet"),
+        ("suggest_edit" in semantic and "eddic suggestions" in semantic,
+         "semantic-review contract files findings into the retrieval inbox"),
+        (("advisory" in semantic and "never" in semantic
+          and "auto" in semantic),
+         "semantic-review contract states its advisory-only posture"),
     ]
     failed = [msg for ok, msg in checks if not ok]
     for ok, msg in checks:

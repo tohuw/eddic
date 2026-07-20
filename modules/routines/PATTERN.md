@@ -27,10 +27,17 @@ tutorials.
 1. Pick the routine's contract from `templates/` (or write a new one
    in the same shape: purpose, composed verbs, idempotency argument,
    miss/double-run argument, default cadence, refusal behavior).
-   The first standard routine is **freshness**
+   Two standard routines ship. **Freshness**
    (`templates/routine-freshness.md`): wiki changed → strict lint →
    project → stage → deploys — the loop that keeps every player
-   surface tracking the wiki.
+   surface tracking the wiki, deterministic and zero-token.
+   **Semantic review** (`templates/routine-semantic-review.md`): the
+   lint module's model pass packaged as a routine — strict lint,
+   project, `semantic-review` to build the packet, the agent's checklist
+   pass, validate, then file findings as `suggest_edit` suggestions into
+   the DM's inbox (or a plain report). It is the token-spending
+   exception below, and its output is advisory only: agent proposes,
+   human disposes, nothing auto-applied.
 2. Map it onto the chosen runner. For GitHub Actions,
    `templates/gh-actions-freshness.yml` is a working start (fill the
    two secrets it names; it triggers on wiki pushes, so cadence is
@@ -59,15 +66,21 @@ tutorials.
   freshness loop spends zero model tokens). A routine that reads
   transcripts or lints semantically documents its cost posture and
   pre-compresses inputs (DESIGN: token economics) before any model
-  sees them.
+  sees them — the shipped **semantic-review** routine is exactly this
+  case: its scaffolding is free and deterministic, the one model step
+  is bounded by a checklist, and its default cadence is
+  between-sessions rather than per-push so the token spend rides the
+  rhythm of play.
 
 ## Verify
 
 - `uv run modules/routines/verify/run.py` — parses the Actions
   template as YAML, checks it composes only vendored verbs in the
   contract's order with strict lint first, refuses-on-error
-  semantics (no continue-on-error), and confirms the contract file
-  states all five required sections.
+  semantics (no continue-on-error), and confirms both shipped contract
+  files (freshness and semantic-review) state all five required
+  sections, and that the semantic-review contract names its advisory
+  posture and its filing path into the retrieval inbox.
 - Live: trigger the chosen runner once by hand (push a trivial wiki
   change, or run the unit manually) and watch the whole chain
   succeed; then trigger it twice back-to-back and confirm the

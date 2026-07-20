@@ -1,26 +1,35 @@
 name: routines
-version: 0.1.0
+version: 0.2.0
 summary: >
   The maintenance-routine contract (idempotent, safe to miss, safe to
   double-run) with the runner preference chain — hosted agent
   routines, GitHub Actions, local cron-esque — stated as contracts
-  plus one worked adapter; the freshness loop is the first standard
-  routine.
+  plus one worked adapter. Two standard routines ship: the zero-token
+  freshness loop, and the token-bounded semantic-review routine that
+  runs the lint module's model pass and files its findings into the
+  DM's review inbox.
 touches:
   - publish
   - retrieval
+  - lint
 depends:
   - cli
 cost_posture:
   free: >
     The freshness routine is deterministic and spends zero model
     tokens; GitHub Actions free tier or a local scheduler runs it.
+    The semantic-review routine's scaffolding (packet build, schema
+    validation) is likewise free and deterministic.
   paid: >
     Hosted agent routines ride an existing agent subscription; never
-    add a paid service just to host a routine.
+    add a paid service just to host a routine. The semantic-review
+    routine's one model step spends tokens on the agent's own
+    subscription — no new service — bounded by its checklist and a
+    between-sessions cadence.
   heuristic: >
     Take the first rung of the preference chain the owner already
-    pays for or owns.
+    pays for or owns. Run semantic-review only when manual consistency
+    review stops scaling; pre-compress its packet on a large wiki.
 compatibility:
   claude:
     role: maintaining agent
