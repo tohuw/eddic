@@ -54,6 +54,7 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+from xml.sax.saxutils import escape as _xml_escape
 
 # The launcher wraps exactly this — the campaign's own run verb. The two
 # forms differ only in path separator; the verb and service are shared.
@@ -74,14 +75,30 @@ def launcher_name(service, explicit=None):
 def bundle_identifier(name):
     """A per-app, stable reverse-DNS id derived from the launcher name.
     This is the identity macOS TCC pins the service's permissions to, so
-    it must be unique per app and never the shared osacompile default."""
-    slug = re.sub(r"[^a-z0-9]", "", name.lower()) or "launcher"
+    it must be unique per app and never the shared osacompile default.
+    Runs of non-alphanumerics collapse to a single '-' (a valid bundle-id
+    character) rather than being stripped, so near-duplicate names — 'Lore
+    Bot', 'Lore-Bot', 'LoreBot' — don't all fold onto one id and collide
+    their TCC identities."""
+    slug = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-") or "launcher"
     return f"quest.eddic.launcher.{slug}"
 
 
 def _swift_str(value):
-    """Escape a Python string for embedding in a Swift string literal."""
-    return value.replace("\\", "\\\\").replace('"', '\\"')
+    """Escape a Python string for embedding in a Swift string literal. A raw
+    newline (or carriage return) would terminate the one-line literal and
+    break — or inject into — the generated source, so escape those too."""
+    return (value.replace("\\", "\\\\").replace('"', '\\"')
+            .replace("\n", "\\n").replace("\r", "\\r"))
+
+
+def _bash_squote(value):
+    """POSIX single-quote a value for safe embedding in a shell command
+    (the `cd` into the campaign dir). Single-quoting neutralizes every shell
+    metacharacter; an embedded single quote is closed, escaped, and reopened
+    the standard way, so a path containing `"`, `$`, backticks, or spaces
+    cannot break out of the `cd` or inject a command."""
+    return "'" + value.replace("'", "'\\''") + "'"
 
 
 def swift_source_text(name, service, campaign_dir, headless):
@@ -95,9 +112,13 @@ def swift_source_text(name, service, campaign_dir, headless):
     n = _swift_str(name)
     svc = _swift_str(service)
     camp = _swift_str(campaign_dir)
+    # The shell `cd` gets a bash-single-quoted form so the path can't inject;
+    # the raw campaignDir is kept for the Swift-level FileManager paths.
+    camp_shell = _swift_str(_bash_squote(campaign_dir))
     headless_flag = "true" if headless else "false"
-    # Baked values, in order: displayName, service, campaignDir, headless.
-    return _SWIFT_TEMPLATE % (n, svc, camp, headless_flag)
+    # Baked values, in order: displayName, service, campaignDir,
+    # campaignShell (bash-quoted), headless.
+    return _SWIFT_TEMPLATE % (n, svc, camp, camp_shell, headless_flag)
 
 
 # The AppKit supervisor. Self-contained: it owns a window with a
@@ -115,6 +136,7 @@ import Foundation
 let displayName = "%s"
 let service = "%s"
 let campaignDir = "%s"
+let campaignShell = "%s"
 let headless = %s
 let logPath = campaignDir + "/.eddic/" + service + ".log"
 
@@ -226,7 +248,7 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate {
         // Delegate to the run verb, as our own child, in a new
         // session/process group (setsid) so one signal fells the tree.
         let invoke = "uv run .eddic/eddic.py run " + service
-        let script = "cd \"" + campaignDir + "\" && exec perl -e "
+        let script = "cd " + campaignShell + " && exec perl -e "
             + "'use POSIX qw(setsid); setsid(); exec @ARGV' "
             + "/bin/bash -lc '" + invoke + "'"
         let p = Process()
@@ -317,8 +339,16 @@ def info_plist_text(name, service, headless, icon_file=None):
     permissions to THIS app. NSMicrophoneUsageDescription is declared so
     a recorder's mic prompt attributes to the app with a sane string."""
     ident = bundle_identifier(name)
+    # XML-escape every value interpolated into element text: a name with
+    # `&`, `<`, or `>` would otherwise produce a malformed plist that macOS
+    # rejects. (CFBundleExecutable's parsed value still equals the raw name,
+    # so it keeps matching the on-disk Contents/MacOS/<name>.) `ident` is
+    # slug-derived (alnum + '-') and needs none, but escape it for safety.
+    nm = _xml_escape(name)
+    ident = _xml_escape(ident)
     ui_element = "  <key>LSUIElement</key><true/>\n" if headless else ""
-    icon = (f"  <key>CFBundleIconFile</key><string>{icon_file}</string>\n"
+    icon = ("  <key>CFBundleIconFile</key>"
+            f"<string>{_xml_escape(icon_file)}</string>\n"
             if icon_file else "")
     return (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
@@ -326,18 +356,18 @@ def info_plist_text(name, service, headless, icon_file=None):
         '"http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n'
         '<plist version="1.0">\n'
         "<dict>\n"
-        f"  <key>CFBundleName</key><string>{name}</string>\n"
-        f"  <key>CFBundleDisplayName</key><string>{name}</string>\n"
+        f"  <key>CFBundleName</key><string>{nm}</string>\n"
+        f"  <key>CFBundleDisplayName</key><string>{nm}</string>\n"
         f"  <key>CFBundleIdentifier</key><string>{ident}</string>\n"
         "  <key>CFBundleVersion</key><string>1.0</string>\n"
         "  <key>CFBundleShortVersionString</key><string>1.0</string>\n"
         "  <key>CFBundlePackageType</key><string>APPL</string>\n"
-        f"  <key>CFBundleExecutable</key><string>{name}</string>\n"
+        f"  <key>CFBundleExecutable</key><string>{nm}</string>\n"
         "  <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>\n"
         "  <key>LSMinimumSystemVersion</key><string>10.13</string>\n"
         "  <key>NSHighResolutionCapable</key><true/>\n"
         "  <key>NSMicrophoneUsageDescription</key>"
-        f"<string>{name} records session audio for transcription."
+        f"<string>{nm} records session audio for transcription."
         "</string>\n"
         f"{icon}"
         f"{ui_element}"

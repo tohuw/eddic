@@ -1,5 +1,12 @@
 name: launcher
-version: 0.3.0
+version: 0.3.1
+# 0.3.1: fix-only. The Info.plist now XML-escapes the app name (a name with
+# & < > no longer yields a malformed plist); the Swift supervisor bash-quotes
+# the campaign dir it `cd`s into and escapes newlines/CRs in every baked
+# string literal (no shell injection, no broken literal); and
+# bundle_identifier collapses runs of non-alphanumerics to '-' instead of
+# stripping them, so near-duplicate names (Lore Bot / Lore-Bot / LoreBot)
+# get distinct TCC identities instead of colliding.
 summary: >
   Packages a campaign's local service (the recorder bot, or a
   locally-run lore bot) as a native double-clickable launcher: a

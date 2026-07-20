@@ -185,6 +185,13 @@ def parse_empty_timeout(seconds):
 
 
 sessions = {}  # guild_id -> dict(vc, sink, msg, outdir, names)
+# Guilds with an open_session in flight but not yet recorded. This is the
+# single-flight reservation: a guild id is added synchronously at the top of
+# open_session (before the first await) and removed only once the session is
+# either live in `sessions` or fully torn down. A second concurrent start for
+# the same guild sees the reservation and bails without connecting, so two
+# near-simultaneous starts can never both connect and clobber each other.
+_opening = set()  # guild_ids with a start in flight
 
 
 def is_consent_emoji(emoji):
@@ -311,6 +318,7 @@ class ConsentSink(discord.sinks.Sink):
         self.writers = {}
         self.namehints = {}
         self.lock = threading.Lock()
+        self.closed = False
         self.stats = {"written": 0, "unconsented": 0, "unattributed": 0}
 
     def walk_children(self):
@@ -330,8 +338,13 @@ class ConsentSink(discord.sinks.Sink):
         pcm = data.pcm if hasattr(data, "pcm") else data
         if not pcm:
             return
-        self.stats["written"] += 1
         with self.lock:
+            # A write that lands after close_all (a late recv-thread packet
+            # once recording has stopped) is dropped — never reopen a writer,
+            # which would leak a wave handle that is never closed.
+            if self.closed:
+                return
+            self.stats["written"] += 1
             w = self.writers.get(uid)
             if w is None:
                 hint = self.namehints.get(uid, str(uid))
@@ -346,6 +359,7 @@ class ConsentSink(discord.sinks.Sink):
 
     def close_all(self):
         with self.lock:
+            self.closed = True
             for w in self.writers.values():
                 w.close()
             self.writers.clear()
@@ -409,72 +423,90 @@ async def open_session(bot, guild_id, channel, channel_status=True):
     consent-gated recording. `channel` is the voice channel to record.
     Returns {"ok": True, "jump_url", "outdir", "channel"} or
     {"ok": False, "error"}."""
-    if guild_id in sessions:
+    # Single-flight per guild. The guard must cover the whole start, not just
+    # its first instant: the slot in `sessions` isn't written until after
+    # several awaits (connect, consent send, add_reaction), so two concurrent
+    # starts (a double-click, a slash + a control POST, two control POSTs on
+    # separate threads) would both pass a bare `guild_id in sessions` check,
+    # both connect, and the second would clobber the first — orphaning a live
+    # voice connection with no `sessions` entry. Reserving the guild in
+    # `_opening` synchronously here, before the first await, makes the loser
+    # bail cleanly before it ever connects.
+    if guild_id in sessions or guild_id in _opening:
         return {"ok": False,
                 "error": "a recording session is already open here"}
-    # one directory per session, named by its start — never by date
-    # alone: a session crosses midnight, two sessions share a date, and
-    # a crash-and-restart must never reuse a directory and squash the
-    # tracks already in it
-    outdir = (RECORD_ROOT
-              / datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
-    outdir.mkdir(parents=True, exist_ok=True)
-    vc = await channel.connect()
-    for _ in range(50):                 # the voice handshake can lag
-        if vc.is_connected():           # behind connect()'s return;
-            break                       # recording needs the real
-        await asyncio.sleep(0.2)        # connection
-    else:
-        await vc.disconnect(force=True)
-        return {"ok": False, "error": "voice connection never came up"}
-    sink = ConsentSink(outdir)
-
-    def finished(exc):
-        # py-cord 2.8's AudioReader calls after(error) on its own
-        # thread when recording stops
-        if exc is not None:
-            print(f"recorder: reader stopped with error: {exc!r}")
-        sink.close_all()
-
-    # The consent post MUST be public and MUST exist before capture: it
-    # is the surface every member sees and opts in on. If it cannot be
-    # posted publicly (missing Send Messages / Add Reactions here, no
-    # text-in-voice), there is no consent surface, so recording does not
-    # begin — we tear the connection back down rather than record with
-    # only an invoker-visible ack.
-    ping = resolve_ping(channel.guild)
+    _opening.add(guild_id)
     try:
-        msg = await channel.send(
-            consent_text(set(), ping=ping),
-            allowed_mentions=discord.AllowedMentions(
-                everyone=False, users=False, roles=True))
-        await msg.add_reaction(EMOJI)
-    except discord.DiscordException as e:
-        await vc.disconnect(force=True)
-        print(f"recorder: consent post failed ({e!r}); recording NOT "
-              f"started — no public consent surface")
-        return {"ok": False,
-                "error": ("could not post the public consent message in "
-                          "this channel; check I can send messages and "
-                          "add reactions here")}
-    sessions[guild_id] = {"vc": vc, "sink": sink, "msg": msg,
-                          "outdir": outdir, "names": set(),
-                          "status_set": False, "ping": ping,
-                          "nick_set": False, "empty_task": None}
-    vc.start_recording(sink, finished)
-    # transparency: an audible chime in-channel, and (unless declined) a
-    # visible status on the channel itself
-    try:
-        vc.play(discord.PCMAudio(io.BytesIO(chime_pcm())))
-    except Exception as e:
-        print(f"recorder: start chime failed ({e!r})")
-    if channel_status:
-        await set_channel_status(
-            bot, channel.id,
-            f"{EMOJI} Recording — react to the consent post")
-        sessions[guild_id]["status_set"] = True
-    return {"ok": True, "jump_url": msg.jump_url,
-            "outdir": str(outdir), "channel": getattr(channel, "name", "")}
+        # one directory per session, named by its start — never by date
+        # alone: a session crosses midnight, two sessions share a date, and
+        # a crash-and-restart must never reuse a directory and squash the
+        # tracks already in it
+        outdir = (RECORD_ROOT
+                  / datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
+        outdir.mkdir(parents=True, exist_ok=True)
+        vc = await channel.connect()
+        for _ in range(50):                 # the voice handshake can lag
+            if vc.is_connected():           # behind connect()'s return;
+                break                       # recording needs the real
+            await asyncio.sleep(0.2)        # connection
+        else:
+            await vc.disconnect(force=True)
+            return {"ok": False, "error": "voice connection never came up"}
+        sink = ConsentSink(outdir)
+
+        def finished(exc):
+            # py-cord 2.8's AudioReader calls after(error) on its own
+            # thread when recording stops
+            if exc is not None:
+                print(f"recorder: reader stopped with error: {exc!r}")
+            sink.close_all()
+
+        # The consent post MUST be public and MUST exist before capture: it
+        # is the surface every member sees and opts in on. If it cannot be
+        # posted publicly (missing Send Messages / Add Reactions here, no
+        # text-in-voice), there is no consent surface, so recording does not
+        # begin — we tear the connection back down rather than record with
+        # only an invoker-visible ack. Any failure here (a Discord error, or
+        # anything else after connect()) must fail closed: drop the voice
+        # connection so it is never orphaned.
+        ping = resolve_ping(channel.guild)
+        try:
+            msg = await channel.send(
+                consent_text(set(), ping=ping),
+                allowed_mentions=discord.AllowedMentions(
+                    everyone=False, users=False, roles=True))
+            await msg.add_reaction(EMOJI)
+        except Exception as e:
+            await vc.disconnect(force=True)
+            print(f"recorder: consent post failed ({e!r}); recording NOT "
+                  f"started — no public consent surface")
+            return {"ok": False,
+                    "error": ("could not post the public consent message in "
+                              "this channel; check I can send messages and "
+                              "add reactions here")}
+        sessions[guild_id] = {"vc": vc, "sink": sink, "msg": msg,
+                              "outdir": outdir, "names": set(),
+                              "status_set": False, "ping": ping,
+                              "nick_set": False, "empty_task": None}
+        vc.start_recording(sink, finished)
+        # transparency: an audible chime in-channel, and (unless declined) a
+        # visible status on the channel itself
+        try:
+            vc.play(discord.PCMAudio(io.BytesIO(chime_pcm())))
+        except Exception as e:
+            print(f"recorder: start chime failed ({e!r})")
+        if channel_status:
+            await set_channel_status(
+                bot, channel.id,
+                f"{EMOJI} Recording — react to the consent post")
+            sessions[guild_id]["status_set"] = True
+        return {"ok": True, "jump_url": msg.jump_url,
+                "outdir": str(outdir),
+                "channel": getattr(channel, "name", "")}
+    finally:
+        # Release the reservation. On success the guild now lives in
+        # `sessions`; on any failure or cancellation nothing was left behind.
+        _opening.discard(guild_id)
 
 
 async def close_session(bot, guild_id):
@@ -574,7 +606,11 @@ async def _empty_channel_disconnect(bot, guild_id):
 
 
 def session_status(guild_id=None):
-    """Pure snapshot of recording state (no I/O, safe from any thread).
+    """Snapshot of recording state (no I/O). It iterates `sessions` and each
+    session's `names`, both of which the event loop mutates, so it must run
+    ON the event loop — it is NOT safe to call from another thread (doing so
+    can raise "dict/set changed size during iteration"). The control surface
+    therefore marshals status onto the loop, exactly as it does start/stop.
     With guild_id, scopes to that guild; without, reports every open
     session — the single-owner control-surface case. Always ok."""
     if guild_id is not None:

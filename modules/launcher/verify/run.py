@@ -131,6 +131,57 @@ def main():
     check(icon_plist.get("CFBundleIconFile") == "Recorder.icns",
           "an icon, when given, is declared in Info.plist")
 
+    # --- bug 6: adversarial escaping in generated artifacts ---
+    # A name with XML metacharacters must yield a well-formed plist whose
+    # parsed values equal the raw name (raw `&`/`<`/`>` would be malformed
+    # XML that plistlib rejects).
+    evil_name = "Ampersand & <Angle> Bot"
+    evil_plist_xml = pkg.info_plist_text(evil_name, "recorder", False)
+    parsed_ok = True
+    try:
+        ep = plistlib.loads(evil_plist_xml.encode("utf-8"))
+    except Exception:
+        parsed_ok = False
+        ep = {}
+    check(parsed_ok and ep.get("CFBundleName") == evil_name
+          and ep.get("CFBundleDisplayName") == evil_name
+          and ep.get("CFBundleExecutable") == evil_name,
+          "plist XML-escapes a name with & < > (parses back to the raw name)")
+    check(parsed_ok and evil_name in ep.get("NSMicrophoneUsageDescription", ""),
+          "plist XML-escapes the name in the mic usage string too")
+
+    # _swift_str escapes backslash, quote, and newline/CR so a value can
+    # never terminate or inject into the one-line Swift literal.
+    check(pkg._swift_str('a"b\nc\\d\re') == 'a\\"b\\nc\\\\d\\re',
+          "swift string escaping covers quote, newline, CR, and backslash")
+    # A campaign dir with a newline stays on one Swift literal line.
+    nl_swift = pkg.swift_source_text(name, "recorder", "/tmp/x\ny", False)
+    check('let campaignDir = "/tmp/x\\ny"' in nl_swift,
+          "a newline in the campaign dir is escaped inside the Swift literal")
+
+    # The shell `cd` bash-single-quotes the campaign dir, so a path with `"`,
+    # `$`, or backticks cannot break out of the cd or inject a command.
+    evil_dir = '/tmp/x"; rm -rf ~; $(id) `whoami` #'
+    ed_swift = pkg.swift_source_text(name, "recorder", evil_dir, False)
+    baked_shell = pkg._swift_str(pkg._bash_squote(evil_dir))
+    check(f'let campaignShell = "{baked_shell}"' in ed_swift,
+          "the campaign dir is bash-single-quoted for the shell cd")
+    check('"cd \\"" + campaignDir' not in ed_swift
+          and 'let script = "cd " + campaignShell' in ed_swift,
+          "the cd uses the bash-quoted campaignShell, not a raw quoted path")
+    check(pkg._bash_squote("a'b") == "'a'\\''b'",
+          "bash single-quoting closes/escapes/reopens an embedded quote")
+
+    # --- bug 7: bundle_identifier does not collide near-duplicate names ---
+    check(pkg.bundle_identifier("LoreBot") != pkg.bundle_identifier("Lore-Bot"),
+          "'LoreBot' and 'Lore-Bot' get distinct bundle identifiers")
+    check(pkg.bundle_identifier("lorebot") != pkg.bundle_identifier("lore bot"),
+          "'lorebot' and 'lore bot' get distinct bundle identifiers")
+    check(pkg.bundle_identifier("Lore-Bot") == "quest.eddic.launcher.lore-bot",
+          "a separator in the name is preserved as '-' in the identifier")
+    check(pkg.bundle_identifier("!!!") == "quest.eddic.launcher.launcher",
+          "a punctuation-only name falls back to the 'launcher' id")
+
     # --- Windows .cmd (cross-platform) ---
     out_win = tmp / "win"
     p = run("--service", "recorder", "--campaign", str(camp),

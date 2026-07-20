@@ -1,5 +1,13 @@
 name: recorder
-version: 0.5.0
+version: 0.5.1
+# 0.5.1: fix-only. Concurrent starts for one guild are now single-flight
+# (a per-guild reservation held across the connect/consent awaits) so two
+# near-simultaneous starts can't both connect and orphan a voice link; the
+# consent-post failure path fails closed on ANY exception (not just Discord
+# ones); the ConsentSink drops writes after close_all (no reopened WAV
+# handle); the control surface marshals `status` onto the event loop (it was
+# unsafe on the HTTP thread) and cancels a start that outruns its timeout so
+# it can't leave a phantom session. Behaviour otherwise unchanged.
 # 0.5.0: the recorder's slash commands moved from a single `/record`
 # subcommand group to individual top-level commands — `/record-start`,
 # `/record-stop`, `/record-consent-role`, `/record-empty-timeout`, and

@@ -40,13 +40,13 @@ def main():
                    "core script filename is slugified"))
     checks.append(('-X POST "$BASE/record/start"' in text
                    and 'X-Muninn-Token: $TOKEN' in text
-                   and 'TOKEN="s3cr3t"' in text,
+                   and 'TOKEN=s3cr3t' in text,
                    "start script curls POST /record/start with the token"))
 
     _, notok = deckpack.control_script(
         "Recording Status", "GET", "/status",
         "http://127.0.0.1:8776", "", "macos")
-    checks.append(('TOKEN=""' in notok and "AUTH=()" in notok,
+    checks.append(("TOKEN=''" in notok and "AUTH=()" in notok,
                    "no token -> no auth header sent"))
 
     winfn, wintext = deckpack.control_script(
@@ -55,6 +55,35 @@ def main():
     checks.append((winfn.endswith(".cmd") and "\r\n" in wintext
                    and "%BASE%/record/stop" in wintext,
                    "windows target emits a CRLF .cmd hitting the endpoint"))
+
+    # --- bug 6: adversarial base_url/token are shell-quoted, not injected ---
+    import shlex
+    evil_base = 'http://x`whoami`$(id)"; rm -rf ~ #/'
+    evil_token = 's3`cr`3t"$(evil)\''
+    _, mtext = deckpack.control_script(
+        "Start Recording", "POST", "/record/start",
+        evil_base, evil_token, "macos")
+    checks.append((f"BASE={shlex.quote(evil_base)}" in mtext
+                   and f"TOKEN={shlex.quote(evil_token)}" in mtext,
+                   "macos: crafted base_url/token are single-quoted "
+                   "(no shell injection)"))
+    # The dangerous run of characters never appears unquoted (outside the
+    # single-quoted assignment) — a raw `rm -rf ~` reaching the shell would.
+    checks.append(('BASE="' + evil_base not in mtext
+                   and 'TOKEN="' + evil_token not in mtext,
+                   "macos: crafted values are never left in a breakable "
+                   "double-quoted assignment"))
+    evil_wbase = 'http://x&calc<nul|more%USERPROFILE%'
+    _, wtext = deckpack.control_script(
+        "Start Recording", "POST", "/record/start",
+        evil_wbase, "tok&z", "windows")
+    checks.append((f"set BASE={deckpack._cmd_quote(evil_wbase)}" in wtext
+                   and "^&calc" in wtext and "%%USERPROFILE%%" in wtext,
+                   "windows: crafted base_url is caret/percent-escaped in "
+                   "the set assignment"))
+    checks.append(("set TOKEN=tok^&z" in wtext,
+                   "windows: crafted token is caret-escaped in its set "
+                   "assignment"))
 
     # --- profile bytes ---------------------------------------------------
     pb = deckpack.profile_bytes("Muninn", [

@@ -1,5 +1,10 @@
 name: streamdeck
-version: 0.1.1
+version: 0.1.2
+# 0.1.2: fix-only. The generated button scripts now shell-quote the
+# base_url and control token baked into them (POSIX single-quoting for the
+# .command scripts, percent/caret escaping in the .cmd set-assignments), so
+# a crafted value containing a quote, backtick, `$`, or `%` can no longer
+# break out of the script or inject a command.
 summary: >
   An Elgato Stream Deck control suite for the recorder bot (Muninn):
   the recorder gains a loopback-only control surface (127.0.0.1 HTTP,

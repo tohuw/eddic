@@ -14,12 +14,17 @@ ephemeral interaction reply), and the loopback control surface's router
 does auth + method/path dispatch as specified."""
 
 import ast
+import asyncio
 import json
 import os
 import py_compile
 import sys
 import tempfile
+import threading
+import time
 import types
+import urllib.error
+import urllib.request
 import wave
 from pathlib import Path
 
@@ -253,6 +258,8 @@ def main():
         Sink=type("Sink", (), {"__init__": lambda self: None}))
     fake.ApplicationContext = object
     fake.utils = types.SimpleNamespace(utcnow=lambda: None)
+    fake.AllowedMentions = lambda **kw: None
+    fake.PCMAudio = lambda *a, **k: None
     sys.modules["discord"] = fake
     os.environ["DAVE_OFF"] = "1"
     sys.path.insert(0, str(TEMPLATES))
@@ -304,6 +311,194 @@ def main():
                       and w.getnframes() == 5 * 960 // 2)
     checks.append((ok_wav, "consented audio lands as a well-formed "
                            "per-speaker WAV under the display name"))
+
+    # Bug 4: a write that lands after close_all must be dropped — never
+    # reopen a WAV writer (which would leak a handle that is never closed).
+    tmp4 = Path(tempfile.mkdtemp(prefix="eddic-recorder-close-"))
+    sink4 = recorder.ConsentSink(tmp4)
+    sink4.namehints[5] = "Bob"
+    sink4.consented.add(5)
+    sink4.write(frame, types.SimpleNamespace(id=5))
+    sink4.close_all()
+    before_close = list(tmp4.glob("*.wav"))
+    written_before = sink4.stats["written"]
+    sink4.write(frame, types.SimpleNamespace(id=5))   # late recv-thread packet
+    after_close = list(tmp4.glob("*.wav"))
+    checks.append((sink4.closed and len(before_close) == 1
+                   and after_close == before_close and not sink4.writers
+                   and sink4.stats["written"] == written_before,
+                   "a write after close_all is dropped (no writer reopened, "
+                   "closed flag set)"))
+
+    # --- session-core stubs for the async open_session tests -------------
+    class _FakeVC:
+        def __init__(self):
+            self.recording = 0
+            self.disconnected = None
+            self.channel = types.SimpleNamespace(id=42, name="the-table")
+
+        def is_connected(self):
+            return True
+
+        def start_recording(self, sink, finished):
+            self.recording += 1
+
+        def play(self, src):
+            pass
+
+        async def disconnect(self, force=False):
+            self.disconnected = force
+
+    class _FakeMsg:
+        jump_url = "http://jump"
+
+        async def add_reaction(self, emoji):
+            pass
+
+    class _FakeChannel:
+        def __init__(self, vcs, connects):
+            self.guild = None      # resolve_ping returns '' — no settings I/O
+            self.id = 42
+            self.name = "the-table"
+            self._vcs = vcs
+            self._connects = connects
+            self.send_exc = None
+
+        async def connect(self):
+            self._connects.append(1)
+            await asyncio.sleep(0)   # yield AFTER reserving, BEFORE the slot
+            vc = _FakeVC()
+            self._vcs.append(vc)
+            return vc
+
+        async def send(self, content, allowed_mentions=None):
+            if self.send_exc:
+                raise self.send_exc
+            return _FakeMsg()
+
+    recorder.RECORD_ROOT = Path(tempfile.mkdtemp(prefix="eddic-recorder-oz-"))
+
+    # Bug 1: two concurrent open_session for one guild must yield exactly one
+    # recording, one slot, and no orphaned connection. The connect() yields
+    # after the guild is reserved but before the sessions slot is written, so
+    # the loser hits the reservation — the exact race the fix closes.
+    recorder.sessions.clear()
+    recorder._opening.clear()
+    vcs, connects = [], []
+    ch = _FakeChannel(vcs, connects)
+
+    async def _race():
+        return await asyncio.gather(
+            recorder.open_session(None, 7, ch, channel_status=False),
+            recorder.open_session(None, 7, ch, channel_status=False))
+
+    r1, r2 = asyncio.run(_race())
+    wins = [r for r in (r1, r2) if r.get("ok")]
+    checks.append((len(wins) == 1
+                   and len(recorder.sessions) == 1
+                   and connects.count(1) == 1
+                   and sum(v.recording for v in vcs) == 1,
+                   "concurrent open_session for one guild: exactly one "
+                   "recording, one slot, no orphan connection"))
+    recorder.sessions.clear()
+    recorder._opening.clear()
+
+    # Bug 5: a non-Discord failure after connect() must fail closed — the
+    # voice connection is torn down, not orphaned, and no slot is left.
+    vcs5, connects5 = [], []
+    ch5 = _FakeChannel(vcs5, connects5)
+    ch5.send_exc = RuntimeError("not a discord error")
+    r5 = asyncio.run(recorder.open_session(None, 9, ch5, channel_status=False))
+    checks.append((not r5["ok"] and 9 not in recorder.sessions
+                   and 9 not in recorder._opening
+                   and vcs5 and vcs5[0].disconnected is True,
+                   "a non-Discord failure after connect tears the voice "
+                   "connection down (fail-closed)"))
+    recorder.sessions.clear()
+    recorder._opening.clear()
+
+    # --- control surface: status marshalling + start-timeout (bugs 2, 3) --
+    import control
+    loop = asyncio.new_event_loop()
+    loop_thread = threading.Thread(target=loop.run_forever, daemon=True)
+    loop_thread.start()
+
+    async def _ident():
+        return threading.get_ident()
+
+    loop_ident = asyncio.run_coroutine_threadsafe(_ident(), loop).result(3)
+
+    def _post(url):
+        req = urllib.request.Request(url, method="POST")
+        try:
+            r = urllib.request.urlopen(req, timeout=5)
+            return r.status, json.loads(r.read())
+        except urllib.error.HTTPError as e:
+            return e.code, json.loads(e.read())
+
+    async def _noop_close():
+        return {"ok": True}
+
+    # Bug 2: status must run ON the event loop (where sessions/names are
+    # mutated), not on the HTTP handler thread — otherwise it can observe a
+    # mid-mutation dict/set and 500. We prove the marshalling by recording
+    # the thread status() ran on.
+    ran_on = {}
+
+    def _status():
+        ran_on["ident"] = threading.get_ident()
+        return {"ok": True, "recording": False, "sessions": []}
+
+    async def _target_unused():
+        return {"ok": False, "error": "unused"}
+
+    srv2 = control.start_control_server(
+        loop, open_session=lambda g, c: _noop_close(),
+        close_session=_noop_close, status=_status,
+        resolve_target=_target_unused, port=0)
+    port2 = srv2.server_address[1]
+    resp = urllib.request.urlopen(
+        f"http://127.0.0.1:{port2}/status", timeout=5)
+    sbody = json.loads(resp.read())
+    srv2.shutdown()
+    checks.append((sbody["ok"] and ran_on.get("ident") == loop_ident
+                   and ran_on["ident"] != threading.get_ident(),
+                   "status is marshalled onto the event loop, not run on "
+                   "the HTTP handler thread"))
+
+    # Bug 3: a start that outruns the control timeout must be reported failed
+    # AND cancelled, so it cannot later leave a phantom (untracked) session.
+    opened, cancelled = [], []
+
+    async def _slow_open(gid, ch_):
+        try:
+            await asyncio.sleep(3)
+            opened.append(gid)
+            return {"ok": True}
+        except asyncio.CancelledError:
+            cancelled.append(gid)
+            raise
+
+    async def _target_ok():
+        return (1, object())
+
+    srv3 = control.start_control_server(
+        loop, open_session=lambda g, c: _slow_open(g, c),
+        close_session=_noop_close, status=_status,
+        resolve_target=_target_ok, port=0, start_timeout=0.2)
+    port3 = srv3.server_address[1]
+    code3, body3 = _post(f"http://127.0.0.1:{port3}/record/start")
+    srv3.shutdown()
+    deadline = time.time() + 3
+    while not cancelled and time.time() < deadline:
+        time.sleep(0.02)
+    checks.append((code3 == 409 and not body3["ok"],
+                   "a start that times out is reported as failed (409)"))
+    checks.append((opened == [] and cancelled == [1],
+                   "the timed-out start is cancelled, leaving no phantom "
+                   "session"))
+
+    loop.call_soon_threadsafe(loop.stop)
 
     # Feature: recording-suffix nickname computation (pure, 32-char cap).
     suffix = recorder.NICK_SUFFIX

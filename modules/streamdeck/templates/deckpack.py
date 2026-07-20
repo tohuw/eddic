@@ -38,8 +38,32 @@ import io
 import json
 import platform
 import re
+import shlex
 import zipfile
 from pathlib import Path
+
+
+def _sh_quote(value):
+    """POSIX-shell-quote a value baked into a bash script. Single-quoting
+    (what shlex.quote does) neutralizes every shell metacharacter — `"`,
+    backtick, `$`, whitespace — so a crafted --base-url/--token can't break
+    out of the assignment or inject a command."""
+    return shlex.quote(value)
+
+
+def _cmd_quote(value):
+    """Escape a value for a Windows batch `set VAR=...` (unquoted) context.
+    Double the `%` metachar and caret-escape the cmd shell metacharacters so
+    a crafted --base-url/--token can't inject. The scripts reference the value
+    only through `%VAR%` expansions inside double quotes thereafter, so the
+    escaped-at-assignment form is what runs."""
+    value = value.replace("%", "%%")
+    out = []
+    for ch in value:
+        if ch in '^&<>|"':
+            out.append("^")
+        out.append(ch)
+    return "".join(out)
 
 # The four core keys: label -> (method, endpoint). These map 1:1 to the
 # recorder control surface, which maps 1:1 to /record start|stop|status.
@@ -65,11 +89,18 @@ def _bash_header(title):
 def control_script(label, method, endpoint, base_url, token, target):
     """A curl-the-control-surface script. Returns (filename, text)."""
     if target == "windows":
-        auth = (f'  -H "X-Muninn-Token: {token}"' if token else "")
+        # base_url/token are baked via `set VAR=...` and referenced only as
+        # %BASE% / %TOKEN% thereafter, so escaping is confined to the
+        # assignment (see _cmd_quote). The auth header points at %TOKEN%.
         body = [
             "@echo off",
             f"REM Muninn Stream Deck button - {label}",
-            f"set BASE={base_url}",
+            f"set BASE={_cmd_quote(base_url)}",
+        ]
+        if token:
+            body.append(f"set TOKEN={_cmd_quote(token)}")
+        auth = ' -H "X-Muninn-Token: %TOKEN%"' if token else ""
+        body += [
             f"echo Muninn - {label}...",
             (f'curl -sS -X {method} "%BASE%{endpoint}"{auth}'),
             "echo.",
@@ -77,10 +108,11 @@ def control_script(label, method, endpoint, base_url, token, target):
         ]
         return f"{slug(label)}.cmd", "\r\n".join(body) + "\r\n"
     # macOS / posix: bash with an optional auth header array, JSON
-    # pretty-printed when python3 is present.
+    # pretty-printed when python3 is present. base_url/token are single-
+    # quoted so no metacharacter in them can break out or inject.
     lines = [_bash_header(label),
-             f'BASE="{base_url}"',
-             f'TOKEN="{token}"',
+             f'BASE={_sh_quote(base_url)}',
+             f'TOKEN={_sh_quote(token)}',
              "AUTH=()",
              '[ -n "$TOKEN" ] && AUTH=(-H "X-Muninn-Token: $TOKEN")',
              f'echo "🎙️  Muninn — {label}"',

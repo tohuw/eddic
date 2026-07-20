@@ -26,6 +26,7 @@ Actions are injected as zero-arg callables returning a dict with an
 """
 
 import asyncio
+import concurrent.futures
 import json
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -92,7 +93,7 @@ def _make_handler(actions, expected_token):
 
 def start_control_server(loop, *, open_session, close_session, status,
                          resolve_target, host="127.0.0.1", port=8776,
-                         token=None):
+                         token=None, start_timeout=45):
     """Start the loopback control server on its own daemon thread.
 
     `open_session(guild_id, channel)` and `close_session()` are
@@ -100,12 +101,23 @@ def start_control_server(loop, *, open_session, close_session, status,
     run_coroutine_threadsafe (Discord work must happen there, not on the
     HTTP thread). `resolve_target()` is a coroutine returning
     (guild_id, channel) or an error dict — it chooses what to record
-    when no slash context named a channel. `status()` is a pure,
-    thread-safe snapshot. Returns the HTTPServer (call .shutdown())."""
+    when no slash context named a channel. `status()` is a plain callable
+    returning a snapshot dict; it is NOT thread-safe (it reads structures
+    the loop mutates), so — like start/stop — it is marshalled onto the
+    loop rather than called on the HTTP handler thread. `start_timeout`
+    bounds each marshalled call. Returns the HTTPServer (call .shutdown())."""
 
-    def _run(coro, timeout=45):
+    def _run(coro, timeout=start_timeout):
         fut = asyncio.run_coroutine_threadsafe(coro, loop)
-        return fut.result(timeout)
+        try:
+            return fut.result(timeout)
+        except concurrent.futures.TimeoutError:
+            # A timed-out start would otherwise keep running on the loop and
+            # could still open a session the caller was just told failed —
+            # a phantom. Cancel the scheduled coroutine so a start we report
+            # as failed cannot leave an untracked open session behind.
+            fut.cancel()
+            raise
 
     def do_start():
         try:
@@ -123,7 +135,18 @@ def start_control_server(loop, *, open_session, close_session, status,
         except Exception as e:
             return {"ok": False, "error": f"{type(e).__name__}: {e}"}
 
-    actions = {"start": do_start, "stop": do_stop, "status": status}
+    async def _status_on_loop():
+        # status() reads structures the event loop mutates; run it on the
+        # loop so it can never observe a mid-mutation dict/set.
+        return status()
+
+    def do_status():
+        try:
+            return _run(_status_on_loop())
+        except Exception as e:
+            return {"ok": False, "error": f"{type(e).__name__}: {e}"}
+
+    actions = {"start": do_start, "stop": do_stop, "status": do_status}
     handler = _make_handler(actions, token)
     httpd = ThreadingHTTPServer((host, port), handler)
     t = threading.Thread(target=httpd.serve_forever, daemon=True,
