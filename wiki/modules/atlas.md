@@ -1,0 +1,21 @@
+# atlas
+
+The atlas module renders a campaign wiki's cross-link graph as one self-contained, interactive map: pages are nodes, links are edges, clustered and coloured by their taxonomy, sized by how many pages point at them, and dimmed when they are stubs, orphans, or unreachable. The graph is already dense and already there — Eddic's [wiki](wiki.md) is built as a node-and-edge structure for agent traversal — but nobody can see it. The atlas makes that implicit structure visible, and it does so deriving only from data the campaign already holds: no new authoring, no external service, no network request.
+
+## Two tiers, firewall-safe by construction
+
+The atlas is built in two modes, and the mode is always explicit, never inferred. The **player Atlas** is built from the player projection alone; the **DM Atlas** is built from the master wiki. The firewall guarantee is not a filter in the renderer — it is the source-tree choice. The projection is a closed set: a player page can only link player pages, enforced upstream in the projection and the linter, so a DM page or a DM-only edge cannot appear in a graph built from the projection at all. The player Atlas is a static page written into the served site and safe on the open web; the DM Atlas is built to a DM-local file and, when a table wants it hosted, belongs only behind the retrieval DM tier — never on the public deploy. On the DM Atlas the orphan, stub, and unreachable nodes render dimmed, turning the linter's maintenance signals into a spatial view of the archive's health.
+
+## One resolver, deterministic output
+
+The atlas does not invent its own idea of what a link is: it reuses the linter's exact link-resolution — the same slug rules, the same reference-and-HTML link forms, the same external/site-rooted/anchor/non-markdown exclusions — so the graph it draws and the graph the linter validates can never disagree; a verify test pins the two resolvers equal. Layout is computed deterministically in Python — categories spaced evenly around a circle, nodes placed within each cluster on a fixed sunflower spiral, coordinates rounded and everything emitted in sorted order — with no randomness and no clock, so the same wiki yields byte-identical output. That makes the atlas reproducible and diffable, and it is what lets the verify golden-test it. The page itself is inline SVG plus a few lines of inline JavaScript for pan, zoom, and click-through to a page, with no library and no request off the page.
+
+## Setup and running
+
+The [cli](cli.md), [wiki](wiki.md), and [lint](lint.md) patterns must be applied. The module vendors a `graph` verb; the owner runs it in player mode after the site is built, writing the atlas into the served site directory, and the freshness routine can run it right after each build since it is a pure function of the tree. A single link from the site — a footer or nav entry — points readers at it. The DM Atlas is an optional second invocation writing to a DM-local file. The application is recorded in the campaign manifest so an upgrade can restamp it.
+
+## Verify
+
+The module's verifier runs offline. From a fixture tree that contains a DM-only page and a DM→player edge it asserts that node and edge extraction match a golden, that the player-mode build contains no DM page and no DM-only edge — a planted breach in the master never reaches the player build — that two runs over the same input are byte-identical, and that the atlas's resolver agrees with the linter's on a shared case. Live, the served `/atlas.html` is opened and a node clicked through to its page.
+
+Back to the [module index](index.md).
