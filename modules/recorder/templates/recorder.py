@@ -15,7 +15,7 @@ reply is a brief private ack. If the public consent post cannot be
 sent, recording does not begin (no public consent surface, no capture).
 
 The same start/stop/status actions are reachable two ways: the
-`/record` slash commands, and a loopback-only control surface
+top-level `/record-*` slash commands, and a loopback-only control surface
 (`control.py`, e.g. for a Stream Deck). Both call the shared session
 core below, so they can never diverge.
 
@@ -125,7 +125,7 @@ def save_settings(updates, path=None):
 
 # Optional: ping a role on the PUBLIC consent post so the whole table is
 # notified to react — not just the invoker (who also gets the ephemeral
-# ack). The role is normally set from Discord with `/record consent-role`,
+# ack). The role is normally set from Discord with `/record-consent-role`,
 # which persists a role id to the settings file; the CONSENT_PING_ROLE env
 # (id or name) is only a bootstrap/fallback used when nothing is persisted.
 # Either empty disables the ping.
@@ -141,8 +141,8 @@ NICK_MAX = 32
 # Auto-stop a session whose voice channel has gone empty (no non-bot
 # members) for the configured timeout. Guards against a session left
 # running after everyone has left; runs the same clean stop path as
-# `/record stop`. The timeout is persisted (empty_disconnect_seconds), set
-# from Discord with `/record empty-timeout`; it falls back to the
+# `/record-stop`. The timeout is persisted (empty_disconnect_seconds), set
+# from Discord with `/record-empty-timeout`; it falls back to the
 # EMPTY_DISCONNECT_SECONDS env, else 60. A value of 0 disables auto-stop.
 EMPTY_DISCONNECT_DEFAULT = 60
 EMPTY_DISCONNECT_MAX = 3600
@@ -355,7 +355,7 @@ class ConsentSink(discord.sinks.Sink):
 
 
 def _stored_ping_role_id():
-    """The role id set from Discord via `/record consent-role`, or None.
+    """The role id set from Discord via `/record-consent-role`, or None.
     The persisted setting wins over the CONSENT_PING_ROLE env when present."""
     rid = load_settings().get("consent_ping_role_id")
     try:
@@ -397,7 +397,7 @@ def consent_text(names, ping=""):
 
 
 # --- shared session core -------------------------------------------------
-# The single source of truth for start/stop/status. Both the /record
+# The single source of truth for start/stop/status. Both the /record-*
 # slash commands and the localhost control surface call these, so a
 # button and a slash can never do different things. Each returns a plain
 # result dict (never raises for expected conditions) so a non-Discord
@@ -541,7 +541,7 @@ def _evaluate_empty_channel(bot, guild_id, s, ch):
 
 async def _empty_channel_disconnect(bot, guild_id):
     """After the channel has been empty for the configured timeout, run the
-    same clean stop path as `/record stop` and post a brief note. Races are
+    same clean stop path as `/record-stop` and post a brief note. Races are
     guarded: a cancel during the wait aborts, and a session that closed or
     re-populated in the meantime is left alone."""
     timeout = empty_disconnect_seconds()
@@ -644,17 +644,20 @@ def setup(bot):
     # Integrations → <this bot> → Command Permissions — with no bot code or
     # redeploy. (Setting those per-command overrides programmatically would
     # need a user OAuth token, impractical to hold in a bot; the native UI
-    # is the supported path.) Discord only supports command permissions at
-    # the top-level command, which for a subcommand group is the group
-    # itself, so this gate applies to every `/record` subcommand including
-    # `help` — there is no per-subcommand default in the API.
-    record = bot.create_group(
-        "record", "Session recording (consent-gated)",
-        default_member_permissions=discord.Permissions(manage_guild=True))
+    # is the supported path.) Discord attaches command permissions ONLY to
+    # top-level commands, never to a subcommand of a group — so the recorder
+    # ships each verb as its own top-level `record-*` command rather than as
+    # subcommands of one `/record` group. That way every gated command
+    # appears individually in the Integrations → Command Permissions UI and
+    # can be granted to a role per-command. Each control/config command
+    # below carries the Manage-Server default itself; `record-help` is left
+    # open (no default), so anyone can read how consent works.
+    _GATE = discord.Permissions(manage_guild=True)
 
-    @record.command(name="start",
-                    description="Open a recording session in your "
-                                "current voice channel")
+    @bot.slash_command(name="record-start",
+                       description="Open a recording session in your "
+                                   "current voice channel",
+                       default_member_permissions=_GATE)
     async def start(ctx: discord.ApplicationContext,
                     channel_status: discord.Option(
                         bool, "Show a recording status on the voice "
@@ -678,9 +681,10 @@ def setup(bot):
             f"({result['jump_url']}) is up in the channel's text chat. "
             f"Nobody's mic is captured until they react.", ephemeral=True)
 
-    @record.command(name="stop",
-                    description="Close the recording session and "
-                                "stage the tracks")
+    @bot.slash_command(name="record-stop",
+                       description="Close the recording session and "
+                                   "stage the tracks",
+                       default_member_permissions=_GATE)
     async def stop(ctx: discord.ApplicationContext):
         _age = (discord.utils.utcnow()
                 - ctx.interaction.created_at).total_seconds()
@@ -707,25 +711,28 @@ def setup(bot):
         await ctx.respond(
             f"Recording closed. Staged in `{result['outdir']}`:\n{report}")
 
-    @record.command(name="help",
-                    description="How recording and consent work")
+    # record-help is intentionally left open (no default_member_permissions)
+    # so anyone at the table can read how recording and consent work.
+    @bot.slash_command(name="record-help",
+                       description="How recording and consent work")
     async def help_cmd(ctx: discord.ApplicationContext):
         await ctx.respond(
-            f"`/record start` opens a session in your voice channel; a "
+            f"`/record-start` opens a session in your voice channel; a "
             f"consent post appears in its text chat. **Only members "
             f"who react with {EMOJI} are captured** — per-speaker "
             f"tracks, stored with the campaign, for the table's own "
-            f"transcripts. `/record stop` closes and stages the "
+            f"transcripts. `/record-stop` closes and stages the "
             f"tracks. Consent to record is never consent to anything "
             f"else. Privacy posture: {PRIVACY_URL}", ephemeral=True)
 
-    @record.command(
-        name="consent-role",
+    @bot.slash_command(
+        name="record-consent-role",
         description="Set the role @-pinged on the consent post so the "
-                    "whole table is notified.")
+                    "whole table is notified.",
+        default_member_permissions=_GATE)
     @discord.option("role", discord.Role, required=False)
     async def consent_role(ctx: discord.ApplicationContext, role=None):
-        # Gating is Discord-native (default_member_permissions on the group).
+        # Gating is Discord-native (default_member_permissions on the command).
         none = discord.AllowedMentions.none()
         if role is None:
             save_settings({"consent_ping_role_id": None})
@@ -740,13 +747,14 @@ def setup(bot):
             f"on the consent post so the whole table is notified to react.",
             ephemeral=True, allowed_mentions=none)
 
-    @record.command(
-        name="empty-timeout",
+    @bot.slash_command(
+        name="record-empty-timeout",
         description="Set the empty-channel auto-stop timeout in seconds "
-                    "(0 disables; omit to show the current value).")
+                    "(0 disables; omit to show the current value).",
+        default_member_permissions=_GATE)
     @discord.option("seconds", int, required=False)
     async def empty_timeout(ctx: discord.ApplicationContext, seconds=None):
-        # Gating is Discord-native (default_member_permissions on the group).
+        # Gating is Discord-native (default_member_permissions on the command).
         if seconds is None:
             current = empty_disconnect_seconds()
             if current <= 0:
@@ -871,14 +879,14 @@ def setup(bot):
     class Capability:
         async def ready(self):
             # per-guild sync: global command propagation can take up
-            # to an hour; a session bot needs /record NOW
+            # to an hour; a session bot needs /record-* NOW
             try:
                 await bot.sync_commands(
                     guild_ids=[g.id for g in bot.guilds])
             except Exception as e:
                 print(f"recorder: guild sync failed ({e!r}); "
                       f"global commands will appear eventually")
-            print(f"recorder ready: /record in "
+            print(f"recorder ready: /record-* in "
                   f"{len(bot.guilds)} guild(s)")
             _start_control_surface()
             # temporary spike scaffolding: unattended DAVE receive check

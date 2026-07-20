@@ -64,48 +64,101 @@ def consent_is_public(src):
 
 
 def commands_are_permission_gated(src):
-    """Static guarantee of the permission model. Gating is Discord-native:
-    the `record` command group is created with
-    `default_member_permissions=discord.Permissions(manage_guild=True)`, so
-    by default only Manage-Server members see or run any `/record`
-    subcommand (a server admin grants specific roles via Discord's
-    Integrations command-permissions UI). We assert both that the group
-    carries that default AND that no handler does its own in-code
-    permission check (`guild_permissions` / `manage_guild`), since the
-    model deliberately moved gating out of the handlers. Returns a list of
-    (ok, message) checks."""
+    """Static guarantee of the permission model. Gating is Discord-native,
+    and — because Discord attaches command permissions only to top-level
+    commands, never to a subcommand of a group — the recorder ships each
+    verb as its OWN top-level `@bot.slash_command`, not as subcommands of a
+    `/record` group. That is what makes every gated command appear
+    individually in the Integrations → Command Permissions UI. We assert:
+      - each of record-start, record-stop, record-consent-role and
+        record-empty-timeout is a top-level `@bot.slash_command` carrying
+        `default_member_permissions=Manage Server`;
+      - record-help is a top-level `@bot.slash_command` left OPEN (no
+        default_member_permissions), so anyone can read how consent works;
+      - there is no `create_group("record")` subcommand group anymore;
+      - no handler does its own in-code permission check
+        (`guild_permissions` / `manage_guild` attribute access), since the
+        model deliberately keeps gating out of the handlers.
+    Returns a list of (ok, message) checks."""
     tree = ast.parse(src)
-    group_gated = False
+
+    def is_manage_server_call(v):
+        return (isinstance(v, ast.Call)
+                and isinstance(v.func, ast.Attribute)
+                and v.func.attr == "Permissions"
+                and any(k.arg == "manage_guild"
+                        and isinstance(k.value, ast.Constant)
+                        and k.value.value is True
+                        for k in v.keywords))
+
+    # Names bound to a Manage-Server permissions object, e.g.
+    # `_GATE = discord.Permissions(manage_guild=True)`.
+    gate_names = set()
     for node in ast.walk(tree):
-        if not (isinstance(node, ast.Call)
-                and isinstance(node.func, ast.Attribute)
-                and node.func.attr == "create_group"):
+        if isinstance(node, ast.Assign) and is_manage_server_call(node.value):
+            for tgt in node.targets:
+                if isinstance(tgt, ast.Name):
+                    gate_names.add(tgt.id)
+
+    def is_manage_server_value(v):
+        return is_manage_server_call(v) or (
+            isinstance(v, ast.Name) and v.id in gate_names)
+
+    # Map each top-level @bot.slash_command's registered name -> whether it
+    # carries a Manage-Server default_member_permissions.
+    slash_cmds = {}
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             continue
-        for kw in node.keywords:
-            if kw.arg != "default_member_permissions":
+        for dec in node.decorator_list:
+            if not (isinstance(dec, ast.Call)
+                    and isinstance(dec.func, ast.Attribute)
+                    and dec.func.attr == "slash_command"):
                 continue
-            v = kw.value
-            if (isinstance(v, ast.Call)
-                    and isinstance(v.func, ast.Attribute)
-                    and v.func.attr == "Permissions"
-                    and any(k.arg == "manage_guild"
-                            and isinstance(k.value, ast.Constant)
-                            and k.value.value is True
-                            for k in v.keywords)):
-                group_gated = True
+            name = None
+            gated = False
+            for kw in dec.keywords:
+                if kw.arg == "name" and isinstance(kw.value, ast.Constant):
+                    name = kw.value.value
+                if kw.arg == "default_member_permissions" \
+                        and is_manage_server_value(kw.value):
+                    gated = True
+            if name is not None:
+                slash_cmds[name] = gated
+
+    no_group = not any(
+        isinstance(n, ast.Call)
+        and isinstance(n.func, ast.Attribute)
+        and n.func.attr == "create_group"
+        for n in ast.walk(tree))
+
     # No handler should reference a permission check anymore.
     handlers_clean = not any(
         isinstance(n, ast.Attribute)
         and n.attr in ("manage_guild", "guild_permissions")
         for n in ast.walk(tree))
-    return [
-        (group_gated,
-         "the /record group sets default_member_permissions=Manage Server "
-         "(Discord-native gating on every subcommand)"),
+
+    checks = []
+    for cmd in ("record-start", "record-stop",
+                "record-consent-role", "record-empty-timeout"):
+        checks.append(
+            (slash_cmds.get(cmd) is True,
+             f"{cmd} is a top-level @bot.slash_command gated on "
+             f"default_member_permissions=Manage Server"))
+    checks.append(
+        (slash_cmds.get("record-help") is False,
+         "record-help is a top-level @bot.slash_command left open "
+         "(no default_member_permissions)"))
+    checks.append(
+        (no_group,
+         'there is no create_group("record") subcommand group anymore — '
+         "each command is top-level so Discord can permission it "
+         "individually"))
+    checks.append(
         (handlers_clean,
          "no handler does an in-code permission check — gating is "
-         "Discord-native, admins override via the Integrations UI"),
-    ]
+         "Discord-native, admins override via the Integrations UI"))
+    return checks
 
 
 def control_router_checks():

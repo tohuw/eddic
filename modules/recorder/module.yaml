@@ -1,5 +1,14 @@
 name: recorder
-version: 0.4.0
+version: 0.5.0
+# 0.5.0: the recorder's slash commands moved from a single `/record`
+# subcommand group to individual top-level commands — `/record-start`,
+# `/record-stop`, `/record-consent-role`, `/record-empty-timeout`, and
+# `/record-help`. Discord attaches command permissions only to top-level
+# commands, so splitting the group makes each command individually
+# permissionable in Server Settings → Integrations → Command Permissions.
+# The four control/config commands keep the Manage-Server default;
+# record-help is open. Behaviour is otherwise unchanged. Discord re-syncs
+# the command set on the bot's next start.
 summary: >
   The campaign's own session-recording Discord bot: react-gated
   per-microphone consent enforced in the audio sink, per-speaker

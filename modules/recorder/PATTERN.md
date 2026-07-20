@@ -75,7 +75,7 @@ retire. Pin the versions as written below.
    is why one-process discipline matters; the foreground launcher
    gives it for free).
 
-3. The session: `/record start` in a voice channel plays an
+3. The session: `/record-start` in a voice channel plays an
    audible chime, sets a visible recording status on the channel
    (opt out per-session with the `channel_status` option), and posts
    the consent message as a **public** channel post (announcement,
@@ -83,7 +83,7 @@ retire. Pin the versions as written below.
    ephemeral slash reply is only a private ack with a jump link, never
    the consent surface itself, and if the public post cannot be sent
    the bot disconnects instead of recording. Reacts open each member's
-   gate; `/record stop` stages per-speaker WAV into
+   gate; `/record-stop` stages per-speaker WAV into
    `sessions/raw/<date>/` and appends a `witness` log entry.
    Transcription stays a deliberate step (transcriber pattern). The
    same start/stop/status run through a loopback control surface too
@@ -95,7 +95,7 @@ retire. Pin the versions as written below.
    missing Change Nickname permission never breaks recording). If the
    recorded voice channel empties of non-bot members for the
    auto-disconnect timeout, the session auto-stops down the same clean
-   path as `/record stop` and posts a brief note in the channel.
+   path as `/record-stop` and posts a brief note in the channel.
 
 4. First run on a new setup: record a short test with one consenting
    and one non-consenting member and play both outcomes back to the
@@ -103,40 +103,45 @@ retire. Pin the versions as written below.
 
 ## Decision points
 
-- **Who may operate the recorder.** Default: **Manage Server**. Every
-  `/record` command ships with `default_member_permissions` set to Manage
-  Server, so out of the box only members who can manage the server
-  (Administrator implies it) see or run start, stop, consent-role and
-  empty-timeout. To let a trusted player or a bot-wrangler role drive
-  recording without handing them Manage Server, grant it the right way from
-  Discord: Server Settings → Integrations → the recorder → Command
-  Permissions, where an admin allows a role or member — per command or for
-  the whole integration — with no code change and no redeploy. The gate
+- **Who may operate the recorder.** Default: **Manage Server**, per
+  command. The recorder ships each verb as its own **top-level** command —
+  `/record-start`, `/record-stop`, `/record-consent-role`,
+  `/record-empty-timeout`, and `/record-help` — rather than as subcommands
+  of one `/record` group. The four control/config commands each carry
+  `default_member_permissions` set to Manage Server, so out of the box only
+  members who can manage the server (Administrator implies it) see or run
+  them; `/record-help` is left open so anyone can read how consent works.
+  This split is deliberate: **Discord attaches command permissions only to
+  a top-level command, never to a subcommand of a group**, so a grouped
+  `/record start` could not be permissioned apart from `/record stop`. With
+  each verb top-level, every one appears **individually** in Server
+  Settings → Integrations → the recorder → Command Permissions, where an
+  admin can allow a specific role or member on a per-command basis (or for
+  the whole integration) with no code change and no redeploy — e.g. grant a
+  trusted player `/record-start` and `/record-stop` while keeping
+  `/record-consent-role` and `/record-empty-timeout` admin-only. The gate
   lives on the command, not inside the handlers, so a role you grant is
   never hidden from the command (which `default_member_permissions` used as
-  an in-code check would cause). Because Discord attaches command
-  permissions only to a top-level command, and a subcommand group is that
-  top-level command, the gate covers the entire `/record` group — `help`
-  included; there is no per-subcommand default in the API. Doing this from
-  the bot instead (the application-command-permissions API) would require a
-  user OAuth token, which a bot has no business holding, so the native
-  Integrations UI is the supported path. The env fallbacks below
-  (`CONSENT_PING_ROLE`, `EMPTY_DISCONNECT_SECONDS`) tune *behaviour*, not
-  *who may operate*; that is Discord-native only.
+  an in-code check would cause). Doing this from the bot instead (the
+  application-command-permissions API) would require a user OAuth token,
+  which a bot has no business holding, so the native Integrations UI is the
+  supported path. The env fallbacks below (`CONSENT_PING_ROLE`,
+  `EMPTY_DISCONNECT_SECONDS`) tune *behaviour*, not *who may operate*; that
+  is Discord-native only.
 - **Consent memory.** Default: strict per-session reacts — one tap
   during banter, no standing state. Alternative: remember acks
   across sessions with a visible opt-out, for tables that find the
   ritual noisy. Never silent capture.
 - **Consent-post ping.** Default: off. The public consent post is the
   surface everyone opts in on, but a member has to notice it. Set the role
-  from Discord with `/record consent-role @Role` (Manage-Server-gated; run
+  from Discord with `/record-consent-role @Role` (Manage-Server-gated; run
   it with no role to clear it) and the consent post `@`-pings that role so
   the whole table is notified to react — not just the invoker, who gets the
   ephemeral ack. The choice persists to the campaign-local
   `recorder_settings.json` (gitignored runtime state that also holds the
   empty-timeout below; a legacy `consent_ping.json` from an earlier version
   is read once for back-compat if the new file is absent). Run
-  `/record consent-role` with no role to clear it. `CONSENT_PING_ROLE` in
+  `/record-consent-role` with no role to clear it. `CONSENT_PING_ROLE` in
   `variables.txt` (a role id, or a role name like `Players`) is now only a
   bootstrap/fallback, used when no role has been set from Discord.
   `allowed_mentions` is scoped to
@@ -154,11 +159,11 @@ retire. Pin the versions as written below.
 - **Empty-channel auto-stop.** Default: **60 seconds**. When the
   recorded voice channel has no non-bot members left, the bot arms a
   timer and, if nobody rejoins before it fires, runs the same clean
-  stop path as `/record stop` (stage tracks, log the witness line,
+  stop path as `/record-stop` (stage tracks, log the witness line,
   drop the nickname badge, tear down) and posts a note that it
   auto-ended on an empty channel. Any rejoin before the timer fires
-  cancels it. Tune it live from Discord with `/record empty-timeout
-  <seconds>` (admin-gated like the rest of the group; `0` disables
+  cancels it. Tune it live from Discord with `/record-empty-timeout
+  <seconds>` (admin-gated like the other control commands; `0` disables
   auto-stop, and omitting the number reports the current value); the choice
   persists to `recorder_settings.json` and is validated (non-negative, at
   most one hour). `EMPTY_DISCONNECT_SECONDS` in `variables.txt` remains a
@@ -191,8 +196,12 @@ retire. Pin the versions as written below.
   as a well-formed per-speaker WAV, and revocation closing the gate.
   It also asserts, by source inspection, that the consent post is a
   public `channel.send` and never an ephemeral interaction reply, that
-  the `/record` group is gated with `default_member_permissions` on Manage
-  Server and no handler does its own in-code permission check, and
+  each control/config command (`record-start`, `record-stop`,
+  `record-consent-role`, `record-empty-timeout`) is a top-level
+  `@bot.slash_command` gated with `default_member_permissions` on Manage
+  Server while `record-help` is left open, that there is no
+  `create_group("record")` group anymore, and that no handler does its own
+  in-code permission check, and
   unit-tests the control router (loopback auth, method/path dispatch,
   the `409`/`404` codes). It pure-tests the two session-badge features:
   the `(RECORDING)` nickname computation (append, the 32-char cap that
