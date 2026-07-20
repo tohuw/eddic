@@ -1,11 +1,14 @@
 name: recorder
-version: 0.1.0
+version: 0.2.0
 summary: >
   The campaign's own session-recording Discord bot: react-gated
   per-microphone consent enforced in the audio sink, per-speaker
   tracks staged straight into the transcriber's layout on the DM's
   machine, and DAVE (E2EE) voice receive made to work via davey plus
-  import-time patches to py-cord 2.8.0 — live-proven end to end.
+  import-time patches to py-cord 2.8.0 — live-proven end to end. The
+  consent post is always a public channel message (never the ephemeral
+  slash reply), and start/stop/status are also reachable through a
+  loopback-only control surface that the streamdeck module drives.
 touches:
   - capture
   - transcriber

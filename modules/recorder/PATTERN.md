@@ -45,11 +45,13 @@ retire. Pin the versions as written below.
 ## Procedure
 
 1. Create `<campaign>/recorder-bot/` and copy in
-   `templates/recorder.py` and `templates/dave_recv.py`; make a
+   `templates/recorder.py`, `templates/dave_recv.py`, and
+   `templates/control.py` (the loopback control surface); make a
    gitignored `variables.txt` with `DISCORD_TOKEN` (and optionally
    `RECORD_DIR`, `PRIVACY_URL`, `WIKI_LOG` — defaults suit the
-   standard layout). Record:
-   `eddic.py manifest record --module recorder --version 0.1.0`.
+   standard layout; control-surface env is a decision point below).
+   Record:
+   `eddic.py manifest record --module recorder --version 0.2.0`.
 
 2. Wire a minimal `bot.py` beside them (a py-cord `discord.Bot`
    that imports `recorder` and calls `recorder.setup(bot)` — you
@@ -75,11 +77,17 @@ retire. Pin the versions as written below.
 3. The session: `/record start` in a voice channel plays an
    audible chime, sets a visible recording status on the channel
    (opt out per-session with the `channel_status` option), and posts
-   the consent message (announcement, privacy-posture link, live
-   roster of who is being recorded); reacts open each member's gate;
-   `/record stop` stages per-speaker WAV into
+   the consent message as a **public** channel post (announcement,
+   privacy-posture link, live roster of who is being recorded) — the
+   ephemeral slash reply is only a private ack with a jump link, never
+   the consent surface itself, and if the public post cannot be sent
+   the bot disconnects instead of recording. Reacts open each member's
+   gate; `/record stop` stages per-speaker WAV into
    `sessions/raw/<date>/` and appends a `witness` log entry.
-   Transcription stays a deliberate step (transcriber pattern).
+   Transcription stays a deliberate step (transcriber pattern). The
+   same start/stop/status run through a loopback control surface too
+   (see the `streamdeck` module) — one shared session core, so button
+   and slash never diverge.
 
 4. First run on a new setup: record a short test with one consenting
    and one non-consenting member and play both outcomes back to the
@@ -105,15 +113,29 @@ retire. Pin the versions as written below.
   opening a terminal. It wraps this service's own run verb, so the
   recorded command never drifts; skip it only for a DM who prefers
   `uv run` by hand.
+- **Control surface.** Default: **on**, loopback-bound, no token —
+  `control.py` serves start/stop/status on `127.0.0.1:8776` inside the
+  recorder process so a Stream Deck (or any local tool) can drive it;
+  see the `streamdeck` module for the button pack. Set `CONTROL_TOKEN`
+  in `variables.txt` when other local processes are untrusted, and a
+  target hint (`CONTROL_CHANNEL_ID`, `OWNER_USER_ID`, or
+  `CONTROL_GUILD_ID`) for a guild with several active voice channels.
+  Set `CONTROL_ENABLED=0` to turn it off for a DM who only ever uses
+  slash commands. The surface is never exposed off loopback by any
+  setting.
 
 ## Verify
 
-- `uv run modules/recorder/verify/run.py` — compiles both templates,
-  then unit-tests the consent core against a stubbed library:
-  emoji normalization (reacts arrive with and without the U+FE0F
-  variation selector), the sink dropping unattributed and
+- `uv run modules/recorder/verify/run.py` — compiles all three
+  templates, then unit-tests the consent core against a stubbed
+  library: emoji normalization (reacts arrive with and without the
+  U+FE0F variation selector), the sink dropping unattributed and
   unconsented packets while counting them, consented audio landing
   as a well-formed per-speaker WAV, and revocation closing the gate.
+  It also asserts, by source inspection, that the consent post is a
+  public `channel.send` and never an ephemeral interaction reply, and
+  unit-tests the control router (loopback auth, method/path dispatch,
+  the `409`/`404` codes).
 - Live, once per setup: the two-member test in step 4 — consented
   audio present and transcribable, non-consenting member absent
   from every track.

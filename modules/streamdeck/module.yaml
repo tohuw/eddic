@@ -1,0 +1,29 @@
+name: streamdeck
+version: 0.1.0
+summary: >
+  An Elgato Stream Deck control suite for the recorder bot (Muninn):
+  the recorder gains a loopback-only control surface (127.0.0.1 HTTP,
+  optional shared secret) exposing start/stop/status, and this module
+  stamps the owner-facing button pack — curl-the-endpoint scripts
+  bindable to Stream Deck's System-Open action, an experimental
+  .streamDeckProfile, and optional table-time keys that run campaign
+  eddic verbs. Everything but real Stream Deck hardware is testable.
+touches:
+  - recorder
+depends:
+  - recorder
+  - cli
+cost_posture:
+  free: >
+    Entirely free and local: the control surface runs inside the
+    already-local recorder process, the pack is plain scripts curling
+    loopback. No hosting, no Stream Deck plugins, no third-party
+    services.
+  paid: >
+    None. A Stream Deck is the owner's own hardware; the pack also
+    works from a double-click or any other launcher, so the deck is
+    optional convenience, not a dependency.
+  heuristic: >
+    Stamp the pack for a DM who runs sessions from a Stream Deck or
+    wants one-tap start/stop without a slash command; skip it for a DM
+    happy with /record in Discord.

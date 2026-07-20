@@ -7,9 +7,23 @@ react to the session's consent post. No react, no capture — enforced
 in the sink, not by policy. Audio is written on the voice thread,
 never the event loop.
 
+The consent post is the load-bearing surface: it is always a PUBLIC
+message in the voice channel's text chat (`channel.send`), reacted on
+that public post, so every member sees it and opts in. It is never the
+ephemeral slash-command reply, which only the invoker can see — that
+reply is a brief private ack. If the public consent post cannot be
+sent, recording does not begin (no public consent surface, no capture).
+
+The same start/stop/status actions are reachable two ways: the
+`/record` slash commands, and a loopback-only control surface
+(`control.py`, e.g. for a Stream Deck). Both call the shared session
+core below, so they can never diverge.
+
 Config (env / variables.txt): RECORD_DIR (default ../sessions/raw),
 PRIVACY_URL (default the Eddic site's posture page), WIKI_LOG
-(default ../wiki/log.md).
+(default ../wiki/log.md). Control surface: CONTROL_ENABLED (default on),
+CONTROL_PORT (default 8776), CONTROL_TOKEN (optional shared secret),
+CONTROL_CHANNEL_ID / CONTROL_GUILD_ID / OWNER_USER_ID (target hints).
 """
 
 import array
@@ -159,6 +173,183 @@ def consent_text(names):
             f"Recording: **{roster}**")
 
 
+# --- shared session core -------------------------------------------------
+# The single source of truth for start/stop/status. Both the /record
+# slash commands and the localhost control surface call these, so a
+# button and a slash can never do different things. Each returns a plain
+# result dict (never raises for expected conditions) so a non-Discord
+# caller (the control server) can serialize it straight to JSON.
+
+
+async def open_session(bot, guild_id, channel, channel_status=True):
+    """Connect, post the PUBLIC consent message, react on it, and begin
+    consent-gated recording. `channel` is the voice channel to record.
+    Returns {"ok": True, "jump_url", "outdir", "channel"} or
+    {"ok": False, "error"}."""
+    if guild_id in sessions:
+        return {"ok": False,
+                "error": "a recording session is already open here"}
+    # one directory per session, named by its start — never by date
+    # alone: a session crosses midnight, two sessions share a date, and
+    # a crash-and-restart must never reuse a directory and squash the
+    # tracks already in it
+    outdir = (RECORD_ROOT
+              / datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
+    outdir.mkdir(parents=True, exist_ok=True)
+    vc = await channel.connect()
+    for _ in range(50):                 # the voice handshake can lag
+        if vc.is_connected():           # behind connect()'s return;
+            break                       # recording needs the real
+        await asyncio.sleep(0.2)        # connection
+    else:
+        await vc.disconnect(force=True)
+        return {"ok": False, "error": "voice connection never came up"}
+    sink = ConsentSink(outdir)
+
+    def finished(exc):
+        # py-cord 2.8's AudioReader calls after(error) on its own
+        # thread when recording stops
+        if exc is not None:
+            print(f"recorder: reader stopped with error: {exc!r}")
+        sink.close_all()
+
+    # The consent post MUST be public and MUST exist before capture: it
+    # is the surface every member sees and opts in on. If it cannot be
+    # posted publicly (missing Send Messages / Add Reactions here, no
+    # text-in-voice), there is no consent surface, so recording does not
+    # begin — we tear the connection back down rather than record with
+    # only an invoker-visible ack.
+    try:
+        msg = await channel.send(consent_text(set()))
+        await msg.add_reaction(EMOJI)
+    except discord.DiscordException as e:
+        await vc.disconnect(force=True)
+        print(f"recorder: consent post failed ({e!r}); recording NOT "
+              f"started — no public consent surface")
+        return {"ok": False,
+                "error": ("could not post the public consent message in "
+                          "this channel; check I can send messages and "
+                          "add reactions here")}
+    sessions[guild_id] = {"vc": vc, "sink": sink, "msg": msg,
+                          "outdir": outdir, "names": set(),
+                          "status_set": False}
+    vc.start_recording(sink, finished)
+    # transparency: an audible chime in-channel, and (unless declined) a
+    # visible status on the channel itself
+    try:
+        vc.play(discord.PCMAudio(io.BytesIO(chime_pcm())))
+    except Exception as e:
+        print(f"recorder: start chime failed ({e!r})")
+    if channel_status:
+        await set_channel_status(
+            bot, channel.id,
+            f"{EMOJI} Recording — react to the consent post")
+        sessions[guild_id]["status_set"] = True
+    return {"ok": True, "jump_url": msg.jump_url,
+            "outdir": str(outdir), "channel": getattr(channel, "name", "")}
+
+
+async def close_session(bot, guild_id):
+    """Stop recording, stage the tracks, log the witness line, and mark
+    the consent post ended. Returns {"ok": True, "outdir", "tracks",
+    "stats"} or {"ok": False, "error"}. `tracks` is a list of
+    {"name", "kb"}."""
+    s = sessions.get(guild_id)
+    if not s:
+        return {"ok": False, "error": "no open recording session"}
+    sessions.pop(guild_id, None)
+    s["vc"].stop_recording()
+    if s.get("status_set"):
+        await set_channel_status(bot, s["vc"].channel.id, "")
+    await s["vc"].disconnect()
+    s["sink"].close_all()
+    files = sorted(s["outdir"].glob("*.wav"))
+    tracks = [{"name": f.name, "kb": f.stat().st_size // 1024}
+              for f in files]
+    log_error = None
+    try:
+        day = datetime.date.today().isoformat()
+        with WIKI_LOG.open("a", encoding="utf-8") as lf:
+            lf.write(f"\n## [{day}] witness | session audio recorded "
+                     f"({len(files)} track(s))\n\nStaged under "
+                     f"sessions/raw/{s['outdir'].name}/ by the "
+                     f"recorder; transcription is a deliberate "
+                     f"maintenance step.\n")
+    except OSError as e:
+        log_error = str(e)
+    await s["msg"].edit(content=consent_text(s["names"]) +
+                        "\n**Recording ended.**")
+    stats = dict(s["sink"].stats)
+    print(f"recorder stats: {stats}")
+    result = {"ok": True, "outdir": str(s["outdir"]), "tracks": tracks,
+              "stats": stats, "consented": sorted(s["names"])}
+    if log_error:
+        result["log_error"] = log_error
+    return result
+
+
+def session_status(guild_id=None):
+    """Pure snapshot of recording state (no I/O, safe from any thread).
+    With guild_id, scopes to that guild; without, reports every open
+    session — the single-owner control-surface case. Always ok."""
+    if guild_id is not None:
+        active = [guild_id] if guild_id in sessions else []
+    else:
+        active = list(sessions)
+    out = {"ok": True, "recording": bool(active), "sessions": []}
+    for gid in active:
+        s = sessions[gid]
+        out["sessions"].append({
+            "guild_id": gid,
+            "channel": getattr(getattr(s["vc"], "channel", None),
+                               "name", None),
+            "outdir": s["outdir"].name,
+            "consented": sorted(s["names"]),
+            "stats": dict(s["sink"].stats),
+        })
+    return out
+
+
+async def resolve_target(bot):
+    """Pick the voice channel the control surface should record when no
+    slash-command context names one. Precedence: CONTROL_CHANNEL_ID; the
+    voice channel the configured OWNER_USER_ID is in; the single
+    populated voice channel (optionally within CONTROL_GUILD_ID).
+    Returns (guild_id, channel) or an {"ok": False, "error"} dict."""
+    channel_id = os.environ.get("CONTROL_CHANNEL_ID")
+    guild_id = os.environ.get("CONTROL_GUILD_ID")
+    owner_id = os.environ.get("OWNER_USER_ID")
+    if channel_id:
+        ch = bot.get_channel(int(channel_id))
+        if ch is None:
+            return {"ok": False,
+                    "error": f"CONTROL_CHANNEL_ID {channel_id} not found"}
+        return (ch.guild.id, ch)
+    if owner_id:
+        for g in bot.guilds:
+            m = g.get_member(int(owner_id))
+            if m and m.voice and m.voice.channel:
+                return (g.id, m.voice.channel)
+    candidates = []
+    for g in bot.guilds:
+        if guild_id and g.id != int(guild_id):
+            continue
+        for ch in getattr(g, "voice_channels", []):
+            humans = [x for x in getattr(ch, "members", []) if not x.bot]
+            if humans:
+                candidates.append((len(humans), g.id, ch))
+    if not candidates:
+        return {"ok": False,
+                "error": ("no populated voice channel found — join a "
+                          "voice channel, or set CONTROL_CHANNEL_ID")}
+    if len(candidates) > 1:
+        return {"ok": False,
+                "error": ("multiple candidate voice channels are "
+                          "populated; set CONTROL_CHANNEL_ID to choose")}
+    _, gid, ch = candidates[0]
+    return (gid, ch)
+
+
 def setup(bot):
     record = bot.create_group("record",
                               "Session recording (consent-gated)")
@@ -176,56 +367,17 @@ def setup(bot):
             await ctx.respond("Join a voice channel first.",
                               ephemeral=True)
             return
-        if ctx.guild_id in sessions:
-            await ctx.respond("A recording session is already open "
-                              "here.", ephemeral=True)
+        result = await open_session(bot, ctx.guild_id, voice.channel,
+                                    channel_status)
+        if not result["ok"]:
+            await ctx.respond(result["error"][:1].upper()
+                              + result["error"][1:] + ".", ephemeral=True)
             return
-        # one directory per session, named by its start — never by
-        # date alone: a session crosses midnight, two sessions share a
-        # date, and a crash-and-restart must never reuse a directory
-        # and squash the tracks already in it
-        outdir = (RECORD_ROOT
-                  / datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
-        outdir.mkdir(parents=True, exist_ok=True)
-        vc = await voice.channel.connect()
-        for _ in range(50):                 # the voice handshake can
-            if vc.is_connected():           # lag behind connect()'s
-                break                       # return; recording needs
-            await asyncio.sleep(0.2)        # the real connection
-        else:
-            await vc.disconnect(force=True)
-            await ctx.respond("Voice connection never came up; "
-                              "try again.", ephemeral=True)
-            return
-        sink = ConsentSink(outdir)
-
-        def finished(exc):
-            # py-cord 2.8's AudioReader calls after(error) on its own
-            # thread when recording stops
-            if exc is not None:
-                print(f"recorder: reader stopped with error: {exc!r}")
-            sink.close_all()
-
-        msg = await voice.channel.send(consent_text(set()))
-        await msg.add_reaction(EMOJI)
-        sessions[ctx.guild_id] = {"vc": vc, "sink": sink, "msg": msg,
-                                  "outdir": outdir, "names": set(),
-                                  "status_set": False}
-        vc.start_recording(sink, finished)
-        # transparency: an audible chime in-channel, and (unless
-        # declined) a visible status on the channel itself
-        try:
-            vc.play(discord.PCMAudio(io.BytesIO(chime_pcm())))
-        except Exception as e:
-            print(f"recorder: start chime failed ({e!r})")
-        if channel_status:
-            await set_channel_status(
-                bot, voice.channel.id,
-                f"{EMOJI} Recording — react to the consent post")
-            sessions[ctx.guild_id]["status_set"] = True
+        # The public consent post carries consent; this ephemeral reply
+        # is only a private ack to the invoker with a jump link to it.
         await ctx.respond(
             f"Recording session open — [the consent post]"
-            f"({msg.jump_url}) is up in the channel's text chat. "
+            f"({result['jump_url']}) is up in the channel's text chat. "
             f"Nobody's mic is captured until they react.", ephemeral=True)
 
     @record.command(name="stop",
@@ -235,41 +387,27 @@ def setup(bot):
         _age = (discord.utils.utcnow()
                 - ctx.interaction.created_at).total_seconds()
         print(f'/stop: interaction age at entry: {_age:.2f}s')
-        s = sessions.get(ctx.guild_id)
-        if not s:
+        if ctx.guild_id not in sessions:
             await ctx.respond("No open recording session.",
                               ephemeral=True)
             return
         await ctx.defer()
-        sessions.pop(ctx.guild_id, None)
-        s["vc"].stop_recording()
-        if s.get("status_set"):
-            await set_channel_status(bot, s["vc"].channel.id, "")
-        await s["vc"].disconnect()
-        s["sink"].close_all()
-        files = sorted(s["outdir"].glob("*.wav"))
-        lines = [f"- {f.name} ({f.stat().st_size // 1024} KB)"
-                 for f in files]
-        try:
-            day = datetime.date.today().isoformat()
-            with WIKI_LOG.open("a", encoding="utf-8") as lf:
-                lf.write(f"\n## [{day}] witness | session audio recorded "
-                         f"({len(files)} track(s))\n\nStaged under "
-                         f"sessions/raw/{s['outdir'].name}/ by the "
-                         f"recorder; transcription is a deliberate "
-                         f"maintenance step.\n")
-        except OSError as e:
-            lines.append(f"(log entry failed: {e})")
-        await s["msg"].edit(content=consent_text(s["names"]) +
-                            "\n**Recording ended.**")
-        stats = s["sink"].stats
-        print(f"recorder stats: {stats}")
+        result = await close_session(bot, ctx.guild_id)
+        if not result["ok"]:
+            await ctx.respond(result["error"][:1].upper()
+                              + result["error"][1:] + ".")
+            return
+        lines = [f"- {t['name']} ({t['kb']} KB)"
+                 for t in result["tracks"]]
+        if result.get("log_error"):
+            lines.append(f"(log entry failed: {result['log_error']})")
+        stats = result["stats"]
         report = "\n".join(lines) or (
             f"no consented audio captured (packets — "
             f"written: {stats['written']}, "
             f"unconsented: {stats['unconsented']})")
         await ctx.respond(
-            f"Recording closed. Staged in `{s['outdir']}`:\n{report}")
+            f"Recording closed. Staged in `{result['outdir']}`:\n{report}")
 
     @record.command(name="help",
                     description="How recording and consent work")
@@ -312,6 +450,46 @@ def setup(bot):
             s["names"].discard(member.display_name)
             await s["msg"].edit(content=consent_text(s["names"]))
 
+    def _start_control_surface():
+        """Bring up the loopback control surface (Stream Deck etc.),
+        unless disabled. Loopback-bound; all Discord work is marshalled
+        back onto this event loop. Best-effort: a control-surface
+        failure never stops the recorder itself."""
+        if os.environ.get("CONTROL_ENABLED", "1").lower() in (
+                "0", "false", "no", "off"):
+            print("recorder: control surface disabled (CONTROL_ENABLED)")
+            return
+        try:
+            import control
+        except Exception as e:
+            print(f"recorder: control surface unavailable ({e!r})")
+            return
+        loop = asyncio.get_running_loop()
+        port = int(os.environ.get("CONTROL_PORT", "8776"))
+        token = os.environ.get("CONTROL_TOKEN") or None
+
+        async def _control_close():
+            # single-owner: close the one open session, whichever guild
+            open_guilds = list(sessions)
+            if not open_guilds:
+                return {"ok": False, "error": "no open recording session"}
+            return await close_session(bot, open_guilds[0])
+
+        try:
+            srv = control.start_control_server(
+                loop,
+                open_session=lambda gid, ch: open_session(bot, gid, ch),
+                close_session=_control_close,
+                status=lambda: session_status(),
+                resolve_target=lambda: resolve_target(bot),
+                port=port, token=token)
+            bot._control_server = srv
+            print(f"recorder: control surface on "
+                  f"http://127.0.0.1:{port} "
+                  f"(token {'set' if token else 'off'})")
+        except Exception as e:
+            print(f"recorder: control surface not started ({e!r})")
+
     class Capability:
         async def ready(self):
             # per-guild sync: global command propagation can take up
@@ -324,6 +502,7 @@ def setup(bot):
                       f"global commands will appear eventually")
             print(f"recorder ready: /record in "
                   f"{len(bot.guilds)} guild(s)")
+            _start_control_surface()
             # temporary spike scaffolding: unattended DAVE receive check
             ch = os.environ.get("DAVE_SELFTEST_CHANNEL")
             if ch:
