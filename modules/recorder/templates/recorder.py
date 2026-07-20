@@ -65,6 +65,10 @@ def _default_wiki_log():
 WIKI_LOG = (HERE / os.environ.get("WIKI_LOG",
                                   _default_wiki_log())).resolve()
 EMOJI = "🎙️"
+# Optional: ping a role on the PUBLIC consent post so the whole table is
+# notified to react — not just the invoker (who also gets the ephemeral
+# ack). Role id or role name; empty disables the ping.
+CONSENT_PING_ROLE = os.environ.get("CONSENT_PING_ROLE", "").strip()
 
 sessions = {}  # guild_id -> dict(vc, sink, msg, outdir, names)
 
@@ -160,9 +164,20 @@ class ConsentSink(discord.sinks.Sink):
         self.close_all()
 
 
-def consent_text(names):
+def resolve_ping(guild):
+    """The consent-ping role's mention, or '' — resolved by id or by name."""
+    if not CONSENT_PING_ROLE or guild is None:
+        return ""
+    role = (guild.get_role(int(CONSENT_PING_ROLE))
+            if CONSENT_PING_ROLE.isdigit()
+            else discord.utils.get(guild.roles, name=CONSENT_PING_ROLE))
+    return role.mention if role else ""
+
+
+def consent_text(names, ping=""):
     roster = ", ".join(sorted(names)) if names else "nobody yet"
-    return (f"{EMOJI} **Recording session open.** This voice channel is "
+    head = f"{ping}\n" if ping else ""
+    return (head + f"{EMOJI} **Recording session open.** This voice channel is "
             f"being recorded for the campaign archive.\n"
             f"**Only the microphones of people who react with {EMOJI} "
             f"are recorded** — an unreacted mic is never captured, and "
@@ -219,8 +234,12 @@ async def open_session(bot, guild_id, channel, channel_status=True):
     # text-in-voice), there is no consent surface, so recording does not
     # begin — we tear the connection back down rather than record with
     # only an invoker-visible ack.
+    ping = resolve_ping(channel.guild)
     try:
-        msg = await channel.send(consent_text(set()))
+        msg = await channel.send(
+            consent_text(set(), ping=ping),
+            allowed_mentions=discord.AllowedMentions(
+                everyone=False, users=False, roles=True))
         await msg.add_reaction(EMOJI)
     except discord.DiscordException as e:
         await vc.disconnect(force=True)
@@ -232,7 +251,7 @@ async def open_session(bot, guild_id, channel, channel_status=True):
                           "add reactions here")}
     sessions[guild_id] = {"vc": vc, "sink": sink, "msg": msg,
                           "outdir": outdir, "names": set(),
-                          "status_set": False}
+                          "status_set": False, "ping": ping}
     vc.start_recording(sink, finished)
     # transparency: an audible chime in-channel, and (unless declined) a
     # visible status on the channel itself
@@ -277,7 +296,7 @@ async def close_session(bot, guild_id):
                      f"maintenance step.\n")
     except OSError as e:
         log_error = str(e)
-    await s["msg"].edit(content=consent_text(s["names"]) +
+    await s["msg"].edit(content=consent_text(s["names"], ping=s.get("ping", "")) +
                         "\n**Recording ended.**")
     stats = dict(s["sink"].stats)
     print(f"recorder stats: {stats}")
@@ -434,7 +453,7 @@ def setup(bot):
         s["sink"].namehints[payload.user_id] = hint
         s["sink"].consented.add(payload.user_id)
         s["names"].add(hint)
-        await s["msg"].edit(content=consent_text(s["names"]))
+        await s["msg"].edit(content=consent_text(s["names"], ping=s.get("ping", "")))
 
     @bot.event
     async def on_raw_reaction_remove(payload):
@@ -448,7 +467,7 @@ def setup(bot):
         member = guild.get_member(payload.user_id) if guild else None
         if member:
             s["names"].discard(member.display_name)
-            await s["msg"].edit(content=consent_text(s["names"]))
+            await s["msg"].edit(content=consent_text(s["names"], ping=s.get("ping", "")))
 
     def _start_control_surface():
         """Bring up the loopback control surface (Stream Deck etc.),

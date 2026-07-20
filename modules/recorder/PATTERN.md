@@ -99,6 +99,13 @@ retire. Pin the versions as written below.
   during banter, no standing state. Alternative: remember acks
   across sessions with a visible opt-out, for tables that find the
   ritual noisy. Never silent capture.
+- **Consent-post ping.** Default: off. The public consent post is the
+  surface everyone opts in on, but a member has to notice it. Set
+  `CONSENT_PING_ROLE` in `variables.txt` (a role id, or a role name like
+  `Players`) and the consent post `@`-pings that role so the whole table
+  is notified to react — not just the invoker, who gets the ephemeral
+  ack. `allowed_mentions` is scoped to roles only; `@everyone` and user
+  pings are never sent. Empty (default) posts without a ping.
 - **Recording destination.** Default: the campaign's
   `sessions/raw/` on the DM's machine — the transcriber's layout,
   zero hosting. A cloud host with object storage is deliberately
