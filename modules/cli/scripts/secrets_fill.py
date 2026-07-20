@@ -59,8 +59,21 @@ def shape_warning(key, secret):
 
 
 def main(argv):
-    args = [a for a in argv if not a.startswith("--")]
-    opts = dict(zip(argv, argv[1:]))
+    # Consume --file and its value as a flag; everything left over is a
+    # positional. A plain `[a for a in argv if not a.startswith("--")]`
+    # would leave the flag's VALUE among the positionals, so --file PATH
+    # wrongly overwrote the campaign root.
+    args, opts, i = [], {}, 0
+    while i < len(argv):
+        a = argv[i]
+        if a == "--file" and i + 1 < len(argv):
+            opts["--file"] = argv[i + 1]
+            i += 2
+        elif a.startswith("--"):
+            i += 1
+        else:
+            args.append(a)
+            i += 1
     root = None
     if os.environ.get("EDDIC_CONFIG"):
         root = Path(os.environ["EDDIC_CONFIG"]).parent.parent
@@ -70,7 +83,8 @@ def main(argv):
         print(__doc__.strip(), file=sys.stderr)
         return 2
 
-    files = sorted(p for p in root.glob("*/variables.txt")
+    files = sorted(p for p in (list(root.glob("*/variables.txt"))
+                               + list(root.glob("*/*/variables.txt")))
                    if ".git" not in p.parts)
     if (root / "variables.txt").is_file():
         files.insert(0, root / "variables.txt")

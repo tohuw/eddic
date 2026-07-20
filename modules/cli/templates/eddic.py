@@ -86,8 +86,11 @@ def doctor():
                       f"verb '{verb}' vendored ({mod})",
                       f"manifest records verb '{verb}' ({mod}) but "
                       f"lib/{verb}.py is missing")
-    git = subprocess.run(["git", "--version"], capture_output=True,
-                         shell=False).returncode == 0
+    import shutil
+    # Gate on which() like uv is gated in run()/main(): invoking a
+    # missing git raises FileNotFoundError, and doctor must degrade
+    # gracefully (warn, not crash) when git isn't on PATH.
+    git = shutil.which("git") is not None
     check(git, "git available", "git not found (versioning/provenance "
           "features degrade)", fatal=False)
     verbs = ", ".join(lib_verbs()) or "none"
@@ -123,7 +126,12 @@ def manifest(args):
         entry = man["modules"].get(mod, {})
         entry.update({"version": ver, "applied": date.today().isoformat()})
         if "--params" in opts:
-            entry["params"] = json.loads(opts["--params"])
+            try:
+                entry["params"] = json.loads(opts["--params"])
+            except json.JSONDecodeError as e:
+                print(f"error: --params is not valid JSON: {e}",
+                      file=sys.stderr)
+                return 2
         if "--verbs" in opts:
             entry["verbs"] = sorted(set(entry.get("verbs", []))
                                     | set(opts["--verbs"].split(",")))
