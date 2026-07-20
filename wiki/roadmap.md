@@ -272,26 +272,22 @@ under the contract.
   and keeping it from re-litigating what the deterministic floor already
   guarantees. Trigger: a campaign large enough that manual consistency review
   stops scaling.
-- **Writeable retrieval (the `witness` write tool + inbox).** Retrieval is
-  read-only today (list/read/search/fetch); the [retrieval](modules/retrieval.md)
-  module already reserves "the `witness` write tool and inbox (bidirectionality)"
-  for later. The ask: let a connected agent **drop suggested edits and additions
-  in through the MCP** — a player's or DM's companion proposing "add this NPC
-  note," "fix this date," "here's a recap paragraph" mid-conversation, landing as
-  *pending* proposals, never direct writes to canon. It rides the
-  [contribs](modules/contribs.md) overlay machinery: a submission becomes a
-  contributor overlay / inbox entry the owner reviews, accepts, or drops — agent
-  proposes, human disposes, authorship captured at submission. Tiering follows
-  the [firewall](concepts/the-firewall.md): player-tier writes are always
-  suggestions into the review queue; DM-tier may write more directly, still
-  logged. Likely shape: `suggest_edit` / `suggest_page` MCP tools that append to
-  a per-campaign inbox (a repo branch, or an overlay dir staged for review) plus
-  a way to list and triage it — pairing naturally with the agentic lint routine
-  above, which files its findings the same way. Open questions: where the inbox
-  lives (repo branch vs staged overlay vs issue tracker), how the owner reviews
-  (an eddic verb vs a Discord surface vs the DM companion), and abuse/rate limits
-  once player tokens can write. Non-negotiable: nothing an agent submits reaches
-  a player-visible or canon surface without the owner's explicit acceptance.
+- **Writeable retrieval (the `witness` write path).** **Shipped v1 — retrieval
+  0.6.0, eddic 0.8.0.** When the campaign binds an `INBOX` KV namespace, the
+  Worker exposes four MCP tools: `suggest_edit` and `suggest_page` let any tier
+  **drop a proposed edit or addition** into a pending review inbox (never canon,
+  and no corpus validation — so a player cannot use `suggest_edit` as an
+  existence oracle on DM pages), while DM-tier-only `list_suggestions` /
+  `resolve_suggestion` triage it, the gating enforced in the handler and not
+  merely hidden from `tools/list`. `eddic suggestions` materializes the queue
+  into a gitignored `suggestions/` dir for the owner to apply and commit; with no
+  INBOX binding the campaign stays read-only. Non-negotiable held: nothing an
+  agent submits reaches a player-visible or canon surface without the owner's
+  explicit acceptance. Remaining: abuse / rate limits once player tokens can
+  write; deeper [contribs](modules/contribs.md) attribution so an accepted
+  suggestion carries hash-pinned authorship; an accept→auto-materialize path
+  (today the verb stages, the owner applies); and pairing with the agentic lint
+  routine above so it files its findings the same way.
 - **Eddic is not D&D-specific.** Eddic grew out of a D&D campaign and its
   framing still says "D&D" throughout (AGENTS.md, the [principles](design/principles.md), the site, the
   self-documenting wiki), but the machinery — the campaign knowledge

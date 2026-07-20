@@ -15,3 +15,14 @@ workers_dev = true
 [assets]
 directory = "../dist/site"
 binding = "ASSETS"
+
+# Witness write path (optional). Bind a KV namespace as INBOX to enable
+# the suggestion review inbox — suggest_edit / suggest_page (any tier)
+# and list_suggestions / resolve_suggestion (DM tier). Provision it with
+#   wrangler kv namespace create INBOX
+# then paste the printed id below and uncomment the block. Omit it to
+# stay read-only: with no INBOX binding the worker advertises and
+# accepts only the four read tools.
+# [[kv_namespaces]]
+# binding = "INBOX"
+# id = "{{INBOX_KV_ID}}"

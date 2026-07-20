@@ -177,6 +177,50 @@ like the lore bot.
    master, so it gets the narrower distribution: the DM's own
    devices, nothing else, ever.
 
+7. **Optional: the witness write path.** Skip this and the campaign
+   stays read-only. To let agents *propose* changes (never apply
+   them), provision a KV namespace and bind it as `INBOX`:
+
+       cd worker && npx wrangler kv namespace create INBOX
+
+   Paste the printed id into `wrangler.toml`'s `[[kv_namespaces]]`
+   block (`binding = "INBOX"`) and uncomment it, then redeploy. The
+   worker then advertises four more tools, KV-backed:
+
+   - `suggest_edit {path, suggestion, rationale?}` and
+     `suggest_page {title, content, path?, rationale?}` — **any valid
+     tier**. Each files a *pending suggestion* into the inbox and
+     returns a warm, id-bearing confirmation. `suggest_edit` stores
+     the `path` verbatim and **never checks it against the corpus** —
+     that would make it an existence oracle a player could use to
+     probe which DM-only pages exist.
+   - `list_suggestions {status?}` and
+     `resolve_suggestion {id, action, note?}` — **DM tier only**,
+     enforced two ways: omitted from a non-DM `tools/list` *and*
+     refused in the handler if a player token calls them.
+
+   The load-bearing guarantee: **nothing an agent submits ever reaches
+   canon or any player-visible surface automatically.** The worker
+   cannot write the repo — it writes only the KV inbox. Promotion is
+   the owner's job, out of band, via the review verb:
+
+       uv run .eddic/eddic.py suggestions
+
+   `suggestions` reads the inbox over the DM-tier endpoint (base URL
+   from config's `worker_url` or `--url`; DM token from
+   `$EDDIC_DM_TOKEN`/`$TOKEN_DM` or `--token`, never the repo) and
+   writes one review file per pending/accepted suggestion under
+   `suggestions/` — metadata plus proposed content — for the owner to
+   read, apply by hand, and commit. It is idempotent (re-run updates
+   in place, clears files for dropped suggestions) and **never
+   auto-applies to canon**. Add `suggestions/` to `.gitignore` (it
+   restages from the inbox and may carry unvetted player text). Vendor
+   the verb and record it:
+
+       cp scripts/suggestions.py <campaign>/.eddic/lib/suggestions.py
+       uv run <campaign>/.eddic/eddic.py manifest record \
+           --module retrieval --version 0.6.0 --verbs stage,suggestions
+
 ## Decision points
 
 - **Player tier.** Default: enabled — players asking their own agent
@@ -211,6 +255,23 @@ like the lore bot.
   retrieval only serves it. A campaign not running companions still gets
   a harmless placeholder page (the import must resolve); nothing about
   the tool surface changes.
+- **Writeable retrieval (the witness write path).** Default: off —
+  bind an `INBOX` KV namespace to turn it on (procedure step 7). Off,
+  the worker advertises and accepts only the four read tools; a stray
+  write call returns a clean "writeable retrieval is not enabled"
+  error, so read-only campaigns are wholly unaffected. On, agents may
+  *suggest* — `suggest_edit`/`suggest_page` for any tier — and the DM
+  triages — `list_suggestions`/`resolve_suggestion`, DM tier only, and
+  gated both in `tools/list` and in the handler. The design rule is a
+  one-way valve: **nothing an agent submits reaches canon or a
+  player-visible surface automatically.** The worker has no repo write
+  capability at all — it writes only to the KV inbox — and
+  `suggest_edit` never validates a path against the corpus, so it
+  cannot become an existence oracle for DM-only pages. The owner
+  promotes suggestions out of band with `eddic suggestions`, which
+  stages review files under `suggestions/` and never applies to canon
+  itself. The read firewall is untouched by any of this: player-tier
+  reads still cannot see DM pages, before or after a write.
 - **Voice mode.** Default: push-to-talk voice transcription into a
   normal chat — verified 2026-07 on the Claude phone app: asked a
   cold-context lore question about a term only the wiki defines,

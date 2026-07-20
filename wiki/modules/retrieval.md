@@ -6,7 +6,7 @@ MCP-capable agent can ask the campaign questions. Its defining use case
 is the DM's phone in the car — "what do I know about the Reavers'
 patron?" becomes a tool call with no login flow anywhere in the chain.
 It depends on the [cli](cli.md), [wiki](wiki.md), and [render](render.md)
-modules and is currently at version 0.5.0.
+modules and is currently at version 0.6.0.
 
 ## Two tokens, two tiers
 
@@ -87,6 +87,43 @@ the DM corpus is built. Staging warns as a corpus nears the 1 MB
 free-tier bundle limit, at which point a KV-backed corpus is the growth
 path; the Cloudflare Workers free tier otherwise sits orders of
 magnitude beyond any table's question volume.
+
+## The witness write path
+
+Retrieval is read-only by default, but a campaign can opt into a write
+path by binding a Cloudflare KV namespace as `INBOX`. It is a *witness*,
+not an editor: the single load-bearing property is that **nothing an
+agent submits ever reaches canon or a player-visible surface
+automatically**. The Worker has no capability to write the repository at
+all — it writes only to the KV inbox — and every submission is a pending
+*suggestion* the owner promotes by hand, out of band. When `INBOX` is
+unbound the campaign stays read-only: no write tool is advertised, and a
+stray write call returns a clean "not enabled" error, so existing
+deployments are unaffected.
+
+With the binding present the Worker adds four tools. `suggest_edit` and
+`suggest_page` are open to any valid tier and file a pending suggestion,
+returning a warm, id-bearing confirmation. `suggest_edit` stores the
+target path verbatim and deliberately never checks it against the corpus:
+validating it would turn the tool into an existence oracle a player could
+use to probe which DM-only pages exist, so the check is omitted by
+design. `list_suggestions` and `resolve_suggestion` are DM-tier only,
+enforced two ways — omitted from a non-DM `tools/list` and refused in the
+handler if a player token calls them. Accepting a suggestion only marks
+it for the DM; it never writes canon. Each KV entry records its id, kind,
+submitter tier, content, status, and creation and resolution timestamps.
+
+The owner's side is the vendored `suggestions` verb (`eddic
+suggestions`). It reads the inbox over the DM-tier endpoint — the Worker
+base URL from the campaign config's `worker_url` (or `--url`), the DM
+token from `$EDDIC_DM_TOKEN`/`$TOKEN_DM` (or `--token`), never the
+repository — and materializes each pending or accepted suggestion into a
+markdown review file under `suggestions/`, carrying metadata and the
+proposed content. It is idempotent: re-running updates files in place and
+clears the file for any dropped suggestion. It never auto-applies to
+canon; the owner reads a review file, edits the target page themselves,
+and commits. Because a review file can carry unvetted player text and is
+always restageable from the inbox, `suggestions/` is git-ignored.
 
 ## Client compatibility
 

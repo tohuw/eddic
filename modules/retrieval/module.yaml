@@ -1,5 +1,5 @@
 name: retrieval
-version: 0.5.0
+version: 0.6.0
 summary: >
   The campaign's agentic retrieval surface: a Cloudflare Worker MCP
   server with two bearer tokens — the DM token sees the master wiki,
@@ -10,10 +10,15 @@ summary: >
   at / for humans, MCP at /<token>/mcp for agents, and the player
   companion page at /<token>/companion (self-documenting handoff,
   single-sourced from the companion module's kit, with the MCP URL
-  filled per request from the authenticated token).
+  filled per request from the authenticated token). An optional
+  witness write path (when an INBOX KV namespace is bound) lets any
+  tier file suggestions into a review inbox — never canon, never a
+  player-visible surface — for the owner to promote out of band via
+  the `suggestions` verb; the two review tools are DM-tier only.
 touches:
   - worker/
   - .eddic/lib/stage.py
+  - .eddic/lib/suggestions.py
 depends:
   - cli
   - wiki

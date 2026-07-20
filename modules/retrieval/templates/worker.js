@@ -20,6 +20,15 @@
  * carry portable text plus structuredContent for clients that
  * prefer it. `fetch` is the cross-client canonical reader (some
  * clients expect a search+fetch pair); `read_page` remains.
+ *
+ * Optional witness write path (when the INBOX KV namespace is bound):
+ * suggest_edit / suggest_page let any tier file a *pending suggestion*
+ * into a review inbox — never canon, never a player-visible surface —
+ * and list_suggestions / resolve_suggestion (DM tier only) let the DM
+ * triage it. The worker cannot write the repo; it only writes KV, and
+ * an accepted suggestion is still promoted out of band by the owner
+ * (`eddic suggestions`). No INBOX binding => the campaign stays
+ * read-only and no write tool is advertised or callable.
  */
 
 import CORPUS_DM from "./corpus_dm.mjs";
@@ -73,6 +82,78 @@ const TOOLS = [
     annotations: READ_ONLY },
 ];
 
+// The witness write path. Every write is a *pending suggestion* in a
+// KV-backed review inbox (env.INBOX) — never canon, never a player-
+// visible surface. Only the owner promotes a suggestion, out of band
+// (see `eddic suggestions`). suggest_* are open to any valid tier;
+// list_suggestions / resolve_suggestion are DM-tier only, enforced in
+// the handler as well as omitted from a non-DM tools/list. A write
+// tool is not "read-only" but is closed-world (it never reaches beyond
+// the campaign's own inbox).
+const WRITE = { readOnlyHint: false, destructiveHint: false,
+                idempotentHint: false, openWorldHint: false };
+const READ_INBOX = { readOnlyHint: true, destructiveHint: false,
+                     idempotentHint: true, openWorldHint: false };
+
+// Any valid tier may file a suggestion.
+const WRITE_TOOLS = [
+  { name: "suggest_edit", title: "Suggest an edit",
+    description: "Propose a change to a wiki page. This files a pending " +
+      "suggestion for the DM to review — nothing is published and no " +
+      "page changes until the DM accepts it out of band. Any page path " +
+      "is accepted, whether or not it already exists.",
+    inputSchema: { type: "object", required: ["path", "suggestion"],
+      properties: { path: { type: "string" },
+                    suggestion: { type: "string" },
+                    rationale: { type: "string" } } },
+    annotations: WRITE },
+  { name: "suggest_page", title: "Suggest a new page",
+    description: "Propose a brand-new wiki page. This files a pending " +
+      "suggestion for the DM to review — nothing is published until the " +
+      "DM accepts it out of band.",
+    inputSchema: { type: "object", required: ["title", "content"],
+      properties: { title: { type: "string" }, content: { type: "string" },
+                    path: { type: "string" }, rationale: { type: "string" } } },
+    annotations: WRITE },
+];
+
+// DM tier only: the review inbox itself.
+const DM_TOOLS = [
+  { name: "list_suggestions", title: "List review suggestions",
+    description: "DM only. List submissions in the review inbox, " +
+      "optionally filtered by status (pending, accepted, dropped, all; " +
+      "default pending).",
+    inputSchema: { type: "object",
+      properties: { status: { type: "string",
+        enum: ["pending", "accepted", "dropped", "all"] } } },
+    annotations: READ_INBOX },
+  { name: "resolve_suggestion", title: "Resolve a suggestion",
+    description: "DM only. Accept or drop a suggestion by id, with an " +
+      "optional note. Accepting only marks it for the DM to apply out of " +
+      "band; it never writes canon on its own.",
+    inputSchema: { type: "object", required: ["id", "action"],
+      properties: { id: { type: "string" },
+        action: { type: "string", enum: ["accept", "drop"] },
+        note: { type: "string" } } },
+    annotations: WRITE },
+];
+
+const WRITE_NAMES = new Set(WRITE_TOOLS.concat(DM_TOOLS).map((t) => t.name));
+const DM_ONLY = new Set(DM_TOOLS.map((t) => t.name));
+
+// tools/list is tier- and INBOX-aware: the four read tools always; the
+// two suggest_* for any tier when INBOX is bound; the two review tools
+// only for the DM tier. With no INBOX binding the campaign is read-only
+// and no write tool is advertised (graceful degradation).
+function toolsFor(env, tier) {
+  const tools = TOOLS.slice();
+  if (env.INBOX) {
+    tools.push(...WRITE_TOOLS);
+    if (tier === "dm") tools.push(...DM_TOOLS);
+  }
+  return tools;
+}
+
 function searchHits(pages, q) {
   const terms = q.split(/\s+/);
   const scored = [];
@@ -108,7 +189,7 @@ function argError(msg) {
   return { isError: true, content: [{ type: "text", text: msg }] };
 }
 
-function callTool(corpus, name, args) {
+async function callTool(env, tier, corpus, name, args) {
   const pages = corpus.pages;
   if (name === "list_pages") {
     const lines = Object.entries(pages)
@@ -150,8 +231,127 @@ function callTool(corpus, name, args) {
                                   snippet: h.snippet })),
     });
   }
+  // The witness write path. Gated on the INBOX binding, and — for the
+  // review tools — on the DM tier, enforced HERE in the handler, not
+  // only by omission from a non-DM tools/list. A player token that
+  // calls list_suggestions / resolve_suggestion is refused outright.
+  if (WRITE_NAMES.has(name)) {
+    if (!env.INBOX) return inboxError();
+    if (DM_ONLY.has(name) && tier !== "dm") {
+      return argError(`${name} is available to the DM tier only`);
+    }
+    return writeTool(env, tier, name, args || {});
+  }
   return { isError: true,
            content: [{ type: "text", text: `unknown tool: ${name}` }] };
+}
+
+function inboxError() {
+  return { isError: true, content: [{ type: "text",
+    text: "writeable retrieval is not enabled for this campaign" }] };
+}
+
+// Warm, id-bearing confirmation for a filed suggestion. The message
+// carries a short id (first 8 chars); structuredContent carries the
+// full id a client can quote back.
+function confirm(id) {
+  return structured(
+    `Filed for the DM's review — suggestion ${id.slice(0, 8)}.`,
+    { id, status: "pending" });
+}
+
+// Append a pending submission to the KV inbox. crypto.randomUUID and
+// Date are both available in the Workers runtime. Key: sug:<id>.
+async function appendSuggestion(env, rec) {
+  const id = crypto.randomUUID();
+  const value = { id, ...rec, status: "pending",
+                  created: new Date().toISOString() };
+  await env.INBOX.put(`sug:${id}`, JSON.stringify(value));
+  return id;
+}
+
+// Read the whole inbox (paginated list + per-key get). Small by nature
+// — a review queue, not a corpus.
+async function readInbox(env) {
+  const out = [];
+  let cursor;
+  do {
+    const page = await env.INBOX.list({ prefix: "sug:", cursor });
+    for (const k of page.keys) {
+      const raw = await env.INBOX.get(k.name);
+      if (raw) { try { out.push(JSON.parse(raw)); } catch { /* skip */ } }
+    }
+    cursor = page.list_complete ? undefined : page.cursor;
+  } while (cursor);
+  return out;
+}
+
+async function writeTool(env, tier, name, args) {
+  if (name === "suggest_edit") {
+    if (typeof args.path !== "string" || !args.path.trim()) {
+      return argError("suggest_edit requires 'path' (non-empty string)");
+    }
+    if (typeof args.suggestion !== "string" || !args.suggestion.trim()) {
+      return argError(
+        "suggest_edit requires 'suggestion' (non-empty string)");
+    }
+    // NO existence oracle: the path is stored verbatim and never checked
+    // against the corpus. A player must not be able to probe which
+    // DM-only pages exist by watching suggest_edit succeed or fail.
+    const id = await appendSuggestion(env, {
+      kind: "edit", tier, path: args.path, suggestion: args.suggestion,
+      rationale: typeof args.rationale === "string" ? args.rationale : "" });
+    return confirm(id);
+  }
+  if (name === "suggest_page") {
+    if (typeof args.title !== "string" || !args.title.trim()) {
+      return argError("suggest_page requires 'title' (non-empty string)");
+    }
+    if (typeof args.content !== "string" || !args.content.trim()) {
+      return argError("suggest_page requires 'content' (non-empty string)");
+    }
+    const id = await appendSuggestion(env, {
+      kind: "page", tier, title: args.title, content: args.content,
+      path: typeof args.path === "string" ? args.path : "",
+      rationale: typeof args.rationale === "string" ? args.rationale : "" });
+    return confirm(id);
+  }
+  if (name === "list_suggestions") {
+    const want = typeof args.status === "string" ? args.status : "pending";
+    if (!["pending", "accepted", "dropped", "all"].includes(want)) {
+      return argError("list_suggestions 'status' must be one of: " +
+                      "pending, accepted, dropped, all");
+    }
+    const all = await readInbox(env);
+    const rows = want === "all" ? all : all.filter((s) => s.status === want);
+    rows.sort((a, b) => (a.created || "").localeCompare(b.created || ""));
+    const lines = rows.map((s) =>
+      `${s.id}  [${s.status}] ${s.kind} — ` +
+      (s.kind === "page" ? (s.title || "(untitled)") : s.path));
+    return structured(
+      lines.join("\n") ||
+        `no ${want === "all" ? "" : want + " "}suggestions`,
+      { suggestions: rows });
+  }
+  if (name === "resolve_suggestion") {
+    if (typeof args.id !== "string" || !args.id.trim()) {
+      return argError("resolve_suggestion requires 'id' (string)");
+    }
+    if (args.action !== "accept" && args.action !== "drop") {
+      return argError(
+        "resolve_suggestion 'action' must be 'accept' or 'drop'");
+    }
+    const raw = await env.INBOX.get(`sug:${args.id}`);
+    if (!raw) return argError(`no such suggestion: ${args.id}`);
+    const rec = JSON.parse(raw);
+    rec.status = args.action === "accept" ? "accepted" : "dropped";
+    rec.resolved = new Date().toISOString();
+    if (typeof args.note === "string" && args.note) rec.note = args.note;
+    await env.INBOX.put(`sug:${args.id}`, JSON.stringify(rec));
+    return structured(`Suggestion ${args.id.slice(0, 8)} ${rec.status}.`,
+                      { suggestion: rec });
+  }
+  return argError(`unknown tool: ${name}`);
 }
 
 function rpcResponse(id, result) {
@@ -284,11 +484,12 @@ export default {
       return new Response(null, { status: 202 });
     }
     if (msg.method === "tools/list") {
-      return rpcResponse(msg.id, { tools: TOOLS });
+      return rpcResponse(msg.id, { tools: toolsFor(env, t) });
     }
     if (msg.method === "tools/call") {
       const { name, arguments: args } = msg.params || {};
-      return rpcResponse(msg.id, callTool(corpus, name, args || {}));
+      return rpcResponse(msg.id,
+        await callTool(env, t, corpus, name, args || {}));
     }
     if (msg.method === "ping") return rpcResponse(msg.id, {});
     return rpcError(msg.id ?? null, -32601,

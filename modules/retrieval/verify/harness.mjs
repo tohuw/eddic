@@ -23,7 +23,7 @@ function check(ok, msg) {
   if (!ok) failures++;
 }
 
-async function rpc(token, body, viaPath = false) {
+async function rpc(token, body, viaPath = false, useEnv = env) {
   const url = viaPath
     ? `https://w.example/${token}/mcp`
     : "https://w.example/mcp";
@@ -31,7 +31,7 @@ async function rpc(token, body, viaPath = false) {
   if (!viaPath && token) headers.Authorization = `Bearer ${token}`;
   const res = await worker.fetch(
     new Request(url, { method: "POST", headers,
-                       body: JSON.stringify(body) }), env);
+                       body: JSON.stringify(body) }), useEnv);
   const isJson = (res.headers.get("content-type") || "").includes("json");
   return { status: res.status, body: isJson ? await res.json() : null };
 }
@@ -224,5 +224,143 @@ const restPost = await worker.fetch(
     method: "POST",
     headers: { Authorization: "Bearer dm-secret" } }), env);
 check(restPost.status === 405, "REST refuses non-GET (read-only)");
+
+// ---- the witness write path: KV-backed suggestion inbox ----
+// A mock in-memory KV (get/put/list) stands in for the Workers KV
+// binding; no live Cloudflare is touched. Bound as INBOX in a separate
+// env so the read-only-env tests above stay exactly as they were.
+function mockKV() {
+  const store = new Map();
+  return {
+    _store: store,
+    async get(k) { return store.has(k) ? store.get(k) : null; },
+    async put(k, v) { store.set(k, v); },
+    async list({ prefix = "", cursor } = {}) {   // eslint-disable-line
+      const keys = [...store.keys()].filter((k) => k.startsWith(prefix))
+        .map((name) => ({ name }));
+      return { keys, list_complete: true, cursor: undefined };
+    },
+  };
+}
+const envKV = { ...env, INBOX: mockKV() };
+
+// tools/list is tier- and INBOX-aware
+const plTools = await rpc("player-secret",
+  { jsonrpc: "2.0", id: 20, method: "tools/list" }, false, envKV);
+const plNames = plTools.body?.result?.tools?.map((x) => x.name) || [];
+check(plNames.includes("suggest_edit") && plNames.includes("suggest_page") &&
+      !plNames.includes("list_suggestions") &&
+      !plNames.includes("resolve_suggestion"),
+      "player tools/list: read tools + suggest_*, no DM review tools");
+const dmTools = await rpc("dm-secret",
+  { jsonrpc: "2.0", id: 21, method: "tools/list" }, false, envKV);
+const dmNames = dmTools.body?.result?.tools?.map((x) => x.name) || [];
+check(dmNames.includes("list_suggestions") &&
+      dmNames.includes("resolve_suggestion"),
+      "dm tools/list: additionally list_suggestions + resolve_suggestion");
+check(plTools.body?.result?.tools?.find((x) => x.name === "suggest_edit")
+        ?.annotations?.readOnlyHint === false,
+      "suggest_edit is annotated as a write (not read-only)");
+
+// player files an edit against a DM-only path: accepted with NO corpus
+// check (no existence oracle), stored pending
+const sug = await rpc("player-secret",
+  callBody(22, "suggest_edit",
+    { path: "keep.dm.md", suggestion: "note the cellars", rationale: "lore" }),
+  false, envKV);
+check(textOf(sug).includes("review") &&
+      !!sug.body?.result?.structuredContent?.id,
+      "suggest_edit files a suggestion and confirms warmly with an id");
+const sugId = sug.body?.result?.structuredContent?.id;
+check(sug.body?.result?.structuredContent?.status === "pending",
+      "suggest_edit reports status pending");
+const sugP = await rpc("player-secret",
+  callBody(23, "suggest_page",
+    { title: "A New Rumor", content: "A traveler speaks of the keep." }),
+  false, envKV);
+check(!!sugP.body?.result?.structuredContent?.id,
+      "suggest_page files a pending suggestion");
+
+// tier gating is enforced in the HANDLER, not only by tools/list
+const wPlList = await rpc("player-secret",
+  callBody(24, "list_suggestions", {}), false, envKV);
+check(wPlList.body?.result?.isError === true,
+      "player list_suggestions is rejected by the handler (DM-tier only)");
+const plResolve = await rpc("player-secret",
+  callBody(25, "resolve_suggestion", { id: sugId, action: "accept" }),
+  false, envKV);
+check(plResolve.body?.result?.isError === true,
+      "player resolve_suggestion is rejected by the handler (DM-tier only)");
+
+// dm lists the pending inbox: sees both player submissions
+const wDmList = await rpc("dm-secret",
+  callBody(26, "list_suggestions", { status: "pending" }), false, envKV);
+const pend = wDmList.body?.result?.structuredContent?.suggestions || [];
+check(pend.length === 2 && pend.every((s) => s.status === "pending"),
+      "dm list_suggestions returns the pending inbox");
+check(pend.some((s) => s.path === "keep.dm.md" && s.tier === "player" &&
+                       s.kind === "edit"),
+      "a stored edit carries the submitter tier and the raw path verbatim");
+
+// dm accepts: status transitions, resolved timestamp + note recorded
+const res = await rpc("dm-secret",
+  callBody(27, "resolve_suggestion",
+    { id: sugId, action: "accept", note: "good catch" }), false, envKV);
+const resolved = res.body?.result?.structuredContent?.suggestion;
+check(resolved?.status === "accepted" && !!resolved?.resolved,
+      "resolve accept transitions status to accepted and stamps resolved");
+const dmAcc = await rpc("dm-secret",
+  callBody(28, "list_suggestions", { status: "accepted" }), false, envKV);
+check((dmAcc.body?.result?.structuredContent?.suggestions || [])
+        .some((s) => s.id === sugId && s.note === "good catch"),
+      "accepted suggestion carries the resolver note");
+const dmPendAfter = await rpc("dm-secret",
+  callBody(29, "list_suggestions", { status: "pending" }), false, envKV);
+check((dmPendAfter.body?.result?.structuredContent?.suggestions || [])
+        .every((s) => s.id !== sugId),
+      "an accepted suggestion leaves the pending queue");
+
+// dropping works, and resolving an unknown id is a clean isError
+const drop = await rpc("dm-secret",
+  callBody(30, "resolve_suggestion",
+    { id: sugP.body.result.structuredContent.id, action: "drop" }),
+  false, envKV);
+check(drop.body?.result?.structuredContent?.suggestion?.status === "dropped",
+      "resolve drop transitions status to dropped");
+const resBad = await rpc("dm-secret",
+  callBody(31, "resolve_suggestion", { id: "nope", action: "drop" }),
+  false, envKV);
+check(resBad.body?.result?.isError === true,
+      "resolve on an unknown id returns isError (no crash)");
+
+// argument validation on the write tools
+const sugBad = await rpc("player-secret",
+  callBody(32, "suggest_edit", { path: "keep.dm.md" }), false, envKV);
+check(sugBad.body?.result?.isError === true,
+      "suggest_edit without a suggestion returns isError");
+const listBad = await rpc("dm-secret",
+  callBody(33, "list_suggestions", { status: "bogus" }), false, envKV);
+check(listBad.body?.result?.isError === true,
+      "list_suggestions with a bad status returns isError");
+
+// the firewall still holds under the write env: a player still cannot
+// read the DM page, and nothing the write path did reached canon
+const plReadAfter = await rpc("player-secret",
+  callBody(34, "read_page", { path: "keep.dm.md" }), false, envKV);
+check(textOf(plReadAfter).startsWith("no such page"),
+      "read firewall intact after writes: player cannot read the DM page");
+
+// ---- graceful degradation: INBOX unbound (default env) ----
+const dmToolsNoKV = await rpc("dm-secret",
+  { jsonrpc: "2.0", id: 35, method: "tools/list" });
+const noKV = dmToolsNoKV.body?.result?.tools?.map((x) => x.name) || [];
+check(!noKV.includes("suggest_edit") && !noKV.includes("suggest_page") &&
+      !noKV.includes("list_suggestions"),
+      "INBOX unbound: no write tool is advertised (read-only campaign)");
+const sugNoKV = await rpc("player-secret",
+  callBody(36, "suggest_edit", { path: "a", suggestion: "b" }));
+check(sugNoKV.body?.result?.isError === true &&
+      textOf(sugNoKV).includes("not enabled"),
+      "INBOX unbound: suggest_edit returns a clean not-enabled error");
 
 process.exit(failures ? 1 : 0);
