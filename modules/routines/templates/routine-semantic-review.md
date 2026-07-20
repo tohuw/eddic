@@ -59,3 +59,97 @@ is token-heavy and its findings are advisory, so it rides the rhythm of
 play rather than the rhythm of edits. On-demand is the escape hatch.
 Pre-compress the packet's page bodies (DESIGN: token economics) before
 the model reads them on a large wiki.
+
+## Runner: the Claude Code Routine (hosted agent rung)
+
+This is the top rung of the routines module's preference chain — a
+hosted agent routine — for the semantic pass. A Claude Code Routine runs
+a scheduled Claude Code session on Anthropic's cloud, so the pass fires
+between sessions with the owner's laptop off, on the agent subscription
+already paid for (no new service). The config lives in the owner's cloud
+account, not the repo; what the repo supplies is the recipe (the
+campaign's vendored `/semantic-review` command and its `.mcp.json`
+witness declaration), which the cloud loads automatically on checkout.
+
+**Prerequisites in the campaign repo** (apply the lint and retrieval
+patterns first): the `semantic-review` verb vendored in `.eddic/lib/`;
+the retrieval **witness write path** enabled (an `INBOX` KV namespace) so
+`suggest_edit` has somewhere to land; a root **`.mcp.json`** declaring
+the witness server with its token pulled from an env var, never
+hardcoded —
+
+    {
+      "mcpServers": {
+        "witness": {
+          "type": "http",
+          "url": "https://<worker-host>/mcp",
+          "headers": { "Authorization": "Bearer ${EDDIC_WITNESS_TOKEN}" }
+        }
+      }
+    }
+
+Use the **player-tier** token here: it is low-sensitivity (the same
+content as the public wiki), safe to store as a cloud env var, and
+`suggest_edit` accepts any tier, so findings still reach the DM's inbox
+without exposing the DM secret to the cloud.
+
+**Create it at claude.ai/code/routines** (or `/schedule` from the CLI, or
+the desktop app). Fill the routine's fields:
+
+- **Repository** — the campaign repo. The routine checks out its default
+  branch; GitHub auth is automatic, so the PR fallback needs no extra
+  token.
+- **Environment variable** — `EDDIC_WITNESS_TOKEN` = the campaign's
+  **player-tier** retrieval token. Stored plaintext in the routine
+  environment; that is acceptable precisely because it is the
+  player-tier, public-content token. Never paste the DM token here.
+- **Schedule** — weekly is the recommended cadence (between-sessions, per
+  the default-cadence clause above); the platform floor is a **1 hour**
+  minimum interval, so weekly sits well inside it. Pin a specific day and
+  time — the morning after game night is ideal — with `/schedule update`
+  (cron).
+- **Prompt** — paste the block below.
+
+### Routine Prompt (paste-ready)
+
+```
+Run this campaign's semantic wiki lint and file the findings.
+
+Execute the /semantic-review command. It runs the deterministic floor
+(eddic lint --strict), builds the player projection (eddic project) and
+the review packet (eddic semantic-review --out packet.json), then has you
+work the six-category checklist over the packet, write findings.json,
+validate it (eddic semantic-review --validate findings.json), and file
+each finding as a suggest_edit into the DM's witness inbox via the
+`witness` MCP server.
+
+Every finding is advisory: never edit a wiki file, never rewrite
+human-authored prose, never apply anything to canon. Stop and report if
+any deterministic step (lint, project, packet build, validate) refuses.
+
+If the `witness` MCP server is unreachable (its host is not in this
+environment's Allowed domains, or EDDIC_WITNESS_TOKEN is unset), do not
+drop the findings: write them under suggestions/ and open a PR, per the
+command's fallback. Report the finding count and which path you took.
+```
+
+**Allowed-domains gotcha.** The default "Trusted" cloud environment
+`403`s requests to arbitrary custom domains, so the witness MCP handshake
+to a custom host (e.g. `<campaign>.eddic.quest`) fails silently and the
+routine takes the PR fallback every run. Add the worker host to the
+routine **environment's Allowed domains** so the `witness` server
+connects and findings reach the inbox. A `*.workers.dev` host may already
+be permitted; a custom domain almost never is.
+
+**PR fallback.** When the witness path is off or its host stays blocked,
+the `/semantic-review` command writes the findings under `suggestions/`
+and opens a PR against the default branch instead — so the owner triages
+the same advisory findings through review rather than the inbox. GitHub
+auth is automatic in the routine, so no token is needed for this path.
+Nothing about the fallback reaches canon automatically; it is a proposal
+like every other finding.
+
+**Interactive auth does not work in the cloud.** getpass, OAuth popups,
+and browser device flows all fail in a headless routine — this is exactly
+why the witness token is a static env var and GitHub auth is the
+platform's, not an interactive login.

@@ -60,6 +60,21 @@ def main():
         (("advisory" in semantic and "never" in semantic
           and "auto" in semantic),
          "semantic-review contract states its advisory-only posture"),
+        # The Claude Code Routine (hosted agent) rung is documented and
+        # paste-ready: prompt, env var, schedule, domain-allow, fallback.
+        ("claude.ai/code/routines" in semantic,
+         "names the Claude Code Routine creation locus"),
+        (("Routine Prompt (paste-ready)" in semantic
+          and "/semantic-review" in semantic),
+         "ships a paste-ready routine Prompt wired to the run recipe"),
+        ("EDDIC_WITNESS_TOKEN" in semantic,
+         "names the witness-token environment variable"),
+        (("weekly" in semantic and "1 hour" in semantic),
+         "recommends a schedule inside the 1-hour interval floor"),
+        ("Allowed domains" in semantic,
+         "notes the custom-domain Allowed-domains gotcha"),
+        ("PR fallback" in semantic,
+         "states the PR fallback when the witness host is blocked"),
     ]
     failed = [msg for ok, msg in checks if not ok]
     for ok, msg in checks:

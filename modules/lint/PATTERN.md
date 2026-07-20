@@ -105,7 +105,11 @@ re-litigates what the structural floor already guarantees.
       so it lands as a pending suggestion the owner materializes with
       `eddic suggestions` and disposes by hand. Either way the output is
       advisory: findings are suggestions, never applied edits, and no
-      human-authored prose is rewritten.
+      human-authored prose is rewritten. To run this whole pass on a
+      schedule with the owner's machine off, host it as a hosted agent
+      routine — the routines module's `routine-semantic-review` template
+      ships the paste-ready hosted-routine setup (prompt, witness token
+      env var, cadence, and PR fallback).
 
 4. Record a `lint` entry in the campaign's operation log: date, what
    was found, what was fixed, what was escalated (a semantic pass notes

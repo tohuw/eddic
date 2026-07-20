@@ -1,5 +1,5 @@
 name: routines
-version: 0.2.0
+version: 0.3.0
 summary: >
   The maintenance-routine contract (idempotent, safe to miss, safe to
   double-run) with the runner preference chain — hosted agent
@@ -34,5 +34,5 @@ compatibility:
   claude:
     role: maintaining agent
     status: documented
-    date: 2026-07-18
-    evidence: hosted-routine rung named per the owner's preference chain; no live routine run yet on any rung
+    date: 2026-07-19
+    evidence: Claude Code Routine rung fully specified for semantic-review — paste-ready Prompt, witness-token env var, weekly schedule inside the 1h floor, Allowed-domains gotcha, and PR fallback; no live routine run yet on any rung

@@ -260,8 +260,13 @@ under the contract.
   for firewall-in-prose) with a pinned findings schema; the routines contract
   packages the agent pass as a safe-to-miss/double-run routine; findings file
   into the witness inbox as `suggest_edit`s (or a plain report). Kept
-  agent-agnostic — no unbacked vendor claim. Remaining: cadence/cost tuning and
-  a live LLM pass on a real campaign. Original framing: the [lint](modules/lint.md)
+  agent-agnostic — no unbacked vendor claim. The hosted-cloud runner is now
+  wired (routines 0.3.0): a campaign vendors the `semantic-review` verb + a
+  `.mcp.json` witness server + a `.claude/` recipe, and the routine runs as a
+  scheduled Claude Code Routine that files findings into the witness inbox (PR
+  fallback if the MCP host is domain-blocked). Remaining: the first live LLM
+  pass on a real campaign, and cadence/cost tuning. Original framing: the
+  [lint](modules/lint.md)
   module is a deterministic reporter with a stated model-triage seam; the
   [routines](modules/routines.md) module gives the idempotent,
   safe-to-miss/safe-to-double-run contract to hang recurring maintenance off.
