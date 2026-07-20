@@ -27,7 +27,7 @@ companion layer on once the campaign is live.
 | [capture](capture.md) | session audio by the table's route (free Craig default), staged for local transcription, no folder navigation | 0.1.0 |
 | [discord-setup](discord-setup.md) | the server's standing spec: REST reconcile, lint-style drift, additive-only apply | 0.1.0 |
 | [convene](convene.md) | session lifecycle on native scheduled events: quorum, lifecycle nudges, recap announce, prep ask | 0.2.1 |
-| [recorder](recorder.md) | the campaign's own recording bot: react-gated per-mic consent (fail-closed public consent post, role ping set via `/record consent-role`), DAVE receive via davey + pinned patches, a localhost control surface, a `(RECORDING)` nickname badge, and empty-channel auto-stop | 0.3.0 |
+| [recorder](recorder.md) | the campaign's own recording bot: react-gated per-mic consent (fail-closed public consent post, role ping via `/record consent-role`), DAVE receive via davey + pinned patches, a localhost control surface, a `(RECORDING)` nickname badge, empty-channel auto-stop (`/record empty-timeout`), and Manage-Server-gated commands (Discord-native) | 0.4.0 |
 | [backup](backup.md) | tier-2 blob backup: session audio in object storage (R2 default) via rclone, gitignored, tracked by a path/size/sha256 inventory; two hooks over one worker, text push never blocks | 0.1.0 |
 | [launcher](launcher.md) | native double-clickable launcher for a local service: a hand-built, code-signed macOS `.app` with its own live-log window that supervises the service, or a Windows `.cmd`, wrapping the campaign's run verb | 0.3.0 |
 | [streamdeck](streamdeck.md) | Elgato Stream Deck button packs for table-time control: start/stop/status/help against the recorder's localhost control surface | 0.1.1 |

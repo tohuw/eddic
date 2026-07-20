@@ -14,6 +14,7 @@ ephemeral interaction reply), and the loopback control surface's router
 does auth + method/path dispatch as specified."""
 
 import ast
+import json
 import os
 import py_compile
 import sys
@@ -62,29 +63,48 @@ def consent_is_public(src):
     ]
 
 
-def consent_role_is_gated(src):
-    """Static guarantee that the `/record consent-role` subcommand is
-    gated on Manage Server: its body must test
-    `...guild_permissions.manage_guild` before it can persist a role, so a
-    non-privileged member can never change who the consent post pings.
-    Returns a list of (ok, message) checks."""
+def commands_are_permission_gated(src):
+    """Static guarantee of the permission model. Gating is Discord-native:
+    the `record` command group is created with
+    `default_member_permissions=discord.Permissions(manage_guild=True)`, so
+    by default only Manage-Server members see or run any `/record`
+    subcommand (a server admin grants specific roles via Discord's
+    Integrations command-permissions UI). We assert both that the group
+    carries that default AND that no handler does its own in-code
+    permission check (`guild_permissions` / `manage_guild`), since the
+    model deliberately moved gating out of the handlers. Returns a list of
+    (ok, message) checks."""
     tree = ast.parse(src)
-    fn = None
+    group_gated = False
     for node in ast.walk(tree):
-        if isinstance(node, ast.AsyncFunctionDef) and node.name == "consent_role":
-            fn = node
-            break
-    gated = False
-    if fn is not None:
-        for n in ast.walk(fn):
-            if isinstance(n, ast.Attribute) and n.attr == "manage_guild":
-                gated = True
-                break
+        if not (isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and node.func.attr == "create_group"):
+            continue
+        for kw in node.keywords:
+            if kw.arg != "default_member_permissions":
+                continue
+            v = kw.value
+            if (isinstance(v, ast.Call)
+                    and isinstance(v.func, ast.Attribute)
+                    and v.func.attr == "Permissions"
+                    and any(k.arg == "manage_guild"
+                            and isinstance(k.value, ast.Constant)
+                            and k.value.value is True
+                            for k in v.keywords)):
+                group_gated = True
+    # No handler should reference a permission check anymore.
+    handlers_clean = not any(
+        isinstance(n, ast.Attribute)
+        and n.attr in ("manage_guild", "guild_permissions")
+        for n in ast.walk(tree))
     return [
-        (fn is not None, "a consent-role subcommand is defined"),
-        (gated,
-         "consent-role is gated on guild_permissions.manage_guild "
-         "(Manage Server)"),
+        (group_gated,
+         "the /record group sets default_member_permissions=Manage Server "
+         "(Discord-native gating on every subcommand)"),
+        (handlers_clean,
+         "no handler does an in-code permission check — gating is "
+         "Discord-native, admins override via the Integrations UI"),
     ]
 
 
@@ -171,8 +191,8 @@ def main():
     # Part-1 safety: the consent post is public, never ephemeral.
     recorder_src = (TEMPLATES / "recorder.py").read_text(encoding="utf-8")
     checks += consent_is_public(recorder_src)
-    # The consent-post ping role is set from Discord, gated on Manage Server.
-    checks += consent_role_is_gated(recorder_src)
+    # Operating the recorder is gated Discord-natively on the command group.
+    checks += commands_are_permission_gated(recorder_src)
 
     # stub just enough of the library to import the consent core
     fake = types.ModuleType("discord")
@@ -267,6 +287,76 @@ def main():
                    "a channel with only bots is empty (arm the timer)"))
     checks.append((not recorder.channel_is_empty([bot_m, human]),
                    "one non-bot member present ⇒ not empty (cancel/hold)"))
+
+    # Feature: settings file round-trip and legacy back-compat migration.
+    sdir = Path(tempfile.mkdtemp(prefix="eddic-recorder-settings-"))
+    spath = sdir / "recorder_settings.json"
+    recorder.save_settings({"consent_ping_role_id": 111,
+                            "empty_disconnect_seconds": 45}, path=spath)
+    got = recorder.load_settings(path=spath)
+    checks.append((got == {"consent_ping_role_id": 111,
+                           "empty_disconnect_seconds": 45},
+                   "settings file round-trips both keys"))
+    recorder.save_settings({"consent_ping_role_id": None}, path=spath)
+    got = recorder.load_settings(path=spath)
+    checks.append((got["consent_ping_role_id"] is None
+                   and got["empty_disconnect_seconds"] == 45,
+                   "a None update clears one key and leaves the other"))
+    fresh = recorder.load_settings(path=sdir / "does-not-exist.json",
+                                   legacy=sdir / "no-legacy.json")
+    checks.append((fresh == {"consent_ping_role_id": None,
+                             "empty_disconnect_seconds": None},
+                   "a missing settings file loads as all-None defaults"))
+    # Back-compat: no settings file, but the old consent_ping.json exists —
+    # its role_id migrates into consent_ping_role_id (read-only).
+    legacy = sdir / "consent_ping.json"
+    legacy.write_text(json.dumps({"role_id": 777}), encoding="utf-8")
+    migrated = recorder.load_settings(path=sdir / "still-missing.json",
+                                      legacy=legacy)
+    checks.append((migrated["consent_ping_role_id"] == 777
+                   and migrated["empty_disconnect_seconds"] is None,
+                   "legacy consent_ping.json role_id migrates when no "
+                   "settings file exists"))
+
+    # Feature: empty-timeout parse/validate (pure).
+    ok0, v0 = recorder.parse_empty_timeout(0)
+    checks.append((ok0 and v0 == 0,
+                   "empty-timeout 0 is accepted (disables auto-stop)"))
+    ok1, v1 = recorder.parse_empty_timeout("120")
+    checks.append((ok1 and v1 == 120,
+                   "empty-timeout parses a numeric string to an int"))
+    okc, vc = recorder.parse_empty_timeout(recorder.EMPTY_DISCONNECT_MAX)
+    checks.append((okc and vc == recorder.EMPTY_DISCONNECT_MAX,
+                   "empty-timeout at the cap is accepted"))
+    neg_ok, _ = recorder.parse_empty_timeout(-1)
+    checks.append((not neg_ok, "empty-timeout rejects a negative value"))
+    over_ok, _ = recorder.parse_empty_timeout(
+        recorder.EMPTY_DISCONNECT_MAX + 1)
+    checks.append((not over_ok, "empty-timeout rejects an over-cap value"))
+    junk_ok, _ = recorder.parse_empty_timeout("soon")
+    checks.append((not junk_ok, "empty-timeout rejects a non-number"))
+
+    # Feature: empty_disconnect_seconds precedence (persisted > env > 60).
+    saved_settings_path = recorder.SETTINGS_PATH
+    saved_env = os.environ.pop("EMPTY_DISCONNECT_SECONDS", None)
+    try:
+        recorder.SETTINGS_PATH = sdir / "timeout-none.json"
+        checks.append((recorder.empty_disconnect_seconds()
+                       == recorder.EMPTY_DISCONNECT_DEFAULT,
+                       "empty timeout falls back to the 60s default"))
+        os.environ["EMPTY_DISCONNECT_SECONDS"] = "90"
+        checks.append((recorder.empty_disconnect_seconds() == 90,
+                       "empty timeout reads the env fallback when unset"))
+        recorder.SETTINGS_PATH = sdir / "timeout-zero.json"
+        recorder.save_settings({"empty_disconnect_seconds": 0},
+                               path=recorder.SETTINGS_PATH)
+        checks.append((recorder.empty_disconnect_seconds() == 0,
+                       "a persisted 0 wins over the env (auto-stop off)"))
+    finally:
+        recorder.SETTINGS_PATH = saved_settings_path
+        os.environ.pop("EMPTY_DISCONNECT_SECONDS", None)
+        if saved_env is not None:
+            os.environ["EMPTY_DISCONNECT_SECONDS"] = saved_env
 
     # loopback control surface router
     checks += control_router_checks()

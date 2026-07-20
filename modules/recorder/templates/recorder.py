@@ -66,14 +66,70 @@ def _default_wiki_log():
 WIKI_LOG = (HERE / os.environ.get("WIKI_LOG",
                                   _default_wiki_log())).resolve()
 EMOJI = "🎙️"
+
+# --- persisted settings --------------------------------------------------
+# One gitignored JSON file holds the recorder's runtime-tunable settings:
+# the consent-ping role and the empty-channel auto-stop timeout. Precedence
+# everywhere is: a persisted setting wins, else the matching env var, else a
+# built-in default. Env vars are bootstrap fallbacks for a fresh bot only.
+# (Who may OPERATE the recorder is not persisted here — that is enforced by
+# Discord via each command's default_member_permissions; see setup().)
+SETTINGS_PATH = HERE / "recorder_settings.json"
+# Back-compat: the consent-ping role used to live in its own file. If the
+# settings file doesn't exist yet but that one does, its role_id is read
+# into consent_ping_role_id once (the legacy file is left untouched).
+LEGACY_CONSENT_STATE = HERE / "consent_ping.json"
+_SETTING_KEYS = ("consent_ping_role_id", "empty_disconnect_seconds")
+
+
+def load_settings(path=None, legacy=None):
+    """Read the recorder's persisted settings as a dict with all known keys
+    present (value None when unset). If the settings file is absent or
+    unreadable, fall back to migrating the legacy consent_ping.json's
+    role_id into consent_ping_role_id (a read-only migration). Pure apart
+    from the file read — safe to unit-test with explicit paths."""
+    path = SETTINGS_PATH if path is None else Path(path)
+    legacy = LEGACY_CONSENT_STATE if legacy is None else Path(legacy)
+    data = {}
+    try:
+        loaded = json.loads(path.read_text(encoding="utf-8"))
+        if isinstance(loaded, dict):
+            data = loaded
+    except (OSError, ValueError, TypeError):
+        # No usable settings file: seed the consent role from the old
+        # single-purpose file if it is present.
+        try:
+            old = json.loads(legacy.read_text(encoding="utf-8"))
+            rid = old.get("role_id")
+            if rid is not None:
+                data = {"consent_ping_role_id": int(rid)}
+        except (OSError, ValueError, TypeError):
+            data = {}
+    out = {k: None for k in _SETTING_KEYS}
+    out.update({k: data[k] for k in _SETTING_KEYS if k in data})
+    return out
+
+
+def save_settings(updates, path=None):
+    """Merge `updates` into the persisted settings and write them back,
+    returning the merged dict. A key set to None clears it; only known keys
+    are persisted."""
+    path = SETTINGS_PATH if path is None else Path(path)
+    data = load_settings(path=path)
+    for k, v in updates.items():
+        if k in _SETTING_KEYS:
+            data[k] = v
+    path.write_text(json.dumps(data), encoding="utf-8")
+    return data
+
+
 # Optional: ping a role on the PUBLIC consent post so the whole table is
 # notified to react — not just the invoker (who also gets the ephemeral
 # ack). The role is normally set from Discord with `/record consent-role`,
-# which persists a role id to CONSENT_PING_STATE; the CONSENT_PING_ROLE env
-# (id or name) is only a bootstrap/fallback used when no state file exists.
+# which persists a role id to the settings file; the CONSENT_PING_ROLE env
+# (id or name) is only a bootstrap/fallback used when nothing is persisted.
 # Either empty disables the ping.
 CONSENT_PING_ROLE = os.environ.get("CONSENT_PING_ROLE", "").strip()
-CONSENT_PING_STATE = HERE / "consent_ping.json"
 
 # While at least one consented mic is capturing, the bot wears this suffix
 # on its own guild nickname so anyone glancing at the member list sees the
@@ -83,10 +139,50 @@ NICK_SUFFIX = " (RECORDING)"
 NICK_MAX = 32
 
 # Auto-stop a session whose voice channel has gone empty (no non-bot
-# members) for this long. Guards against a session left running after
-# everyone has left; runs the same clean stop path as `/record stop`.
-EMPTY_DISCONNECT_SECONDS = int(
-    os.environ.get("EMPTY_DISCONNECT_SECONDS", "60"))
+# members) for the configured timeout. Guards against a session left
+# running after everyone has left; runs the same clean stop path as
+# `/record stop`. The timeout is persisted (empty_disconnect_seconds), set
+# from Discord with `/record empty-timeout`; it falls back to the
+# EMPTY_DISCONNECT_SECONDS env, else 60. A value of 0 disables auto-stop.
+EMPTY_DISCONNECT_DEFAULT = 60
+EMPTY_DISCONNECT_MAX = 3600
+
+
+def empty_disconnect_seconds():
+    """The empty-channel auto-stop timeout: persisted value wins, else the
+    EMPTY_DISCONNECT_SECONDS env, else EMPTY_DISCONNECT_DEFAULT. 0 means
+    auto-stop is disabled."""
+    val = load_settings().get("empty_disconnect_seconds")
+    if val is not None:
+        try:
+            return int(val)
+        except (TypeError, ValueError):
+            pass
+    env = os.environ.get("EMPTY_DISCONNECT_SECONDS")
+    if env is not None:
+        try:
+            return int(env)
+        except ValueError:
+            pass
+    return EMPTY_DISCONNECT_DEFAULT
+
+
+def parse_empty_timeout(seconds):
+    """Validate a proposed empty-channel auto-stop timeout. Returns
+    (True, int) on success or (False, reason) on rejection. 0 disables
+    auto-stop; a negative value or one above EMPTY_DISCONNECT_MAX is
+    rejected. Pure — safe to unit-test."""
+    try:
+        n = int(seconds)
+    except (TypeError, ValueError):
+        return (False, "the timeout must be a whole number of seconds")
+    if n < 0:
+        return (False, "the timeout can't be negative")
+    if n > EMPTY_DISCONNECT_MAX:
+        return (False,
+                f"the timeout can't exceed {EMPTY_DISCONNECT_MAX} seconds")
+    return (True, n)
+
 
 sessions = {}  # guild_id -> dict(vc, sink, msg, outdir, names)
 
@@ -260,12 +356,11 @@ class ConsentSink(discord.sinks.Sink):
 
 def _stored_ping_role_id():
     """The role id set from Discord via `/record consent-role`, or None.
-    This state file wins over the CONSENT_PING_ROLE env when present."""
+    The persisted setting wins over the CONSENT_PING_ROLE env when present."""
+    rid = load_settings().get("consent_ping_role_id")
     try:
-        data = json.loads(CONSENT_PING_STATE.read_text(encoding="utf-8"))
-        rid = data.get("role_id")
         return int(rid) if rid is not None else None
-    except (OSError, ValueError, TypeError):
+    except (TypeError, ValueError):
         return None
 
 
@@ -433,6 +528,8 @@ def _evaluate_empty_channel(bot, guild_id, s, ch):
     timer is left running while the channel stays empty, and a running
     timer is cancelled the moment a non-bot member is present."""
     if channel_is_empty(getattr(ch, "members", [])):
+        if empty_disconnect_seconds() <= 0:
+            return  # auto-stop disabled — never arm the timer
         if s.get("empty_task") is None:
             s["empty_task"] = asyncio.ensure_future(
                 _empty_channel_disconnect(bot, guild_id))
@@ -443,12 +540,13 @@ def _evaluate_empty_channel(bot, guild_id, s, ch):
 
 
 async def _empty_channel_disconnect(bot, guild_id):
-    """After the channel has been empty for EMPTY_DISCONNECT_SECONDS, run
-    the same clean stop path as `/record stop` and post a brief note.
-    Races are guarded: a cancel during the wait aborts, and a session that
-    closed or re-populated in the meantime is left alone."""
+    """After the channel has been empty for the configured timeout, run the
+    same clean stop path as `/record stop` and post a brief note. Races are
+    guarded: a cancel during the wait aborts, and a session that closed or
+    re-populated in the meantime is left alone."""
+    timeout = empty_disconnect_seconds()
     try:
-        await asyncio.sleep(EMPTY_DISCONNECT_SECONDS)
+        await asyncio.sleep(timeout)
     except asyncio.CancelledError:
         return
     s = sessions.get(guild_id)
@@ -464,9 +562,9 @@ async def _empty_channel_disconnect(bot, guild_id):
     result = await close_session(bot, guild_id)
     if result.get("ok") and ch is not None:
         try:
-            mins = EMPTY_DISCONNECT_SECONDS // 60
+            mins = timeout // 60
             span = (f"{mins} minute(s)" if mins
-                    else f"{EMPTY_DISCONNECT_SECONDS} second(s)")
+                    else f"{timeout} second(s)")
             await ch.send(
                 f"{EMOJI} Recording auto-ended: the voice channel was "
                 f"empty for {span}. Tracks are staged.")
@@ -538,8 +636,21 @@ async def resolve_target(bot):
 
 
 def setup(bot):
-    record = bot.create_group("record",
-                              "Session recording (consent-gated)")
+    # Who may operate the recorder is enforced by Discord, not in these
+    # handlers. default_member_permissions=Manage Server means that, by
+    # default, only members with Manage Server (Administrator implies it)
+    # see and can run these commands. A server admin then grants specific
+    # roles or members access the "right way" — Server Settings →
+    # Integrations → <this bot> → Command Permissions — with no bot code or
+    # redeploy. (Setting those per-command overrides programmatically would
+    # need a user OAuth token, impractical to hold in a bot; the native UI
+    # is the supported path.) Discord only supports command permissions at
+    # the top-level command, which for a subcommand group is the group
+    # itself, so this gate applies to every `/record` subcommand including
+    # `help` — there is no per-subcommand default in the API.
+    record = bot.create_group(
+        "record", "Session recording (consent-gated)",
+        default_member_permissions=discord.Permissions(manage_guild=True))
 
     @record.command(name="start",
                     description="Open a recording session in your "
@@ -614,27 +725,54 @@ def setup(bot):
                     "whole table is notified.")
     @discord.option("role", discord.Role, required=False)
     async def consent_role(ctx: discord.ApplicationContext, role=None):
-        if not ctx.author.guild_permissions.manage_guild:
-            await ctx.respond("You need Manage Server to set this.",
-                              ephemeral=True)
-            return
+        # Gating is Discord-native (default_member_permissions on the group).
         none = discord.AllowedMentions.none()
         if role is None:
-            try:
-                CONSENT_PING_STATE.unlink()
-            except FileNotFoundError:
-                pass
+            save_settings({"consent_ping_role_id": None})
             await ctx.respond(
                 "Consent-post ping cleared — the consent post will no "
                 "longer @-ping a role.",
                 ephemeral=True, allowed_mentions=none)
             return
-        CONSENT_PING_STATE.write_text(
-            json.dumps({"role_id": role.id}), encoding="utf-8")
+        save_settings({"consent_ping_role_id": role.id})
         await ctx.respond(
             f"Consent-post ping set to {role.name} — it will be @-pinged "
             f"on the consent post so the whole table is notified to react.",
             ephemeral=True, allowed_mentions=none)
+
+    @record.command(
+        name="empty-timeout",
+        description="Set the empty-channel auto-stop timeout in seconds "
+                    "(0 disables; omit to show the current value).")
+    @discord.option("seconds", int, required=False)
+    async def empty_timeout(ctx: discord.ApplicationContext, seconds=None):
+        # Gating is Discord-native (default_member_permissions on the group).
+        if seconds is None:
+            current = empty_disconnect_seconds()
+            if current <= 0:
+                await ctx.respond(
+                    "Empty-channel auto-stop is disabled (0). A session "
+                    "won't auto-stop when its voice channel empties.",
+                    ephemeral=True)
+            else:
+                await ctx.respond(
+                    f"Empty-channel auto-stop timeout is {current} "
+                    f"second(s).", ephemeral=True)
+            return
+        ok, val = parse_empty_timeout(seconds)
+        if not ok:
+            await ctx.respond(val[:1].upper() + val[1:] + ".",
+                              ephemeral=True)
+            return
+        save_settings({"empty_disconnect_seconds": val})
+        if val == 0:
+            await ctx.respond(
+                "Empty-channel auto-stop disabled — a session won't "
+                "auto-stop when its voice channel empties.", ephemeral=True)
+        else:
+            await ctx.respond(
+                f"Empty-channel auto-stop timeout set to {val} second(s).",
+                ephemeral=True)
 
     @bot.event
     async def on_raw_reaction_add(payload):

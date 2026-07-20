@@ -103,6 +103,26 @@ retire. Pin the versions as written below.
 
 ## Decision points
 
+- **Who may operate the recorder.** Default: **Manage Server**. Every
+  `/record` command ships with `default_member_permissions` set to Manage
+  Server, so out of the box only members who can manage the server
+  (Administrator implies it) see or run start, stop, consent-role and
+  empty-timeout. To let a trusted player or a bot-wrangler role drive
+  recording without handing them Manage Server, grant it the right way from
+  Discord: Server Settings → Integrations → the recorder → Command
+  Permissions, where an admin allows a role or member — per command or for
+  the whole integration — with no code change and no redeploy. The gate
+  lives on the command, not inside the handlers, so a role you grant is
+  never hidden from the command (which `default_member_permissions` used as
+  an in-code check would cause). Because Discord attaches command
+  permissions only to a top-level command, and a subcommand group is that
+  top-level command, the gate covers the entire `/record` group — `help`
+  included; there is no per-subcommand default in the API. Doing this from
+  the bot instead (the application-command-permissions API) would require a
+  user OAuth token, which a bot has no business holding, so the native
+  Integrations UI is the supported path. The env fallbacks below
+  (`CONSENT_PING_ROLE`, `EMPTY_DISCONNECT_SECONDS`) tune *behaviour*, not
+  *who may operate*; that is Discord-native only.
 - **Consent memory.** Default: strict per-session reacts — one tap
   during banter, no standing state. Alternative: remember acks
   across sessions with a visible opt-out, for tables that find the
@@ -112,10 +132,14 @@ retire. Pin the versions as written below.
   from Discord with `/record consent-role @Role` (Manage-Server-gated; run
   it with no role to clear it) and the consent post `@`-pings that role so
   the whole table is notified to react — not just the invoker, who gets the
-  ephemeral ack. The choice persists to a campaign-local `consent_ping.json`
-  (gitignored runtime state). `CONSENT_PING_ROLE` in `variables.txt` (a role
-  id, or a role name like `Players`) is now only a bootstrap/fallback, used
-  when no role has been set from Discord. `allowed_mentions` is scoped to
+  ephemeral ack. The choice persists to the campaign-local
+  `recorder_settings.json` (gitignored runtime state that also holds the
+  empty-timeout below; a legacy `consent_ping.json` from an earlier version
+  is read once for back-compat if the new file is absent). Run
+  `/record consent-role` with no role to clear it. `CONSENT_PING_ROLE` in
+  `variables.txt` (a role id, or a role name like `Players`) is now only a
+  bootstrap/fallback, used when no role has been set from Discord.
+  `allowed_mentions` is scoped to
   roles only; `@everyone` and user pings are never sent, and the slash
   confirmation itself pings no one. Both unset (default) posts without a
   ping.
@@ -133,9 +157,13 @@ retire. Pin the versions as written below.
   stop path as `/record stop` (stage tracks, log the witness line,
   drop the nickname badge, tear down) and posts a note that it
   auto-ended on an empty channel. Any rejoin before the timer fires
-  cancels it. Tune with `EMPTY_DISCONNECT_SECONDS` in `variables.txt`
-  (seconds); it exists so a session is never left silently capturing an
-  empty room after the table disperses.
+  cancels it. Tune it live from Discord with `/record empty-timeout
+  <seconds>` (admin-gated like the rest of the group; `0` disables
+  auto-stop, and omitting the number reports the current value); the choice
+  persists to `recorder_settings.json` and is validated (non-negative, at
+  most one hour). `EMPTY_DISCONNECT_SECONDS` in `variables.txt` remains a
+  bootstrap fallback used when nothing is persisted. It exists so a session
+  is never left silently capturing an empty room after the table disperses.
 - **Native launcher.** Default: package the bot as a
   double-clickable launcher via the launcher module (a macOS
   `.app`, a Windows `.cmd`) so the DM starts a session without
@@ -162,13 +190,19 @@ retire. Pin the versions as written below.
   unconsented packets while counting them, consented audio landing
   as a well-formed per-speaker WAV, and revocation closing the gate.
   It also asserts, by source inspection, that the consent post is a
-  public `channel.send` and never an ephemeral interaction reply, and
+  public `channel.send` and never an ephemeral interaction reply, that
+  the `/record` group is gated with `default_member_permissions` on Manage
+  Server and no handler does its own in-code permission check, and
   unit-tests the control router (loopback auth, method/path dispatch,
   the `409`/`404` codes). It pure-tests the two session-badge features:
   the `(RECORDING)` nickname computation (append, the 32-char cap that
   truncates an over-long base, and add/strip idempotence) and the
   empty-channel decision (no non-bot members ⇒ arm, a present member ⇒
-  hold).
+  hold). It pure-tests the settings layer too: the `recorder_settings.json`
+  round-trip and the one-time back-compat read of a legacy
+  `consent_ping.json`, the empty-timeout parse/validate (0 disables,
+  negative and over-cap rejected), and the timeout precedence
+  (persisted > env > 60-second default).
 - Live, once per setup: the two-member test in step 4 — consented
   audio present and transcribable, non-consenting member absent
   from every track.
