@@ -253,6 +253,45 @@ under the contract.
   group. Non-negotiable: it stays a bolt-on over the self-contained repo —
   turning it off returns the campaign to the plain unlisted default. Trigger: a
   table wanting a campaign not reachable by URL alone.
+- **Agentic ("Claude") lint routine.** The [lint](modules/lint.md) module is a
+  deterministic reporter with a stated model-triage seam; the
+  [routines](modules/routines.md) module gives the idempotent,
+  safe-to-miss/safe-to-double-run contract to hang recurring maintenance off.
+  The gap between them is a packaged **agent-run semantic lint**: a routine that
+  turns an LLM (Claude today) loose on the campaign the way a careful maintainer
+  would, catching what regex cannot — prose that leaks DM-adjacent knowledge
+  past the [firewall](concepts/the-firewall.md) without tripping the structural
+  check, encyclopedic/tonal drift, facts contradicted across pages, orphaned or
+  dangling narrative references, naming inconsistency, stubs that outgrew their
+  marker. Output is advisory: a report the owner acts on, never an auto-rewrite
+  (authorship doctrine — agent proposes, human disposes; no stylistic rewrites
+  of human prose). Likely shape: a routine that fans the wiki/projection through
+  a model pass against a checklist and emits findings with page anchors — and if
+  the writeable MCP below lands, files them as suggested edits rather than a
+  flat report. Open questions: cost and cadence (between-sessions vs on-demand),
+  and keeping it from re-litigating what the deterministic floor already
+  guarantees. Trigger: a campaign large enough that manual consistency review
+  stops scaling.
+- **Writeable retrieval (the `witness` write tool + inbox).** Retrieval is
+  read-only today (list/read/search/fetch); the [retrieval](modules/retrieval.md)
+  module already reserves "the `witness` write tool and inbox (bidirectionality)"
+  for later. The ask: let a connected agent **drop suggested edits and additions
+  in through the MCP** — a player's or DM's companion proposing "add this NPC
+  note," "fix this date," "here's a recap paragraph" mid-conversation, landing as
+  *pending* proposals, never direct writes to canon. It rides the
+  [contribs](modules/contribs.md) overlay machinery: a submission becomes a
+  contributor overlay / inbox entry the owner reviews, accepts, or drops — agent
+  proposes, human disposes, authorship captured at submission. Tiering follows
+  the [firewall](concepts/the-firewall.md): player-tier writes are always
+  suggestions into the review queue; DM-tier may write more directly, still
+  logged. Likely shape: `suggest_edit` / `suggest_page` MCP tools that append to
+  a per-campaign inbox (a repo branch, or an overlay dir staged for review) plus
+  a way to list and triage it — pairing naturally with the agentic lint routine
+  above, which files its findings the same way. Open questions: where the inbox
+  lives (repo branch vs staged overlay vs issue tracker), how the owner reviews
+  (an eddic verb vs a Discord surface vs the DM companion), and abuse/rate limits
+  once player tokens can write. Non-negotiable: nothing an agent submits reaches
+  a player-visible or canon surface without the owner's explicit acceptance.
 - **Eddic is not D&D-specific.** Eddic grew out of a D&D campaign and its
   framing still says "D&D" throughout (AGENTS.md, the [principles](design/principles.md), the site, the
   self-documenting wiki), but the machinery — the campaign knowledge
