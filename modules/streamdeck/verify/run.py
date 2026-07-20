@@ -3,10 +3,10 @@
 # ///
 """Verify the Stream Deck pack generator: the template compiles, the
 pure builders emit the right curl per endpoint (with and without a
-token), a full pack materializes on disk with the four core keys, the
-extras are stamped only when asked, the Windows target emits CRLF
-`.cmd` files, and the `.streamDeckProfile` is a valid zip whose manifest
-maps keys to System ▸ Open on the stamped scripts."""
+token), a full pack materializes on disk with exactly the four control
+keys and nothing else, the Windows target emits CRLF `.cmd` files, and
+the `.streamDeckProfile` is a valid zip whose manifest maps keys to
+System ▸ Open on the stamped scripts."""
 
 import io
 import json
@@ -74,34 +74,42 @@ def main():
     # --- full pack on disk ----------------------------------------------
     dst = Path(tempfile.mkdtemp(prefix="eddic-deck-verify-"))
     written = deckpack.build_pack(dst, "Muninn", "http://127.0.0.1:8776",
-                                  "s3cr3t", "macos", "/camp", extras=False)
+                                  "s3cr3t", "macos")
     names = {p.name for p in written}
     core = {"start-recording.command", "stop-recording.command",
             "recording-status.command", "muninn-help.command",
             "README.md", "muninn.streamDeckProfile"}
     checks.append((core <= names, "core pack has the four keys, README, "
                                   "and profile"))
+    # the pack stamps ONLY the four control keys — no extras, no other
+    # scripts. Exactly the four .command scripts and nothing else.
+    scripts = {p.name for p in written if p.suffix == ".command"}
+    checks.append((scripts == {"start-recording.command",
+                               "stop-recording.command",
+                               "recording-status.command",
+                               "muninn-help.command"},
+                   "exactly the four control keys are stamped, no extras"))
     checks.append(((dst / "start-recording.command").stat().st_mode & 0o111,
                    "stamped .command scripts are executable"))
     checks.append((not (dst / "extras").exists(),
-                   "extras absent without --extras"))
+                   "no extras/ directory is ever created"))
     readme = (dst / "README.md").read_text(encoding="utf-8")
     checks.append(("System ▸ Open" in readme
                    and "/record/start" in readme,
                    "README documents the System-Open bind and endpoints"))
+    checks.append(("extras" not in readme.lower()
+                   and "suggestions" not in readme.lower()
+                   and "convene" not in readme.lower(),
+                   "README mentions no extras or aspirational verb buttons"))
 
-    # --- extras + both targets ------------------------------------------
+    # --- both targets ---------------------------------------------------
     dst2 = Path(tempfile.mkdtemp(prefix="eddic-deck-verify2-"))
-    deckpack.build_pack(dst2, "Muninn", "http://127.0.0.1:8776", "",
-                        "both", "/camp", extras=True)
-    extra = dst2 / "extras" / "suggestions-inbox.command"
-    checks.append((extra.exists()
-                   and "eddic.py suggestions" in extra.read_text(
-                       encoding="utf-8"),
-                   "extras stamp eddic-verb wrappers under extras/"))
+    deckpack.build_pack(dst2, "Muninn", "http://127.0.0.1:8776", "", "both")
     checks.append(((dst2 / "start-recording.cmd").exists()
                    and (dst2 / "start-recording.command").exists(),
                    "target=both stamps macOS and Windows scripts"))
+    checks.append((not (dst2 / "extras").exists(),
+                   "target=both stamps no extras/ directory either"))
 
     return _report(checks)
 

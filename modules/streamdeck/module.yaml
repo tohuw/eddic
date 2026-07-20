@@ -1,13 +1,13 @@
 name: streamdeck
-version: 0.1.0
+version: 0.1.1
 summary: >
   An Elgato Stream Deck control suite for the recorder bot (Muninn):
   the recorder gains a loopback-only control surface (127.0.0.1 HTTP,
   optional shared secret) exposing start/stop/status, and this module
-  stamps the owner-facing button pack — curl-the-endpoint scripts
-  bindable to Stream Deck's System-Open action, an experimental
-  .streamDeckProfile, and optional table-time keys that run campaign
-  eddic verbs. Everything but real Stream Deck hardware is testable.
+  stamps the owner-facing button pack — curl-the-endpoint scripts for
+  the four control keys (start, stop, status, help), bindable to Stream
+  Deck's System-Open action, plus an experimental .streamDeckProfile.
+  Everything but real Stream Deck hardware is testable.
 touches:
   - recorder
 depends:

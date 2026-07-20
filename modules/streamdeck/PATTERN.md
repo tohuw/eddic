@@ -39,8 +39,8 @@ deterministically verified.
   (`CONTROL_ENABLED=0` disables it). Confirm it is up:
   `curl -s http://127.0.0.1:8776/healthz` returns
   `{"ok": true, "service": "muninn-control"}`.
-- uv on the owner's machine (extras and the recorder both call `uv
-  run`). `curl` is present on macOS and Windows 10+.
+- uv on the owner's machine (the recorder calls `uv run`). `curl` is
+  present on macOS and Windows 10+.
 
 ## Procedure
 
@@ -56,15 +56,15 @@ deterministically verified.
 2. Stamp the pack for the owner's OS:
 
        uv run modules/streamdeck/templates/deckpack.py \
-           --campaign <campaign> --token <CONTROL_TOKEN> [--extras]
+           --campaign <campaign> --token <CONTROL_TOKEN>
 
    It writes `<campaign>/streamdeck/` with `start-recording`,
    `stop-recording`, `recording-status`, and `muninn-help` scripts
    (`.command` on macOS, `.cmd` on Windows via `--target`), a `README.md`,
-   and `Muninn.streamDeckProfile`. Pass the same `--token` the recorder
-   uses (the scripts are local-only; keep the folder out of git),
-   `--port` if you moved the surface, and `--extras` for the optional
-   table-time keys.
+   and `Muninn.streamDeckProfile` — those four control-surface keys and
+   nothing else. Pass the same `--token` the recorder uses (the scripts are
+   local-only; keep the folder out of git) and `--port` if you moved the
+   surface.
 
 3. Hand the owner the folder and the README's bind steps: in the Stream
    Deck app, drop **System ▸ Open** on a key and point it at the script;
@@ -76,8 +76,8 @@ deterministically verified.
 4. Record the application in the manifest:
 
        uv run <campaign>/.eddic/eddic.py manifest record \
-           --module streamdeck --version 0.1.0 \
-           --params '{"target":"<os>","extras":<true|false>}'
+           --module streamdeck --version 0.1.1 \
+           --params '{"target":"<os>"}'
 
 ## Decision points
 
@@ -93,12 +93,6 @@ deterministically verified.
   same room, or `OWNER_USER_ID` to always follow the DM into whatever
   channel they are in. Prefer a hint over auto for a busy guild with
   several active voice channels.
-- **Extras.** Default: **off** — stamp only the four recorder-control
-  keys. Add `--extras` for a DM who wants table-time keys for other
-  campaign actions (suggestions inbox, publish, convene); each is a thin
-  `eddic <verb>` wrapper the owner keeps only if their campaign provides
-  that verb, and deletes otherwise. Keep extras opt-in so a key never
-  silently invokes a verb the campaign lacks.
 - **Windows vs macOS scripts.** Default: **this OS** (`--target auto`).
   Use `--target both` for a DM who moves between machines or a mixed
   table sharing one repo; the profile is stamped once and points at the
@@ -112,8 +106,9 @@ deterministically verified.
   Windows target emits CRLF `.cmd` files, a full pack materializes with
   the four keys, an executable bit, a README documenting the System-Open
   bind, and a `.streamDeckProfile` that is a valid zip whose manifest
-  maps key `0,0` to System-Open on the start script; extras appear only
-  under `--extras`, and `--target both` stamps both OSes.
+  maps key `0,0` to System-Open on the start script; exactly those four
+  control keys are stamped and no extras directory is ever created, and
+  `--target both` stamps both OSes.
 - `uv run modules/recorder/verify/run.py` — the recorder verifier
   additionally proves the control router: `/healthz` is open, a
   configured token makes a missing/wrong token `401`, `/status` returns

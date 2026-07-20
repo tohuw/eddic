@@ -20,19 +20,17 @@ Two robustness tiers, by design:
      between Stream Deck versions, so it is offered as a starting point,
      with the manual bind documented as the guaranteed route.
 
-Minimum keys: Start Recording, Stop Recording, Status, Help. With
---extras, optional table-time keys are stamped that run campaign `eddic`
-verbs in a terminal (Suggestions inbox, Publish site, Convene session) —
-each a thin wrapper the owner keeps only if their campaign has that verb.
+The pack stamps exactly the four control-surface keys: Start Recording,
+Stop Recording, Status, Help. These map 1:1 to the recorder control
+surface; the pack drives nothing else.
 
-Pure text/bytes builders (control_script, extra_script, readme_text,
-profile_bytes, pack_plan) do no I/O and golden-test on any OS; build_pack
-writes them.
+Pure text/bytes builders (control_script, readme_text, profile_bytes,
+pack_plan) do no I/O and golden-test on any OS; build_pack writes them.
 
 Usage:
     uv run deckpack.py [--campaign DIR] [--dest DIR]
         [--base-url URL] [--token SECRET] [--port N]
-        [--target macos|windows|both] [--extras] [--name LABEL]
+        [--target macos|windows|both] [--name LABEL]
 """
 
 import argparse
@@ -50,15 +48,6 @@ CORE = [
     ("Stop Recording", "POST", "/record/stop"),
     ("Recording Status", "GET", "/status"),
     ("Muninn Help", "GET", "/healthz"),
-]
-
-# Optional extras: label -> eddic verb (run in a terminal, not curl).
-# Campaign-parameterized and strictly opt-in; the owner deletes any whose
-# verb their campaign does not provide.
-EXTRAS = [
-    ("Suggestions Inbox", "suggestions"),
-    ("Publish Site", "publish"),
-    ("Convene Session", "convene"),
 ]
 
 
@@ -102,28 +91,6 @@ def control_script(label, method, endpoint, base_url, token, target):
     return f"{slug(label)}.command", "\n".join(lines) + "\n"
 
 
-def extra_script(label, verb, campaign_dir, target):
-    """A campaign `eddic <verb>` wrapper (runs in a terminal). Returns
-    (filename, text)."""
-    if target == "windows":
-        body = [
-            "@echo off",
-            f"REM Muninn Stream Deck extra - {label} (eddic {verb})",
-            f'cd /d "{campaign_dir}"',
-            f"echo Running: eddic {verb}",
-            f"uv run .eddic\\eddic.py {verb}",
-            "pause",
-        ]
-        return f"{slug(label)}.cmd", "\r\n".join(body) + "\r\n"
-    lines = [_bash_header(f"{label} (eddic {verb})"),
-             f'cd "{campaign_dir}" || exit 1',
-             f'echo "Running: eddic {verb}"',
-             f'uv run .eddic/eddic.py {verb}',
-             'echo',
-             'echo "[done — close this window]"']
-    return f"{slug(label)}.command", "\n".join(lines) + "\n"
-
-
 def profile_bytes(name, buttons):
     """Best-effort `.streamDeckProfile` (a zip of manifest.json) mapping
     keys to System ▸ Open on each script. `buttons` is a list of
@@ -158,7 +125,7 @@ def profile_bytes(name, buttons):
     return buf.getvalue()
 
 
-def readme_text(name, base_url, has_token, target, extras):
+def readme_text(name, base_url, has_token, target):
     """Install and bind instructions for the owner."""
     ext = ".command" if target != "windows" else ".cmd"
     tok = ("This pack carries your control token in each script — it is "
@@ -201,19 +168,6 @@ def readme_text(name, base_url, has_token, target, extras):
         f"- **Stop Recording** → `POST {base_url}/record/stop`",
         f"- **Recording Status** → `GET {base_url}/status`",
         f"- **Muninn Help** → `GET {base_url}/healthz` (is the bot up?)",
-    ]
-    if extras:
-        lines += [
-            "",
-            "### Extras (optional, in `extras/`)",
-            "",
-            "These run a campaign `eddic` verb in a terminal rather than "
-            "the recorder control surface. Keep only the ones your "
-            "campaign actually provides; delete the rest.",
-        ]
-        for label, verb in EXTRAS:
-            lines.append(f"- **{label}** → `eddic {verb}`")
-    lines += [
         "",
         "## The .streamDeckProfile (experimental)",
         "",
@@ -227,10 +181,10 @@ def readme_text(name, base_url, has_token, target, extras):
     return "\n".join(lines)
 
 
-def pack_plan(name, base_url, token, target, campaign_dir, extras):
+def pack_plan(name, base_url, token, target):
     """Pure plan of the pack: list of (relpath, kind, content) where kind
-    is 'script'|'extra'|'text'|'profile'. Bytes for the profile, str
-    otherwise. Deterministic; the golden test asserts against this."""
+    is 'script'|'text'|'profile'. Bytes for the profile, str otherwise.
+    Deterministic; the golden test asserts against this."""
     files = []
     button_paths = []                       # (title, script filename)
     for label, method, endpoint in CORE:
@@ -238,19 +192,15 @@ def pack_plan(name, base_url, token, target, campaign_dir, extras):
                                   token, target)
         files.append((fn, "script", text))
         button_paths.append((label, fn))
-    if extras:
-        for label, verb in EXTRAS:
-            fn, text = extra_script(label, verb, campaign_dir, target)
-            files.append((f"extras/{fn}", "extra", text))
     files.append(("README.md", "text",
-                  readme_text(name, base_url, bool(token), target, extras)))
+                  readme_text(name, base_url, bool(token), target)))
     # profile references absolute script paths; the writer resolves them
     files.append((f"{slug(name)}.streamDeckProfile", "profile",
                   button_paths))
     return files
 
 
-def build_pack(dest, name, base_url, token, target, campaign_dir, extras):
+def build_pack(dest, name, base_url, token, target):
     """Materialize the pack under `dest`. Returns the list of written
     paths. `target` 'both' stamps macOS and Windows scripts side by
     side."""
@@ -260,7 +210,7 @@ def build_pack(dest, name, base_url, token, target, campaign_dir, extras):
     written = []
     button_paths = []
     for tgt in targets:
-        plan = pack_plan(name, base_url, token, tgt, campaign_dir, extras)
+        plan = pack_plan(name, base_url, token, tgt)
         for relpath, kind, content in plan:
             out = dest / relpath
             out.parent.mkdir(parents=True, exist_ok=True)
@@ -270,7 +220,7 @@ def build_pack(dest, name, base_url, token, target, campaign_dir, extras):
                 button_paths = [(t, str((dest / fn).resolve()))
                                 for t, fn in content]
                 out.write_bytes(profile_bytes(name, button_paths))
-            elif kind in ("script", "extra"):
+            elif kind == "script":
                 nl = "" if tgt == "windows" else "\n"
                 with open(out, "w", encoding="utf-8", newline=nl) as fh:
                     fh.write(content)
@@ -299,8 +249,6 @@ def main(argv=None):
     ap.add_argument("--target", default="auto",
                     choices=["macos", "windows", "both", "auto"],
                     help="which scripts to stamp (default: this OS)")
-    ap.add_argument("--extras", action="store_true",
-                    help="also stamp optional eddic-verb table-time keys")
     ap.add_argument("--name", default="Muninn",
                     help="pack/profile name (default: Muninn)")
     args = ap.parse_args(argv)
@@ -314,8 +262,7 @@ def main(argv=None):
     if target == "auto":
         target = "windows" if platform.system() == "Windows" else "macos"
 
-    written = build_pack(dest, args.name, base_url, args.token, target,
-                         str(campaign), args.extras)
+    written = build_pack(dest, args.name, base_url, args.token, target)
     print(f"stamped {len(written)} file(s) under {dest}:")
     for p in written:
         print(f"  {p.name}")

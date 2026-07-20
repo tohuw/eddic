@@ -62,6 +62,32 @@ def consent_is_public(src):
     ]
 
 
+def consent_role_is_gated(src):
+    """Static guarantee that the `/record consent-role` subcommand is
+    gated on Manage Server: its body must test
+    `...guild_permissions.manage_guild` before it can persist a role, so a
+    non-privileged member can never change who the consent post pings.
+    Returns a list of (ok, message) checks."""
+    tree = ast.parse(src)
+    fn = None
+    for node in ast.walk(tree):
+        if isinstance(node, ast.AsyncFunctionDef) and node.name == "consent_role":
+            fn = node
+            break
+    gated = False
+    if fn is not None:
+        for n in ast.walk(fn):
+            if isinstance(n, ast.Attribute) and n.attr == "manage_guild":
+                gated = True
+                break
+    return [
+        (fn is not None, "a consent-role subcommand is defined"),
+        (gated,
+         "consent-role is gated on guild_permissions.manage_guild "
+         "(Manage Server)"),
+    ]
+
+
 def control_router_checks():
     """Pure unit test of control.route() — auth, dispatch, status codes —
     with injected fake actions. No sockets, no Discord."""
@@ -143,8 +169,10 @@ def main():
             checks.append((False, f"{name} compile error: {e}"))
 
     # Part-1 safety: the consent post is public, never ephemeral.
-    checks += consent_is_public((TEMPLATES / "recorder.py").read_text(
-        encoding="utf-8"))
+    recorder_src = (TEMPLATES / "recorder.py").read_text(encoding="utf-8")
+    checks += consent_is_public(recorder_src)
+    # The consent-post ping role is set from Discord, gated on Manage Server.
+    checks += consent_role_is_gated(recorder_src)
 
     # stub just enough of the library to import the consent core
     fake = types.ModuleType("discord")

@@ -30,6 +30,7 @@ import array
 import asyncio
 import datetime
 import io
+import json
 import math
 import os
 import re
@@ -67,8 +68,12 @@ WIKI_LOG = (HERE / os.environ.get("WIKI_LOG",
 EMOJI = "🎙️"
 # Optional: ping a role on the PUBLIC consent post so the whole table is
 # notified to react — not just the invoker (who also gets the ephemeral
-# ack). Role id or role name; empty disables the ping.
+# ack). The role is normally set from Discord with `/record consent-role`,
+# which persists a role id to CONSENT_PING_STATE; the CONSENT_PING_ROLE env
+# (id or name) is only a bootstrap/fallback used when no state file exists.
+# Either empty disables the ping.
 CONSENT_PING_ROLE = os.environ.get("CONSENT_PING_ROLE", "").strip()
+CONSENT_PING_STATE = HERE / "consent_ping.json"
 
 sessions = {}  # guild_id -> dict(vc, sink, msg, outdir, names)
 
@@ -164,9 +169,28 @@ class ConsentSink(discord.sinks.Sink):
         self.close_all()
 
 
+def _stored_ping_role_id():
+    """The role id set from Discord via `/record consent-role`, or None.
+    This state file wins over the CONSENT_PING_ROLE env when present."""
+    try:
+        data = json.loads(CONSENT_PING_STATE.read_text(encoding="utf-8"))
+        rid = data.get("role_id")
+        return int(rid) if rid is not None else None
+    except (OSError, ValueError, TypeError):
+        return None
+
+
 def resolve_ping(guild):
-    """The consent-ping role's mention, or '' — resolved by id or by name."""
-    if not CONSENT_PING_ROLE or guild is None:
+    """The consent-ping role's mention, or ''. The slash-set role id (state
+    file) wins; the CONSENT_PING_ROLE env (id or name) is the fallback used
+    only when no state file is present."""
+    if guild is None:
+        return ""
+    stored = _stored_ping_role_id()
+    if stored is not None:
+        role = guild.get_role(stored)
+        return role.mention if role else ""
+    if not CONSENT_PING_ROLE:
         return ""
     role = (guild.get_role(int(CONSENT_PING_ROLE))
             if CONSENT_PING_ROLE.isdigit()
@@ -439,6 +463,34 @@ def setup(bot):
             f"transcripts. `/record stop` closes and stages the "
             f"tracks. Consent to record is never consent to anything "
             f"else. Privacy posture: {PRIVACY_URL}", ephemeral=True)
+
+    @record.command(
+        name="consent-role",
+        description="Set the role @-pinged on the consent post so the "
+                    "whole table is notified.")
+    @discord.option("role", discord.Role, required=False)
+    async def consent_role(ctx: discord.ApplicationContext, role=None):
+        if not ctx.author.guild_permissions.manage_guild:
+            await ctx.respond("You need Manage Server to set this.",
+                              ephemeral=True)
+            return
+        none = discord.AllowedMentions.none()
+        if role is None:
+            try:
+                CONSENT_PING_STATE.unlink()
+            except FileNotFoundError:
+                pass
+            await ctx.respond(
+                "Consent-post ping cleared — the consent post will no "
+                "longer @-ping a role.",
+                ephemeral=True, allowed_mentions=none)
+            return
+        CONSENT_PING_STATE.write_text(
+            json.dumps({"role_id": role.id}), encoding="utf-8")
+        await ctx.respond(
+            f"Consent-post ping set to {role.name} — it will be @-pinged "
+            f"on the consent post so the whole table is notified to react.",
+            ephemeral=True, allowed_mentions=none)
 
     @bot.event
     async def on_raw_reaction_add(payload):
