@@ -263,6 +263,95 @@ def main():
     for k in ("_CONV_T", "_CONV_T2"):
         _os.environ.pop(k, None)
 
+    # ---- Fix 1: a reminder is marked fired only after a successful send.
+    # When the announce channel is unset, tick skips (continue) without
+    # marking fired, so CREATED/AT_RISK/IMMINENT re-fire once a channel is
+    # configured rather than being permanently lost. The tick runs live, so
+    # assert the structure at the source level, scoped to the tick body.
+    tick_body = src.partition("async def tick():")[2].partition(
+        "async def tick_loop(")[0]
+    checks.append(("if chan is None:" in tick_body and "continue" in tick_body,
+                   "tick skips a reminder when the announce channel is unset"))
+    checks.append(('rec["fired"].append(key)' in tick_body
+                   and "if chan:" not in tick_body,
+                   "tick marks fired only after a send, never under `if chan:`"))
+
+    # ---- Fix 2: a corrupt state file loads as empty rather than raising.
+    # load_state runs in setup() before ready()'s try/except, so a truncated
+    # convene_state.json (a crash mid-write) would otherwise wedge the bot.
+    corrupt = tmp / "corrupt_state.json"
+    corrupt.write_text('{"events": {"a": {"fir', encoding="utf-8")  # truncated
+    checks.append((convene.load_state(corrupt)
+                   == {"events": {}, "announced": []},
+                   "a corrupt state file loads as empty, never raising"))
+    corrupt.write_text("[1, 2, 3]", encoding="utf-8")       # valid JSON, wrong
+    checks.append((convene.load_state(corrupt)
+                   == {"events": {}, "announced": []},
+                   "a non-object state file loads as empty"))
+    # atomic write leaves no temp file behind and still round-trips
+    convene.save_state(sf, {"events": {}, "announced": ["p"]})
+    checks.append((not sf.with_name(sf.name + ".tmp").exists()
+                   and convene.load_state(sf)["announced"] == ["p"],
+                   "save_state writes atomically (no .tmp left, round-trips)"))
+
+    # ---- Reveal digest: the full projection delta, batched, newly-revealed
+    # only. new_projected_pages is the broad counterpart to new_session_pages
+    # (every page type, not just sessions/); the announce filters out session
+    # recaps (they keep their own line) and batches the rest into one post.
+    def reveals(corpus, announced):
+        return [p for p in convene.new_projected_pages(corpus, announced)
+                if "sessions/" not in p]
+
+    pc1 = ("=== places/sunton.md ===\n# Sunton\n\nt\n\n"
+           "=== README.md ===\n# Readme\n\nx\n\n"
+           "=== campaigns/ls/sessions/session-1.md ===\n# Session 1\n\nr")
+    snap = set(botlib.page_paths(pc1))          # startup snapshot: all pages
+    checks.append((reveals(pc1, snap) == [],
+                   "reveal digest: the startup snapshot suppresses the back "
+                   "catalogue on a simulated restart"))
+    pc2 = pc1 + ("\n\n=== people/the-warden.md ===\n# The Warden\n\nnpc"
+                 "\n\n=== places/sunken-city.md ===\n# The Sunken City\n\nloc"
+                 "\n\n=== campaigns/ls/sessions/session-2.md ===\n# S2\n\nr")
+    new = reveals(pc2, snap)
+    checks.append((new == ["people/the-warden.md", "places/sunken-city.md"],
+                   "reveal digest: N newly-revealed non-session pages batch "
+                   "into one delta (the recap keeps its own line)"))
+    checks.append((reveals(pc2, snap | set(new)) == [],
+                   "reveal digest: idempotent — an announced reveal never "
+                   "re-announces on a re-poll"))
+    checks.append(("campaigns/ls/npcs/hidden-villain.md" not in reveals(pc2,
+                   snap),
+                   "reveal digest: a DM-only page (absent from the "
+                   "projection corpus) never announces — leak-proof"))
+    # the full-delta contract of the helper itself
+    checks.append(("campaigns/ls/sessions/session-2.md"
+                   in convene.new_projected_pages(pc2, snap),
+                   "new_projected_pages is the full delta (sessions included)"))
+    checks.append(("README.md" not in convene.new_projected_pages(pc2, set()),
+                   "new_projected_pages excludes non-content files (README)"))
+    # the digest fires on the existing lifecycle beat, batched, overridable
+    checks.append(("async def announce_reveals(corpus):" in src
+                   and src.count("await announce_reveals(corpus)") >= 2,
+                   "the reveal digest fires on the corpus-refresh beat and on "
+                   "the reannounce catch-up"))
+    checks.append(('"\\n".join(entries)' in src
+                   and "frame.format(" in src,
+                   "the reveal digest batches entries into a single post"))
+    checks.append((convene.REVEAL in convene.REMINDERS
+                   and convene.REVEAL_ITEM in convene.REMINDERS,
+                   "the reveal frame and item are overridable templates"))
+    # a reveal override with an unknown placeholder is rejected like the rest
+    mf3 = tmp / "convene_messages_reveal.json"
+    mf3.write_text(_json.dumps({
+        "reveal": "Lo, {count} new: {entries}",
+        "reveal_item": "- {title} uses {bogus}"}), encoding="utf-8")
+    rmsgs = convene.load_messages(mf3)
+    checks.append((rmsgs[convene.REVEAL] == "Lo, {count} new: {entries}",
+                   "a valid reveal override replaces the default frame"))
+    checks.append((rmsgs[convene.REVEAL_ITEM]
+                   == convene.REMINDERS[convene.REVEAL_ITEM],
+                   "a reveal_item with an unknown placeholder is rejected"))
+
     # convene.py imports clean without discord (pure core only)
     import py_compile
     try:

@@ -9,14 +9,15 @@ shares the archivist's always-on lifecycle exactly, convene rides the one
 existing hosting process and adds zero new spend and no second host. It
 depends on the [lore-bot](lore-bot.md) module being applied and deployed
 first, and targets that bot's Discord library. Its current release is
-0.2.1.
+0.3.0.
 
 Convene drives Discord's own Guild Scheduled Events rather than rebuilding
 them. The event card, the "interested" list, and the live countdown remain
 the platform's; convene reads them and never reconstructs them. On top of
-the native event it supplies the four things the platform and generic
-scheduling bots cannot: quorum, lifecycle nudges, recap announcement, and
-the between-sessions prep ask.
+the native event it supplies the things the platform and generic
+scheduling bots cannot: quorum, lifecycle nudges, recap announcement, the
+reveal digest for pages newly opened to players, and the between-sessions
+prep ask.
 
 ## Quorum
 
@@ -65,6 +66,27 @@ downtime, which is marked announced without ever posting. Setting
 once, for when the site URLs change. This restores the recap announcement
 that generic cron once did, now in its always-on home.
 
+## The reveal digest
+
+The reveal digest generalizes the recap announcement to every kind of page.
+When any page newly enters the projection — a twin flipped to
+`visibility: player`, a fresh player page published, not only a `sessions/`
+recap — convene batches the delta into a single "the veil lifts" post on the
+same lifecycle beat, listing each newly-revealed page's own title and
+published link. It is a mechanical relay like the prep ask: the frame is the
+bot's voice, the titles and links are the pages' own, and no authored prose
+is rewritten. Three defaults shape it: scope is every newly-revealed page,
+with session recaps keeping their dedicated line and never repeated in the
+digest; cadence is one batched post per beat rather than one message per page,
+so an edit-changelog can never become spam; and it announces newly-revealed
+pages only, reusing the same persisted `announced` set and startup snapshot
+that suppress the recap back catalogue, so an ephemeral host never re-announces
+history. Because it reads only the projection, a page can surface in the digest
+only once it is already player-visible — the announce is leak-proof by
+construction, on the same basis as the recap announcement. The batch frame and
+the per-page line are overridable and translatable through
+`convene_messages.json` like every other template.
+
 ## The prep ask
 
 Between sessions the DM runs `/session prep` and types a "decide this
@@ -109,7 +131,10 @@ announcement, and a table that wants none of those simply never enables it.
 The quorum shape, the RSVP model (the native "interested" button counts as
 attending, honest that it is interest and not a commitment), the reminder
 wording, the prep voice, and the recorder nudge are each set to a sensible
-default with room to tune. State durability is the last: the announced set
+default with room to tune. The reveal digest is on by default, batched per
+lifecycle beat, and scoped to newly-revealed pages, with each of those three
+choices adjustable through wording overrides and the same durability seam as
+the recaps. State durability is the last: the announced set
 belongs on durable storage wherever the host offers one, with the startup
 catch-up as the fallback on an ephemeral host.
 
@@ -129,6 +154,12 @@ due, the DM-required switch gates quorum, the ended state supersedes,
 persistence round-trips and reconcile prunes dead events, message and prep
 overrides fall back safely, and recap announce-detection surfaces each new
 session page exactly once and never the back catalogue after a restart. The
+reveal digest is covered too — a projection gaining several non-session
+player pages yields one batched delta of exactly those pages, a re-poll adds
+nothing, DM-only pages never appear, and a simulated restart re-announces
+nothing — along with two durability regressions: a reminder due while the
+announce channel is unset stays unfired until a channel exists, and a corrupt
+state file loads as empty rather than crashing the bot at import. The
 live driving of real scheduled events is proven separately, once deployed,
 and is treated as unproven until that pass is recorded.
 

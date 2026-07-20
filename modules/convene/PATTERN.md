@@ -70,7 +70,12 @@ the players verbatim inside the bot's voice.
    stage-and-transcribe nudge when it ends, and the recap
    announcement when the published page appears. Session recaps come
    from the projection, so DM-only pages never announce, by
-   construction. Between sessions, the DM runs `/session prep` and
+   construction. The same projection-only basis powers the **reveal
+   digest**: when any *other* page newly enters the projection — a twin
+   flipped to player-visible, a new player page published — convene
+   batches the delta into one "the veil lifts" post on that same
+   lifecycle beat, so a page announces only once it is already
+   player-visible. Between sessions, the DM runs `/session prep` and
    types the ask ("send me two backstory NPCs"; "decide why you were
    headed to the Sunken City") into a pop-up; convene broadcasts it to
    the player role in the DM's own words, wrapped in the bot's voice,
@@ -108,6 +113,25 @@ the players verbatim inside the bot's voice.
 - **Recorder nudge.** Default: on — the go-ahead reminds the DM to
   bring the recorder. Turn it off (`RECORDER_NUDGE=0`) for a table
   that captures with Craig instead.
+- **Reveal digest.** Default: **on, batched, newly-revealed only.**
+  When any page newly enters the projection — a twin flipped to
+  `visibility: player`, a new player page published, not just a
+  `sessions/` recap — convene posts one "the veil lifts" digest on its
+  existing recap/ended lifecycle beat, listing each newly-revealed
+  page's own title and published link (a mechanical relay, like the
+  prep ask — no authored prose is rewritten). Three defaults fold in:
+  *scope* is every newly-revealed page (session recaps keep their own
+  dedicated line and are not repeated in the digest); *cadence* is one
+  batched post per lifecycle beat, never one message per page, since an
+  edit-changelog would be spam; *new-vs-updated* is newly-revealed only
+  — the persisted `announced` set and the startup snapshot suppress the
+  back catalogue exactly as they do for recaps, so an ephemeral host
+  never re-announces history. It reads only the projection, so a page
+  can appear only once already player-visible: leak-proof by
+  construction. Re-voice or translate the batch frame and the per-page
+  line through `convene_messages.json` (`reveal`, placeholders
+  `{count}`/`{entries}` plus an optional `{ping}`; and `reveal_item`,
+  placeholders `{title}`/`{link}`).
 - **State durability.** Default: put `convene_state.json` on **durable
   storage** (a persistent volume or a KV store) when the host offers
   one; otherwise rely on the startup catch-up. That file holds the
@@ -133,7 +157,15 @@ the players verbatim inside the bot's voice.
   recap announce-detection surfaces each new session page exactly
   once (never the back catalogue after a restart), `CONVENE_REANNOUNCE`
   is honored (it skips the catch-up so every recap re-posts), and
-  recaps resolve to the one announce channel.
+  recaps resolve to the one announce channel. The reveal digest is
+  golden-tested too: a projection gaining N non-session player pages
+  yields one batched delta of exactly those pages, re-polling the same
+  projection yields nothing (idempotent), DM-only pages never appear,
+  and the startup snapshot suppresses the back catalogue on a simulated
+  restart. Two durability regressions are covered as well: a reminder
+  due while the announce channel is unset stays unfired (it re-fires
+  once a channel exists), and a corrupt state file loads as empty
+  rather than crashing the bot at import.
 - Live, once deployed: create a scheduled event, watch `/session
   status` track "interested" against quorum, let it cross the
   threshold and confirm the go-ahead fires, then publish a session

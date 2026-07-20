@@ -1,5 +1,5 @@
 name: convene
-version: 0.2.1
+version: 0.3.0
 summary: >
   Session lifecycle as a capability of the always-on lore bot: drives
   Discord's native scheduled events, adds quorum (a session runs iff
@@ -7,10 +7,16 @@ summary: >
   stage and transcribe after), recap announcement when a new
   sessions/ page reaches the projection the bot already polls, and the
   between-sessions prep ask the DM broadcasts to the players verbatim.
-  0.2.1 folds three improvements proven on the live bot: recaps post to
-  the one auto-events channel (the separate recap-channel config is
-  gone), CONVENE_REANNOUNCE=1 re-posts every recap once after site URLs
-  change, and a state-durability decision point for the announced set.
+  0.3.0 adds the reveal digest: when any page newly enters the
+  projection (a twin flipped to player-visible, a new player page
+  published — not just sessions/), the bot posts one batched
+  "the veil lifts" archive digest on its existing lifecycle beat, a
+  mechanical relay of each page's own title and link, leak-proof
+  because it reads only the projection. It also folds two durability
+  fixes proven needed on the live bot: reminders are no longer marked
+  fired when the announce channel is unset (they re-fire once one
+  exists), and the state file is written atomically and parsed
+  defensively so a crash mid-write can't wedge the bot at startup.
 touches:
   - lore-bot
 depends:

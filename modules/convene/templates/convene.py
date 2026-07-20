@@ -40,6 +40,11 @@ CREATED, AT_RISK, IMMINENT, ENDED = (
 # PREP is not an auto-reminder — the DM triggers it with /session prep;
 # it shares the template/override machinery but evaluate() never fires it.
 PREP = "prep"
+# REVEAL/REVEAL_ITEM are not per-event reminders either: the reveal digest
+# fires on the corpus-refresh beat, batching pages newly reaching the
+# projection into one "the veil lifts" post. They share the same
+# override/translation machinery.
+REVEAL, REVEAL_ITEM = "reveal", "reveal_item"
 
 REMINDERS = {
     CREATED:  "{ping}A session is on the calendar: **{title}**, {when}. "
@@ -57,6 +62,14 @@ REMINDERS = {
     # like the rest.
     PREP:     "{ping}A prep note for the table before next session:\n\n"
               "{body}",
+    # The reveal digest: a batched, mechanical relay (like PREP) of pages
+    # newly visible in the projection. {entries} is the rendered list of
+    # REVEAL_ITEM lines, each carrying a page's own title and link, never
+    # rewritten. {ping} is available for overrides but off by default so a
+    # routine reveal is quiet. Overridable/translatable like the rest.
+    REVEAL:      "{ping}The veil lifts — {count} new page(s) in the "
+                 "archive:\n{entries}",
+    REVEAL_ITEM: "• **{title}**{link}",
 }
 
 AT_RISK_WINDOW_H = 36     # flag the DM this many hours out if short
@@ -105,7 +118,7 @@ def load_messages(path, defaults=None):
         return msgs
     sample = dict(ping="", title="x", when="w", when_rel="w", hours=1,
                   count=0, quorum=3, dm_mention="", recorder_line="",
-                  body="x")
+                  body="x", entries="x", link="", url="")
     try:
         override = json.loads(p.read_text(encoding="utf-8"))
     except (ValueError, OSError):
@@ -148,7 +161,15 @@ def load_state(path):
     p = Path(path)
     if not p.is_file():
         return {"events": {}, "announced": []}
-    d = json.loads(p.read_text(encoding="utf-8"))
+    try:
+        d = json.loads(p.read_text(encoding="utf-8"))
+        if not isinstance(d, dict):
+            raise ValueError("state file is not a JSON object")
+    except (ValueError, OSError):
+        # A corrupt state file (e.g. a crash mid-write) must not wedge the
+        # bot at import — load_state runs in setup(), before ready()'s
+        # try/except. Fall back to empty state, as load_messages does.
+        return {"events": {}, "announced": []}
     d.setdefault("events", {})
     d.setdefault("announced", [])
     return d
@@ -161,13 +182,33 @@ def save_state(path, state):
         out["settings"] = state["settings"]     # slash-set config
     if state.get("prep"):
         out["prep"] = state["prep"]             # last /session prep ask
-    Path(path).write_text(json.dumps(out, indent=1), encoding="utf-8")
+    # Atomic write: a crash mid-write would otherwise leave a truncated
+    # convene_state.json that load_state hits at the next import — enough
+    # to stop the whole bot starting. Write to a temp file, then replace.
+    p = Path(path)
+    tmp = p.with_name(p.name + ".tmp")
+    tmp.write_text(json.dumps(out, indent=1), encoding="utf-8")
+    os.replace(tmp, p)
 
 
 def reconcile(state, live_event_ids):
     """Keep bookkeeping only for events Discord still has."""
     return {eid: rec for eid, rec in state["events"].items()
             if eid in live_event_ids}
+
+
+def new_projected_pages(corpus, announced):
+    """Every content page now in the projection corpus but not yet in the
+    `announced` set — the full player-visible delta (session recaps and
+    every other newly-revealed page), the broad counterpart to botlib's
+    session-only new_session_pages. Reads only the projection the bot
+    already polls, so a page surfaces here only once it is already
+    player-visible: the reveal announce is leak-proof by construction.
+    Pure — the caller owns the announced set and its persistence."""
+    import botlib
+    return [p for p in botlib.page_paths(corpus)
+            if p not in announced
+            and p.rsplit("/", 1)[-1] not in botlib.NON_CONTENT]
 
 
 # ---- discord wiring (only touched at runtime) ----------------------
@@ -285,22 +326,27 @@ def setup(client):
                             else "")
                     for key in evaluate(session, now, cfg["quorum"],
                                         require_dm=require_dm):
-                        if chan:
-                            await chan.send(
-                                allowed_mentions=discord.AllowedMentions(
-                                    roles=True, users=True),
-                                content=render(
-                                    key, title=event.name, ping=ping,
-                                    when=discord.utils.format_dt(
-                                        event.start_time, "F"),
-                                    when_rel=discord.utils.format_dt(
-                                        event.start_time, "R"),
-                                    start=session["start"], now=now,
-                                    count=count, quorum=cfg["quorum"],
-                                    dm_mention=(f" <@{cfg['dm_id']}>"
-                                                if cfg["dm_id"] else ""),
-                                    recorder=RECORDER, templates=MESSAGES))
-                        rec["fired"].append(key)
+                        if chan is None:
+                            # No announce channel configured yet: leave the
+                            # reminder unfired so it re-fires once one is set
+                            # — never mark it fired against a dropped send,
+                            # or CREATED/AT_RISK/IMMINENT are lost for good.
+                            continue
+                        await chan.send(
+                            allowed_mentions=discord.AllowedMentions(
+                                roles=True, users=True),
+                            content=render(
+                                key, title=event.name, ping=ping,
+                                when=discord.utils.format_dt(
+                                    event.start_time, "F"),
+                                when_rel=discord.utils.format_dt(
+                                    event.start_time, "R"),
+                                start=session["start"], now=now,
+                                count=count, quorum=cfg["quorum"],
+                                dm_mention=(f" <@{cfg['dm_id']}>"
+                                            if cfg["dm_id"] else ""),
+                                recorder=RECORDER, templates=MESSAGES))
+                        rec["fired"].append(key)     # only after a send
             state["events"] = reconcile(state, live_ids)
             save_state(STATE_FILE, state)
         except Exception as e:                      # a tick must survive
@@ -447,14 +493,47 @@ def setup(client):
             state["announced"].append(path)
         save_state(STATE_FILE, state)
 
+    async def announce_reveals(corpus):
+        # The reveal digest — "the veil lifts": ONE batched post for pages
+        # newly reaching the projection since last seen, EXCEPT session
+        # recaps (announce_new_recaps gives those their own line). Reading
+        # only the projection means a page appears here only once already
+        # player-visible — leak-proof by construction, same basis as the
+        # recap announce. Batched (not one message per page) so an
+        # edit-changelog can't turn into spam.
+        new = [p for p in new_projected_pages(corpus, set(state["announced"]))
+               if "sessions/" not in p]
+        if not new:
+            return
+        chan = await recap_channel()
+        if chan is None:
+            return          # no channel yet: leave unannounced so the
+                            # digest re-fires once one is configured
+        item_tpl = MESSAGES.get(REVEAL_ITEM, REMINDERS[REVEAL_ITEM])
+        entries = []
+        for path in new:
+            title = botlib.page_title(corpus, path)
+            url = (f"{SITE_URL}/{path.removesuffix('.md')}"
+                   if SITE_URL else "")
+            entries.append(item_tpl.format(
+                title=title, url=url, link=(f"\n{url}" if url else "")))
+        frame = MESSAGES.get(REVEAL, REMINDERS[REVEAL])
+        await chan.send(frame.format(
+            ping="", count=len(new), entries="\n".join(entries)))
+        state["announced"].extend(new)      # mark only after the post lands
+        save_state(STATE_FILE, state)
+
     class Capability:
         async def ready(self, corpus=""):
             # CONVENE_REANNOUNCE=1: skip the catch-up and re-post every
             # recap once (e.g. after the site URLs change). Unset after.
             reannounce = os.environ.get("CONVENE_REANNOUNCE") == "1"
+            # Startup snapshot: mark every page already in the projection —
+            # recaps AND every other player-visible page — as already
+            # announced, so an ephemeral host that lost the state file never
+            # re-announces the back catalogue (recap or reveal) on restart.
             for p in botlib.page_paths(corpus):
-                if ("sessions/" in p and p not in state["announced"]
-                        and not reannounce):
+                if p not in state["announced"] and not reannounce:
                     state["announced"].append(p)
             now = time.time()
             require_dm = cfg["require_dm"] and cfg["dm_id"] != 0
@@ -488,13 +567,16 @@ def setup(client):
                             rec["fired"].append(key)
             state["events"] = reconcile(state, live_ids)
             save_state(STATE_FILE, state)
-            if reannounce:                    # post every recap once now
+            if reannounce:            # post every recap + reveal once now
                 await announce_new_recaps(corpus)
+                await announce_reveals(corpus)
             client.loop.create_task(tick_loop())
             print(f"convene ready: DM {cfg['dm_id']}, quorum "
-                  f"{cfg['quorum']}, {len(state['announced'])} recap(s)")
+                  f"{cfg['quorum']}, {len(state['announced'])} page(s) "
+                  f"already announced")
 
         async def on_corpus_refresh(self, corpus):
-            await announce_new_recaps(corpus)
+            await announce_new_recaps(corpus)     # session recaps get a line
+            await announce_reveals(corpus)        # everything else, batched
 
     return Capability()
