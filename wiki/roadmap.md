@@ -264,8 +264,12 @@ under the contract.
   wired (routines 0.3.0): a campaign vendors the `semantic-review` verb + a
   `.mcp.json` witness server + a `.claude/` recipe, and the routine runs as a
   scheduled Claude Code Routine that files findings into the witness inbox (PR
-  fallback if the MCP host is domain-blocked). Remaining: the first live LLM
-  pass on a real campaign, and cadence/cost tuning. Original framing: the
+  fallback if the MCP host is domain-blocked). **First live pass ran 2026-07-20**
+  (scheduled cloud routine, real campaign): 11 findings filed to the witness
+  inbox, and it caught a genuine firewall-prose leak the structural check
+  physically could not — a player-visible page naming a DM-only page by title
+  in prose (not a link) — proving the semantic layer's whole reason to exist.
+  Remaining: cadence/cost tuning. Original framing: the
   [lint](modules/lint.md)
   module is a deterministic reporter with a stated model-triage seam; the
   [routines](modules/routines.md) module gives the idempotent,

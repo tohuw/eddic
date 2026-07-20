@@ -80,6 +80,15 @@ COMPANION_STYLE = (
     ".copy-icon:hover { background: var(--glow, #b07d3a); }\n"
     ".copy-icon.copied { background: var(--faint, #857d6d); }\n"
     ".copy-icon svg { width: 1.05rem; height: 1.05rem; display: block; }\n"
+    "details.manual-setup { margin: 2.6rem 0 0; padding-top: 1.3rem; "
+    "border-top: 1px solid var(--rule-strong, #ccc); }\n"
+    "details.manual-setup > summary { cursor: pointer; font-weight: 600; "
+    "font-size: 0.8em; letter-spacing: 0.01em; color: var(--accent, "
+    "#8a5a24); }\n"
+    "details.manual-setup > summary:hover { color: var(--glow, #b07d3a); }\n"
+    "details.manual-setup > summary:focus-visible { outline: 2px solid "
+    "var(--accent, #8a5a24); outline-offset: 3px; border-radius: 3px; }\n"
+    "details.manual-setup[open] > summary { margin-bottom: 0.7rem; }\n"
     "</style>\n")
 
 # A prominent copy-to-clipboard button that copies THIS page's own live
