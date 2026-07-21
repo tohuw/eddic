@@ -336,6 +336,28 @@ under the contract.
   data already present. Trigger: a table wanting the maintenance view, or a
   campaign big enough that "who cares about this NPC?" needs answering
   structurally.
+- **The party's "you are here" (tracked location + Atlas marker).** Give Snorri
+  one more thing to know — where the party currently is. A small tracked state
+  (current location = a player-visible place-page path) is updated **after each
+  session** by an agent reading the session log/transcript, on the same
+  lifecycle beat the recap and [reveal digest](modules/convene.md) already fire
+  on, so nobody hand-maintains it. Two surfaces then light up: the
+  [lore bot](modules/lore-bot.md) answers "where are we?" / "how far to the
+  Sunken City?" from the state, and the [atlas](modules/atlas.md) renders a
+  **"YOU ARE HERE"** marker on that place node (a highlighted node on the
+  player map, optionally a short trail of the last few locations). Firewall-safe
+  by construction: the party's whereabouts are shared table knowledge, the
+  marker lives on the player Atlas, and the state only ever points at a
+  player-visible place. Deterministic core: the location state field + the Atlas
+  reading it to place the marker + the bot reading it to answer; the agent part
+  is the after-session update from the log — advisory (the DM confirms or
+  overrides, since a session can end mid-journey or somewhere unnamed).
+  Composes convene's lifecycle beat, the session logs, the Atlas, and the lore
+  bot — all already present, zero new authoring. Open questions: where the
+  state lives (a `.eddic/party.json`, or a frontmatter field on a canonical
+  "the party" page so it is git-tracked and diffable) and how to handle
+  between-places / unnamed stops. Trigger: a campaign with enough map that
+  "wait, where are we?" is a real question at the table.
 
 ## Related pages
 
