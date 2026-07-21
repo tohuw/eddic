@@ -278,6 +278,15 @@ def setup(client):
                 dm_in = True
                 continue                    # the DM is not a player
             member = event.guild.get_member(u.id)
+            if member is None:
+                # a bare Client keeps no member cache (no privileged
+                # members intent), so get_member is None for everyone —
+                # fetch over REST, or a role-scoped quorum silently counts
+                # 0 despite real interested reacts.
+                try:
+                    member = await event.guild.fetch_member(u.id)
+                except Exception:
+                    member = None
             # who counts as a player: an explicit PLAYER_ROLE name, else
             # the ping role (the one role you already set doubles as the
             # roster — a stray "interested" click from a non-player is

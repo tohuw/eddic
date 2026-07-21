@@ -334,6 +334,12 @@ def main():
                    and src.count("await announce_reveals(corpus)") >= 2,
                    "the reveal digest fires on the corpus-refresh beat and on "
                    "the reannounce catch-up"))
+    checks.append(("fetch_member" in src
+                   and "get_member" in src.partition(
+                       "async def count_interested")[2],
+                   "count_interested falls back to fetch_member on a member-"
+                   "cache miss (a bare Client would else count a role-scoped "
+                   "quorum as 0 despite real interested reacts)"))
     checks.append(('"\\n".join(entries)' in src
                    and "frame.format(" in src,
                    "the reveal digest batches entries into a single post"))
