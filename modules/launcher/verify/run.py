@@ -98,6 +98,35 @@ def main():
     check("applicationShouldTerminate" in swift
           and "windowWillClose" in swift,
           "quit and window-close both route to teardown")
+    # --- Restart menu item (0.4.0): relaunch in place, no quit ---
+    check('"Restart ' in swift and 'keyEquivalent: "r"' in swift,
+          "supervisor has a Restart menu item bound to Cmd-R")
+    check("restartService" in swift,
+          "supervisor has a restart action")
+    # The child launch is factored into one startService() called both at
+    # launch and on restart — not duplicated, and no legacy startChild().
+    check("func startService()" in swift
+          and swift.count("startService()") >= 3
+          and "startChild" not in swift,
+          "child launch is factored into startService(), used at launch "
+          "and on restart")
+    # A restarting flag lets the terminationHandler branch: relaunch on a
+    # restart-triggered exit, quit only on a genuine self-exit.
+    check("var restarting = false" in swift,
+          "supervisor tracks a restarting flag")
+    check("restarting = true" in swift,
+          "the restart action sets the restarting flag")
+    # The restart branch of the terminationHandler must relaunch, not quit:
+    # after resetting the flag it calls startService() and returns before
+    # any NSApp.terminate. Assert the relaunch call sits between the
+    # `if self.restarting {` guard and the self-exit terminate.
+    rst = swift.find("if self.restarting {")
+    term = swift.find("NSApp.terminate(nil)", rst if rst >= 0 else 0)
+    check(rst >= 0
+          and "self.restarting = false" in swift[rst:term if term >= 0 else len(swift)]
+          and "self.startService()" in swift[rst:term if term >= 0 else len(swift)],
+          "a restart-triggered exit relaunches (startService) instead of "
+          "routing to app-quit")
     for banned in ("osascript", "Terminal", "do script", "tail -f",
                    "/usr/bin/osascript"):
         check(banned not in swift,

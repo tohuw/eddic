@@ -23,11 +23,15 @@ The macOS app is a hand-built, self-contained AppKit app rather than an
 over:
 
 - **It is its own window.** The Swift executable is a real windowed app:
-  a menu bar with a Quit item on Cmd-Q (and a standard Edit menu, so the
-  log is selectable and copyable), and its own window holding a
-  read-only, monospaced, auto-scrolling text view that shows the
-  service's stdout+stderr live (streamed off the child's pipe, run
-  unbuffered so nothing stalls into apparent silence). It drives no
+  a menu bar with a Restart item on Cmd-R and a Quit item on Cmd-Q (and a
+  standard Edit menu, so the log is selectable and copyable), and its own
+  window holding a read-only, monospaced, auto-scrolling text view that
+  shows the service's stdout+stderr live (streamed off the child's pipe,
+  run unbuffered so nothing stalls into apparent silence). Restart kills
+  the running child's process group and relaunches the same service
+  command in the same window — a fresh run to pick up a code or config
+  change, or to clear a stuck bot — without quitting the app; a genuine
+  self-exit of the bot still quits, as before. It drives no
   Terminal and no other app — there is nothing else left running to
   quit, and no shared Terminal to force-quit out from under someone.
   Quitting the app (Cmd-Q or the Quit menu), closing its window, or the
@@ -86,8 +90,10 @@ over:
    ~/Applications` it if the owner wants it in Launchpad. On Windows the
    `.cmd` can be right-click → *Send to → Desktop* for a shortcut. The
    owner double-clicks: on macOS the app's own window opens streaming the
-   service live, and Cmd-Q (or the Quit menu, or closing that window)
-   stops it cleanly; on Windows a console opens and Ctrl-C stops it. For
+   service live, Cmd-R (or the Restart menu item) relaunches the service
+   in place to pick up a change or clear a stuck bot, and Cmd-Q (or the
+   Quit menu, or closing that window) stops it cleanly; on Windows a
+   console opens and Ctrl-C stops it. For
    a recorder, the first launch raises the one-time microphone prompt,
    which grants to this app's identity and persists — no other
    permission prompts, since the app drives nothing but its own window.
@@ -96,7 +102,7 @@ over:
    it exists and an upgrade can restamp it:
 
        uv run <campaign>/.eddic/eddic.py manifest record \
-           --module launcher --version 0.3.0 \
+           --module launcher --version 0.4.0 \
            --params '{"service":"<service>","target":"<target>"}'
 
    Re-running the generator with the same arguments is idempotent: it
@@ -115,7 +121,9 @@ over:
   and needs none.
 - **Windowed vs headless.** Default: **windowed** — the recorder bot
   posts consent and streams logs the owner must see, and the app's own
-  window is also how the owner quits (close it, Cmd-Q, or the Quit menu).
+  window is also how the owner controls the service: Restart it in place
+  (Cmd-R or the Restart menu item) to pick up a change or clear a stuck
+  bot, or quit it (close the window, Cmd-Q, or the Quit menu).
   Choose `--headless` (LSUIElement agent, output to `.eddic/<service>.log`
   only, no window) for a background service that needs no live
   interaction and is stopped some other way; a consent-gated recorder
@@ -139,7 +147,10 @@ over:
   the Windows path: the Swift supervisor source delegates to the run verb
   for the service, launches it as the app's own child in a new process
   group and kills that group on quit, shows the stream in its own
-  monospaced `NSTextView`/`NSScrollView` with a Quit item on Cmd-Q and no
+  monospaced `NSTextView`/`NSScrollView` with a Quit item on Cmd-Q and a
+  Restart item on Cmd-R (child launch factored into one `startService`
+  used at both launch and restart, and a `restarting` flag routing a
+  restart-triggered exit back to relaunch instead of app-quit), and no
   Terminal/osascript/`tail` machinery at all; the `Info.plist` carries
   the per-app `quest.eddic.launcher.<slug>` identifier, the app's name as
   executable and display name, and a microphone usage string (and
@@ -155,8 +166,10 @@ over:
   in the Sunken City campaign, its consent post appears in the log).
   Confirm the ownership with `codesign -dvvv <App>.app` (Identifier is
   `quest.eddic.launcher.<slug>`, Signature is adhoc) and `PlistBuddy -c
-  'Print CFBundleIdentifier' <App>.app/Contents/Info.plist`. Then Cmd-Q
-  the app (or the Quit menu, or the window's close button): the service
-  and its whole process group exit — `pgrep -f <service>` shows nothing,
-  no orphaned python or recorder, and no Terminal was ever spawned. The
-  owner never typed a command.
+  'Print CFBundleIdentifier' <App>.app/Contents/Info.plist`. Cmd-R (or the
+  Restart menu item) relaunches the service in the same window — a
+  `— restarting —` line then a fresh live log, without the app quitting.
+  Then Cmd-Q the app (or the Quit menu, or the window's close button): the
+  service and its whole process group exit — `pgrep -f <service>` shows
+  nothing, no orphaned python or recorder, and no Terminal was ever
+  spawned. The owner never typed a command.

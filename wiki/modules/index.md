@@ -30,7 +30,7 @@ companion layer on once the campaign is live.
 | [convene](convene.md) | session lifecycle on native scheduled events: quorum, lifecycle nudges, recap + reveal-digest announce, prep ask; a name keyword (`/session keyword`) splits real sessions from other events, which get a light heads-up only | 0.4.0 |
 | [recorder](recorder.md) | the campaign's own recording bot: react-gated per-mic consent (fail-closed public consent post, role ping via `/record-consent-role`), DAVE receive via davey + pinned patches, a localhost control surface, a `(RECORDING)` nickname badge, empty-channel auto-stop (`/record-empty-timeout`), and per-command Manage-Server-gated top-level commands (Discord-native) | 0.5.1 |
 | [backup](backup.md) | tier-2 blob backup: session audio in object storage (R2 default) via rclone, gitignored, tracked by a path/size/sha256 inventory; two hooks over one worker, text push never blocks | 0.1.0 |
-| [launcher](launcher.md) | native double-clickable launcher for a local service: a hand-built, code-signed macOS `.app` with its own live-log window that supervises the service, or a Windows `.cmd`, wrapping the campaign's run verb | 0.3.1 |
+| [launcher](launcher.md) | native double-clickable launcher for a local service: a hand-built, code-signed macOS `.app` with its own live-log window, Quit and Restart menu items, that supervises the service, or a Windows `.cmd`, wrapping the campaign's run verb | 0.4.0 |
 | [streamdeck](streamdeck.md) | Elgato Stream Deck button packs for table-time control: start/stop/status/help against the recorder's localhost control surface | 0.1.2 |
 
 For the design tenets these modules answer to, see [principles](../design/principles.md);

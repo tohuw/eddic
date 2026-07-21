@@ -18,9 +18,10 @@ osacompile "applet", and it is fully self-contained — it drives no other
 app. That matters for the reasons the owner hit:
 
   1. Its own window. The supervisor is a real windowed AppKit app: a menu
-     bar with a Quit item on Cmd-Q, and a read-only, monospaced,
-     auto-scrolling text view showing the service's stdout+stderr live.
-     No Terminal, no osascript, no tail — nothing else to leave running.
+     bar with a Restart item on Cmd-R and a Quit item on Cmd-Q, and a
+     read-only, monospaced, auto-scrolling text view showing the service's
+     stdout+stderr live. No Terminal, no osascript, no tail — nothing else
+     to leave running.
   2. Clean lifecycle. It launches the run verb as its own child in a new
      session/process group. Quitting the app (Cmd-Q / menu), closing the
      window, or the bot exiting on its own terminates the whole child
@@ -123,12 +124,14 @@ def swift_source_text(name, service, campaign_dir, headless):
 
 # The AppKit supervisor. Self-contained: it owns a window with a
 # monospaced, auto-scrolling NSTextView (in an NSScrollView) that shows
-# the child's stdout+stderr live, a menu bar with Quit on Cmd-Q, and a
-# standard Edit menu so the log is selectable/copyable. It launches
-# `uv run .eddic/eddic.py run <service>` as its own child, in a new
-# session/process group (perl setsid), with PYTHONUNBUFFERED=1 so logs
-# stream. It kills the child's whole process group (TERM then KILL) on
-# quit (Cmd-Q / menu), on the window closing, and when the child exits.
+# the child's stdout+stderr live, a menu bar with Restart on Cmd-R and
+# Quit on Cmd-Q, and a standard Edit menu so the log is selectable/copyable.
+# It launches `uv run .eddic/eddic.py run <service>` as its own child, in a
+# new session/process group (perl setsid), with PYTHONUNBUFFERED=1 so logs
+# stream, via a single startService() used at launch and on restart. It
+# kills the child's whole process group (TERM then KILL) on quit (Cmd-Q /
+# menu), on the window closing, and when the child exits; Restart kills the
+# group and relaunches in the same window instead of quitting.
 # It spawns no Terminal and drives no other app.
 _SWIFT_TEMPLATE = r'''import AppKit
 import Foundation
@@ -148,15 +151,16 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate {
     var window: NSWindow?
     var textView: NSTextView?
     var quitting = false
+    var restarting = false
 
     func applicationDidFinishLaunching(_ note: Notification) {
         buildMenu()
         if !headless { buildWindow() }
-        startChild()
+        startService()
     }
 
-    // App menu (Quit on Cmd-Q) + a standard Edit menu so the log text is
-    // selectable and copyable.
+    // App menu (Restart on Cmd-R, Quit on Cmd-Q) + a standard Edit menu so
+    // the log text is selectable and copyable.
     func buildMenu() {
         let mainMenu = NSMenu()
 
@@ -166,6 +170,10 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate {
         appMenu.addItem(withTitle: "Hide " + displayName,
             action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
         appMenu.addItem(NSMenuItem.separator())
+        let restartItem = appMenu.addItem(withTitle: "Restart " + displayName,
+            action: #selector(Controller.restartService(_:)),
+            keyEquivalent: "r")
+        restartItem.target = self
         appMenu.addItem(withTitle: "Quit " + displayName,
             action: #selector(NSApplication.terminate(_:)),
             keyEquivalent: "q")
@@ -238,7 +246,7 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate {
         tv.scrollToEndOfDocument(nil)
     }
 
-    func startChild() {
+    func startService() {
         let logDir = campaignDir + "/.eddic"
         try? FileManager.default.createDirectory(
             atPath: logDir, withIntermediateDirectories: true)
@@ -275,11 +283,21 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 guard let self = self else { return }
                 self.append("\n[" + displayName
                     + " stopped (exit \(status))]\n")
-                if !self.quitting {
-                    self.childPGID = -1   // it is already gone
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
-                        NSApp.terminate(nil)
-                    }
+                self.childPGID = -1   // the child (and its group) is gone
+                self.process = nil
+                if self.quitting {
+                    return   // teardown/quit is already in flight
+                }
+                if self.restarting {
+                    // A restart-triggered exit: relaunch, do not quit.
+                    self.restarting = false
+                    self.append("\u{2014} restarting \u{2014}\n")
+                    self.startService()
+                    return
+                }
+                // A genuine self-exit: reflect it and quit the app.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+                    NSApp.terminate(nil)
                 }
             }
         }
@@ -302,6 +320,27 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate {
         usleep(500000)
         kill(-childPGID, SIGKILL)
         childPGID = -1
+    }
+
+    // Cmd-R / the Restart menu item. Relaunches the supervised child in
+    // place — a fresh run of the same service command, streaming into the
+    // same log window — without quitting the app (pick up a code/config
+    // change, or clear a stuck bot). If a child is running, flag the
+    // restart and kill its group; the terminationHandler then relaunches
+    // via startService() (see the `restarting` branch). If none is running
+    // (a self-exit already happened but we did not quit), just start one.
+    @objc func restartService(_ sender: Any?) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self, !self.quitting else { return }
+            if self.childPGID > 0 {
+                self.restarting = true
+                self.pipe?.fileHandleForReading.readabilityHandler = nil
+                self.killChild()   // TERM, grace, then KILL
+            } else {
+                self.append("\u{2014} restarting \u{2014}\n")
+                self.startService()
+            }
+        }
     }
 
     // Cmd-Q / the Quit menu item.

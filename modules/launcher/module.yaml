@@ -1,5 +1,12 @@
 name: launcher
-version: 0.3.1
+version: 0.4.0
+# 0.4.0: the macOS supervisor gains a Restart menu item (Cmd-R). The child
+# launch is factored into a single startService() used both at launch and on
+# restart; a `restarting` flag lets the child's terminationHandler branch —
+# a restart-triggered exit relaunches the service in the same log window
+# without quitting, while a genuine self-exit still quits the app as before.
+# Quit (Cmd-Q) and the window-close/self-exit teardown are unchanged.
+#
 # 0.3.1: fix-only. The Info.plist now XML-escapes the app name (a name with
 # & < > no longer yields a malformed plist); the Swift supervisor bash-quotes
 # the campaign dir it `cd`s into and escapes newlines/CRs in every baked
@@ -14,10 +21,12 @@ summary: >
   supervises the service, or a Windows .cmd. Each delegates to the
   campaign's run verb (uv run .eddic/eddic.py run <service>) so it never
   duplicates the run command. On macOS the app is a self-contained
-  windowed AppKit app — its own live-log window and a Quit-on-Cmd-Q menu,
-  no Terminal — that runs the service as its own child; quitting it
-  (Cmd-Q or closing the window) terminates the whole process group, no
-  orphans.
+  windowed AppKit app — its own live-log window, a Restart-on-Cmd-R and a
+  Quit-on-Cmd-Q menu, no Terminal — that runs the service as its own
+  child; Restart relaunches the child in the same window (picking up a
+  code/config change or clearing a stuck bot) without quitting, while
+  quitting it (Cmd-Q or closing the window) terminates the whole process
+  group, no orphans.
 touches:
   - recorder
   - lore-bot
