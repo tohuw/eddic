@@ -377,6 +377,25 @@ under the contract.
   *wrong* permission or a mis-nested channel), and how role/category IDs flow
   back into config for auto-wiring. Trigger: onboarding a brand-new server
   rather than adapting an existing one.
+- **Player prep responses via Snorri (companion-less path).** `/session prep`
+  broadcasts the DM's ask; a player *with* a [companion](modules/companion.md)
+  responds **privately** by working it out with it and filing a `suggest_edit`
+  into the DM's witness inbox — which is DM-tier-only, so the rest of the table
+  never sees it and even the submitting player can't read others' (exactly the
+  privacy a per-player secret needs, enforced in the [retrieval](modules/retrieval.md)
+  Worker, not by fragile channel permissions — a no-read-history channel does
+  NOT work: Discord's history permission is all-or-nothing, so it neither hides
+  co-present players' live replies nor preserves a player's own answer). Give
+  players **without** the eddic companion the same private path: a way to hand a
+  prep response straight to the [lore bot](modules/lore-bot.md) — an ephemeral
+  `/session respond` command, or a DM to Snorri — which files it into the DM's
+  witness inbox on their behalf. Same private destination, no connector setup.
+  Composes convene (the ask), the lore bot (the intake), and the witness write
+  path (the private drop). Firewall-safe: the response only ever lands in the
+  DM-tier inbox, never a shared surface. Open questions: ephemeral slash vs bot
+  DM for intake; tying a response back to the prep it answers (a prep id in
+  state); confirming receipt to the player without echoing the content anywhere
+  public. Trigger: a table where not everyone runs the companion.
 
 ## Related pages
 
