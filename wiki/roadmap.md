@@ -176,7 +176,7 @@ under the contract.
 
 ## Deferred decisions, with triggers
 
-- **Signed binaries.** Now: CI builds unsigned per-OS binaries as release
+- **Signed binaries.** ([#10](https://github.com/tohuw/eddic/issues/10)) Now: CI builds unsigned per-OS binaries as release
   artifacts (prove the pipeline early; agent-driven installs mostly dodge
   Gatekeeper/SmartScreen, which key on browser-download provenance). Trigger to
   buy signing (Apple Developer ~$99/yr plus notarization; Azure Trusted Signing
@@ -186,10 +186,10 @@ under the contract.
   and authorship" section of `README.md`). Permissive, so vendored and stamped
   copies inside campaign repos stay clean; it carries a patent grant; §5 makes
   inbound contributions self-licensing with no CLA needed.
-- **Compression accelerators.** headroom/thlibo guidance lands inside the
+- **Compression accelerators.** ([#11](https://github.com/tohuw/eddic/issues/11)) headroom/thlibo guidance lands inside the
   routines and transcriber modules as decision points with heuristics, per the
   [principles](design/principles.md) — never as dependencies.
-- **Eddic website.** First trigger fired 2026-07-18: live at
+- **Eddic website.** ([#12](https://github.com/tohuw/eddic/issues/12)) First trigger fired 2026-07-18: live at
   eddic-site.pages.dev (source in `site/`, rendered by the render module),
   carrying the privacy posture the recorder's consent post links. The
   real-domain call is now resolved: the site is live at **eddic.quest** (apex +
@@ -198,7 +198,7 @@ under the contract.
 - **Payment gateway.** Choose when the marketplace module (15) starts: a gateway
   with checkout-and-download and no inventory overhead; cost posture per
   principle 4. Until then the transaction arc is rights machinery, not commerce.
-- **Multi-tenant lore bot (convene).** Today one bot serves one campaign:
+- **Multi-tenant lore bot (convene).** ([#13](https://github.com/tohuw/eddic/issues/13)) Today one bot serves one campaign:
   [convene](modules/convene.md) counts *every* scheduled event on the guild
   toward that campaign's quorum. Two campaigns sharing a Discord server would
   cross-contaminate — each other's events, reminders, and quorum counts. The
@@ -211,7 +211,7 @@ under the contract.
   the lore-bot corpus and recap thread already per-campaign. Do not half-build it
   before the second tenant is real — the single-tenant path must stay
   zero-config.
-- **eddic.quest subdomain hosting (multi-tenant hosting service).**
+- **eddic.quest subdomain hosting (multi-tenant hosting service).** ([#14](https://github.com/tohuw/eddic/issues/14))
   Self-hosting is and stays the default — a campaign is a self-contained repo
   the owner controls on their own domain (or a free Pages/Workers deploy). This
   is a convenience for people who won't buy or manage a domain: give a tenant
@@ -235,7 +235,7 @@ under the contract.
   hosted tenant must always be able to walk away with their self-contained repo
   — hosting is a convenience, never lock-in. Trigger: a second party wanting to
   run a campaign without owning a domain, or demand for hosted onboarding.
-- **Private / off-the-web campaigns (Cloudflare Access).** Today a campaign's
+- **Private / off-the-web campaigns (Cloudflare Access).** ([#15](https://github.com/tohuw/eddic/issues/15)) Today a campaign's
   projected sites are unlisted and noindex, and the player retrieval token
   exposes exactly the public-wiki content — so URL-only reachability is a
   deliberate, low-sensitivity default (a leaked player token reveals nothing
@@ -305,7 +305,7 @@ under the contract.
   suggestion carries hash-pinned authorship; an accept→auto-materialize path
   (today the verb stages, the owner applies); and pairing with the agentic lint
   routine above so it files its findings the same way.
-- **Eddic is not D&D-specific.** Eddic grew out of a D&D campaign and its
+- **Eddic is not D&D-specific.** ([#16](https://github.com/tohuw/eddic/issues/16)) Eddic grew out of a D&D campaign and its
   framing still says "D&D" throughout (AGENTS.md, the [principles](design/principles.md), the site, the
   self-documenting wiki), but the machinery — the campaign knowledge
   architecture, the deterministic player projection, retrieval, the lore/session
@@ -321,7 +321,7 @@ under the contract.
   systems, so decide whether to scope to "GM-led TTRPGs" or widen the
   projection/firewall model. Trigger: a non-D&D campaign adopting Eddic, or a
   public positioning pass that shouldn't over-index on one system.
-- **Atlas follow-ons (DM tier + backlinks).** The [atlas](modules/atlas.md)
+- **Atlas follow-ons (DM tier + backlinks).** ([#17](https://github.com/tohuw/eddic/issues/17)) The [atlas](modules/atlas.md)
   module shipped v1 as the player map. Two extensions were designed alongside it
   and fold into the same module. (1) **A DM-tier Atlas** — the same map built
   from the master wiki, with the linter's orphan/stub/unreachable signals
@@ -336,7 +336,7 @@ under the contract.
   data already present. Trigger: a table wanting the maintenance view, or a
   campaign big enough that "who cares about this NPC?" needs answering
   structurally.
-- **The party's "you are here" (tracked location + Atlas marker).** Give Snorri
+- **The party's "you are here" (tracked location + Atlas marker).** ([#18](https://github.com/tohuw/eddic/issues/18)) Give Snorri
   one more thing to know — where the party currently is. A small tracked state
   (current location = a player-visible place-page path) is updated **after each
   session** by an agent reading the session log/transcript, on the same
@@ -358,7 +358,7 @@ under the contract.
   "the party" page so it is git-tracked and diffable) and how to handle
   between-places / unnamed stops. Trigger: a campaign with enough map that
   "wait, where are we?" is a real question at the table.
-- **Discord server template: roles, categories, permissions.** The
+- **Discord server template: roles, categories, permissions.** ([#19](https://github.com/tohuw/eddic/issues/19)) The
   [discord-setup](modules/discord-setup.md) module reconciles a server's
   standing spec today (channels, additive-only, lint-style drift). Extend the
   spec to the three things standing up a fresh D&D server actually needs. (1)
@@ -377,7 +377,7 @@ under the contract.
   *wrong* permission or a mis-nested channel), and how role/category IDs flow
   back into config for auto-wiring. Trigger: onboarding a brand-new server
   rather than adapting an existing one.
-- **Player prep responses via Snorri (companion-less path).** `/session prep`
+- **Player prep responses via Snorri (companion-less path).** ([#20](https://github.com/tohuw/eddic/issues/20)) `/session prep`
   broadcasts the DM's ask; a player *with* a [companion](modules/companion.md)
   responds **privately** by working it out with it and filing a `suggest_edit`
   into the DM's witness inbox — which is DM-tier-only, so the rest of the table
