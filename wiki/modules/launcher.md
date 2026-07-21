@@ -31,15 +31,23 @@ unknown service name is refused with no artifact written.
 The macOS app is a hand-built, self-contained AppKit app rather than an
 `osacompile` applet or a Terminal-driver, for two reasons. First, it is its
 own window: the Swift executable is a real windowed app with a menu bar (a
-Quit item on Cmd-Q, and a standard Edit menu so the log is selectable and
-copyable) and its own window holding a read-only, monospaced, auto-scrolling
-text view that streams the service's stdout+stderr live off the child's pipe,
-run unbuffered so nothing stalls into apparent silence. It drives no Terminal
+Restart item on Cmd-R, a Quit item on Cmd-Q, and a standard Edit menu so the
+log is selectable and copyable) and its own window holding a read-only,
+monospaced, auto-scrolling text view that streams the service's stdout+stderr
+live off the child's pipe, run unbuffered so nothing stalls into apparent
+silence. It drives no Terminal
 and no other app, so there is nothing else left running to quit and no shared
 Terminal to force-quit out from under someone. Quitting the app (Cmd-Q or the
 Quit menu), closing its window, or the bot exiting on its own terminates the
 whole child process group — the `uv`/python/recorder tree dies together, no
-orphan left recording. The earlier designs detached the bot under Terminal,
+orphan left recording. Restart (Cmd-R or the Restart menu item) does the
+opposite of quit: it kills the running child's process group and relaunches
+the same service command in the same log window — a fresh run to pick up a
+code or config change, or to clear a stuck bot — without quitting the app.
+The child launch lives in a single `startService` used both at first launch
+and on restart, and a `restarting` flag lets the child's termination handler
+tell a restart-triggered exit (relaunch) from a genuine self-exit (still
+quit). The earlier designs detached the bot under Terminal,
 so quitting the app did nothing to the bot; this owns the lifecycle. Second,
 it owns its identity: the bundle carries a per-app reverse-DNS
 `CFBundleIdentifier` (`quest.eddic.launcher.<slug>`), its own name, and an
@@ -66,8 +74,10 @@ it.
 
 The launcher opens the app's own live-log window by default, because the
 recorder bot posts consent and streams logs the owner must see, and that
-window is also how the owner quits — close it, Cmd-Q, or the Quit menu, and
-exactly one copy runs, by construction of the run verb. A `--headless` mode
+window is also how the owner controls the service — Restart it in place
+(Cmd-R or the Restart menu item) to pick up a change or clear a stuck bot, or
+quit it (close the window, Cmd-Q, or the Quit menu) — and exactly one copy
+runs, by construction of the run verb. A `--headless` mode
 redirects output to a logfile with no window (an `LSUIElement` agent), but
 only for a background service that needs no live interaction and whose stop
 is handled elsewhere; a consent-gated recorder should never be headless. `--name` sets the app's
@@ -85,7 +95,10 @@ every OS it asserts the pure builders and the Windows path: the Swift
 supervisor source delegates to the run verb, launches the service as the
 app's own child in a new process group and kills that group on quit, streams
 the log into its own monospaced `NSTextView`/`NSScrollView` with a Quit item
-on Cmd-Q and no Terminal/osascript/`tail` machinery at all; the `Info.plist`
+on Cmd-Q and a Restart item on Cmd-R (child launch factored into one
+`startService` used at launch and restart, and a `restarting` flag routing a
+restart-triggered exit to relaunch rather than app-quit), and no
+Terminal/osascript/`tail` machinery at all; the `Info.plist`
 carries the per-app `quest.eddic.launcher.<slug>` identifier, the app's name
 as executable and display name, and a microphone usage string (with
 `LSUIElement` under `--headless`); the Windows path emits a CRLF `.cmd`

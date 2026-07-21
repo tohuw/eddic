@@ -277,12 +277,35 @@ def esc(text):
             .replace(">", "&gt;").replace('"', "&quot;"))
 
 
+def raw_href(rel):
+    """The page-relative .html path a page renders to (unescaped). The
+    Atlas sits at the tree root, so this resolves both locally and behind
+    the ASSETS binding."""
+    return rel[:-3] + ".html" if rel.endswith(".md") else rel
+
+
 def href_for(rel):
-    """A player/DM page renders to .html at the same relative path; the
-    Atlas sits at the tree root, so a page-relative href resolves both
-    locally and behind the ASSETS binding."""
-    raw = rel[:-3] + ".html" if rel.endswith(".md") else rel
-    return esc(raw)
+    """HTML-attribute-safe form of raw_href for the inline SVG."""
+    return esc(raw_href(rel))
+
+
+def adjacency(nodes, edges):
+    """Per-node inbound/outbound adjacency, computed by inverting the
+    already-resolved, already-sorted edge set — no new parsing. Returns
+    (inbound, outbound), each mapping node id -> sorted list of node ids.
+    Because `edges` is globally sorted by (src, dst), every appended list
+    comes out sorted, so the emitted data is byte-stable. This is the
+    'what links here' relation: inbound[p] is exactly the pages whose
+    resolved links point at p. On the player Atlas the source tree is the
+    projection, whose closure guarantees every such page is itself a
+    player page — so no DM page is representable here by construction."""
+    ids = [n["id"] for n in nodes]
+    inbound = {i: [] for i in ids}
+    outbound = {i: [] for i in ids}
+    for s, d in edges:
+        outbound[s].append(d)
+        inbound[d].append(s)
+    return inbound, outbound
 
 
 def render_html(nodes, edges, pos, cats, mode, site_name):
@@ -320,7 +343,7 @@ def render_html(nodes, edges, pos, cats, mode, site_name):
         tip = n["label"] + (f" [{', '.join(flags)}]" if flags else "")
         parts.append(
             f'<a class="{cls}" href="{href_for(n["id"])}" '
-            f'aria-label="{esc(n["label"])}">'
+            f'data-id="{esc(n["id"])}" aria-label="{esc(n["label"])}">'
             f'<circle cx="{x:.2f}" cy="{y:.2f}" r="{r:.2f}" '
             f'fill="{color[n["category"]]}"/>'
             f'<title>{esc(tip)}</title>'
@@ -333,12 +356,27 @@ def render_html(nodes, edges, pos, cats, mode, site_name):
         f'<span class="key"><i style="background:{color[c]}"></i>'
         f'{esc(c)}</span>' for c in cats)
 
+    # Backlinks data: per-node inbound ("mentioned by") and outbound
+    # ("links to") adjacency, inverted from the resolved edge set, plus a
+    # label/href lookup. Sorted, ascii-escaped JSON => byte-stable; the
+    # "<" escape closes any theoretical </script> breakout in a title.
+    inbound, outbound = adjacency(nodes, edges)
+    meta = {n["id"]: {"l": n["label"], "h": raw_href(n["id"])} for n in nodes}
+    panel_obj = {
+        "nodes": meta,
+        "in": {k: v for k, v in inbound.items() if v},
+        "out": {k: v for k, v in outbound.items() if v},
+    }
+    panel_data = json.dumps(
+        panel_obj, sort_keys=True, separators=(",", ":"),
+        ensure_ascii=True).replace("<", "\\u003c")
+
     title = f"Atlas — {esc(site_name)}" if site_name else f"Atlas ({mode})"
     site_hdr = f" &mdash; {esc(site_name)}" if site_name else ""
     return HTML_TEMPLATE.format(
         title=title, mode=esc(mode), site_hdr=site_hdr,
         node_count=len(nodes), edge_count=len(edges),
-        viewbox=vb, svg_body=svg_body, legend=legend)
+        viewbox=vb, svg_body=svg_body, legend=legend, panel_data=panel_data)
 
 
 HTML_TEMPLATE = """<!doctype html>
@@ -391,6 +429,32 @@ HTML_TEMPLATE = """<!doctype html>
   .node:hover text {{ opacity: 1; }}
   .node.dim circle {{ opacity: 0.4; }}
   .node.dim text {{ font-style: italic; }}
+  .node.sel circle {{ stroke: var(--accent); stroke-width: 2.4; }}
+  .node.sel text {{ opacity: 1; }}
+  #panel {{
+    position: absolute; top: 4.2rem; right: 1rem; width: 17rem;
+    max-width: calc(100vw - 2rem); max-height: calc(100vh - 6rem);
+    overflow: auto; background: var(--card); color: var(--ink);
+    border: 1px solid var(--rule); border-radius: 6px;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.18); padding: 0.7rem 0.9rem;
+    font-size: 0.9rem;
+  }}
+  #panel[hidden] {{ display: none; }}
+  #panel h2 {{ margin: 0 1.4rem 0.15rem 0; font-size: 1rem; }}
+  #panel h3 {{ margin: 0.7rem 0 0.2rem; font-size: 0.72rem;
+    text-transform: uppercase; letter-spacing: 0.06em; color: var(--faint); }}
+  #panel ul {{ margin: 0; padding: 0; list-style: none; }}
+  #panel li {{ margin: 0.1rem 0; }}
+  #panel a {{ color: var(--accent); text-decoration: none; }}
+  #panel a:hover {{ text-decoration: underline; }}
+  #panel .open {{ display: inline-block; font-size: 0.82rem; }}
+  #panel .empty {{ color: var(--faint); font-style: italic; }}
+  #panel-close {{
+    position: absolute; top: 0.4rem; right: 0.5rem; border: 0;
+    background: none; color: var(--faint); font-size: 1.2rem;
+    line-height: 1; cursor: pointer; padding: 0.1rem 0.3rem;
+  }}
+  #panel-close:hover {{ color: var(--ink); }}
   footer {{ padding: 0.4rem 1rem; border-top: 1px solid var(--rule);
     color: var(--faint); font-size: 0.78rem; }}
 </style>
@@ -407,9 +471,17 @@ HTML_TEMPLATE = """<!doctype html>
 {svg_body}
 </g>
 </svg>
-<footer>Drag to pan, scroll to zoom, click a page to open it. Dimmed =
-stub, orphan, or unreachable.</footer>
+<aside id="panel" hidden>
+  <button id="panel-close" type="button" aria-label="Close">&times;</button>
+  <h2 id="panel-title"></h2>
+  <a id="panel-open" class="open" href="#">Open this page &rarr;</a>
+  <section id="panel-in"><h3>Mentioned by</h3><ul></ul></section>
+  <section id="panel-out"><h3>Links to</h3><ul></ul></section>
+</aside>
+<footer>Drag to pan, scroll to zoom, click a page for its backlinks;
+open it from the panel. Dimmed = stub, orphan, or unreachable.</footer>
 <script>
+var ATLAS_DATA = {panel_data};
 (function() {{
   var svg = document.getElementById('atlas');
   var vp = document.getElementById('viewport');
@@ -433,9 +505,62 @@ stub, orphan, or unreachable.</footer>
     moved = true; tx = e.clientX - px; ty = e.clientY - py; apply();
   }});
   window.addEventListener('pointerup', function() {{ drag = false; }});
+
+  // Backlinks panel: click a node to inspect its inbound ("mentioned
+  // by") and outbound ("links to") pages, computed from the inverted
+  // edge set. The node's own page opens from the panel, so a plain
+  // click no longer navigates — it selects.
+  var data = ATLAS_DATA;
+  var panel = document.getElementById('panel');
+  var pTitle = document.getElementById('panel-title');
+  var pOpen = document.getElementById('panel-open');
+  var inList = document.querySelector('#panel-in ul');
+  var outList = document.querySelector('#panel-out ul');
+  var selected = null;
+  function fill(ul, ids) {{
+    ul.textContent = '';
+    if (!ids || !ids.length) {{
+      var li = document.createElement('li');
+      li.className = 'empty';
+      li.textContent = 'none';
+      ul.appendChild(li);
+      return;
+    }}
+    ids.forEach(function(id) {{
+      var meta = data.nodes[id] || {{ l: id, h: '#' }};
+      var li = document.createElement('li');
+      var a = document.createElement('a');
+      a.setAttribute('href', meta.h);
+      a.textContent = meta.l;
+      li.appendChild(a);
+      ul.appendChild(li);
+    }});
+  }}
+  function select(el) {{
+    var id = el.getAttribute('data-id');
+    var meta = data.nodes[id];
+    if (!meta) return;
+    if (selected) selected.classList.remove('sel');
+    selected = el;
+    el.classList.add('sel');
+    pTitle.textContent = meta.l;
+    pOpen.setAttribute('href', meta.h);
+    fill(inList, data['in'][id]);
+    fill(outList, data.out[id]);
+    panel.hidden = false;
+  }}
+  function close() {{
+    panel.hidden = true;
+    if (selected) {{ selected.classList.remove('sel'); selected = null; }}
+  }}
+  document.getElementById('panel-close').addEventListener('click', close);
   document.querySelectorAll('a.node').forEach(function(a) {{
-    a.addEventListener('click', function(e) {{ if (moved) e.preventDefault(); }});
+    a.addEventListener('click', function(e) {{
+      e.preventDefault();
+      if (!moved) {{ e.stopPropagation(); select(a); }}
+    }});
   }});
+  svg.addEventListener('click', function() {{ if (!moved) close(); }});
 }})();
 </script>
 </body>

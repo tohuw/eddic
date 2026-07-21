@@ -1,13 +1,16 @@
 name: atlas
-version: 0.1.1
+version: 0.2.0
 summary: >
   Renders the campaign wiki's cross-link graph as one self-contained,
   firewall-safe, interactive map: nodes are pages (sized by degree,
   coloured by category, dimmed if stub/orphan/unreachable), edges are
-  the resolved .md->.md links the linter validates. A deterministic,
-  seeded radial layout makes the same tree yield a byte-identical
-  atlas.html. The player Atlas is built from the projection only, so
-  its closure guarantees no DM page or DM-only edge can appear.
+  the resolved .md->.md links the linter validates. Selecting a node
+  opens a per-page backlinks panel — "mentioned by" (inbound) and
+  "links to" (outbound), each clickable through — computed by inverting
+  that same resolved edge set. A deterministic, seeded radial layout
+  makes the same tree yield a byte-identical atlas.html. The player
+  Atlas is built from the projection only, so its closure guarantees no
+  DM page or DM-only edge can appear — including in the backlinks.
 touches:
   - dist/site/atlas.html
   - .eddic/lib/graph.py

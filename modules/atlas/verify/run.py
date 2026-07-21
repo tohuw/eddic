@@ -13,7 +13,11 @@ offline. Asserts:
   (d) the resolver matches eddic_lint.py: orphan and unreachable sets
       (pure functions of the resolved edge graph) agree, and the shared
       primitives (slugify, split_frontmatter, strip_code, link_targets)
-      are identical.
+      are identical;
+  (e) the per-node backlinks adjacency is the exact inversion of the
+      resolved edge set, the panel markup and data are present in the
+      emitted HTML, and the player-mode backlinks reference only player
+      pages — the planted DM page cannot surface as anyone's backlink.
 """
 
 import importlib.util
@@ -96,6 +100,21 @@ def main():
                            n["is_orphan"], n["is_unreachable"]) for n in nodes}
     check(results, got_nodes == GOLDEN_NODES, f"golden nodes (got {got_nodes})")
 
+    # (e) backlinks: per-node adjacency is the exact inversion of the edge
+    # set. Recompute the expected inversion here, independently of the
+    # module, straight from the golden edges, and pin the module's
+    # adjacency() equal to it (sorted lists, all nodes keyed).
+    exp_in = {rel: [] for rel in pages}
+    exp_out = {rel: [] for rel in pages}
+    for s, d in sorted(GOLDEN_EDGES):
+        exp_out[s].append(d)
+        exp_in[d].append(s)
+    inbound_adj, outbound_adj = graph.adjacency(nodes, edges)
+    check(results, inbound_adj == exp_in,
+          f"backlinks: inbound is the edge-set inversion (got {inbound_adj})")
+    check(results, outbound_adj == exp_out,
+          f"backlinks: outbound matches the edge set (got {outbound_adj})")
+
     # (d) resolver matches eddic_lint.py on the shared master.
     findings = lint.lint(master, "log.md")
     lint_orphan = {f["path"] for f in findings if f["code"] == "orphan"}
@@ -135,11 +154,25 @@ def main():
           "player Atlas contains NO DM page")
     check(results, "warden.html" in html,
           "player Atlas does contain a player page node")
+    # the backlinks panel and its data are present in the emitted markup.
+    check(results, 'id="panel"' in html and "var ATLAS_DATA = " in html
+          and "Mentioned by" in html,
+          "player Atlas emits the backlinks panel markup and data")
     # the DM->player edge cannot exist because its source node is gone
     ppages = graph.load_pages(proj, "log.md")
     pedges, _ = graph.resolve_graph(proj, ppages)
     check(results, all(s != "lore/secret.md" for s, _ in pedges),
           "player Atlas contains NO DM-only edge")
+    # the player backlinks reference ONLY player pages: the planted DM
+    # page appears nowhere — not as a key, an inbound, or an outbound.
+    pnodes = graph.build_nodes(ppages, pedges,
+                               graph.resolve_graph(proj, ppages)[1])
+    p_in, p_out = graph.adjacency(pnodes, pedges)
+    leaked = ("lore/secret.md" in p_in or "lore/secret.md" in p_out
+              or any("lore/secret.md" in v for v in p_in.values())
+              or any("lore/secret.md" in v for v in p_out.values()))
+    check(results, not leaked,
+          "player backlinks reference only player pages (no DM page)")
 
     # a DM-mode atlas over the master, by contrast, DOES see the breach,
     # proving mode selection (source-tree choice) is the firewall.

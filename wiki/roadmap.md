@@ -322,7 +322,10 @@ under the contract.
   projection/firewall model. Trigger: a non-D&D campaign adopting Eddic, or a
   public positioning pass that shouldn't over-index on one system.
 - **Atlas follow-ons (DM tier + backlinks).** ([#17](https://github.com/tohuw/eddic/issues/17)) The [atlas](modules/atlas.md)
-  module shipped v1 as the player map. Two extensions were designed alongside it
+  module shipped v1 as the player map. **Per-page backlinks are now shipped in
+  atlas 0.2.0** — a node panel showing "mentioned by / links to", inverted from
+  the resolved edge set, firewall-inherited on the player tier. The DM-tier
+  Atlas remains open (tracked as #17). Two extensions were designed alongside it
   and fold into the same module. (1) **A DM-tier Atlas** — the same map built
   from the master wiki, with the linter's orphan/stub/unreachable signals
   rendered dimmed so the archive's health is spatial, not a table; served only

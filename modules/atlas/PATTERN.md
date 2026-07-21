@@ -3,6 +3,10 @@
 Renders the wiki's cross-link graph as one self-contained interactive
 map — pages as nodes, resolved `.md` links as edges — so a reader can
 see the shape of the world and jump from any page to its neighbours.
+Selecting a node opens a per-page backlinks panel — who *mentions* this
+page (inbound) and what it *links to* (outbound), each a click through —
+computed by inverting the same resolved edge set, so it needs no new
+authoring or parsing and inherits the firewall for free.
 The player Atlas is built from the projection, and that closure (a
 player page can only link player pages) is the whole firewall story:
 no DM page and no DM-only edge can appear, because neither is in the
@@ -70,6 +74,18 @@ Atlas simply reflects whatever the wiki says now.
   nav link to `/atlas.html` if the template makes that clean; otherwise
   leave the file reachable by direct URL. The Atlas works standalone
   either way — do not restructure a template to force a link in.
+- **Backlinks panel.** Default: on, and there is nothing to configure.
+  Clicking a node no longer navigates straight to the page — it selects
+  the node and opens a small "mentioned by / links to" panel; the page
+  itself opens from the panel's link (or middle-click/open-in-new-tab on
+  the node, whose `href` is preserved). The panel is built by inverting
+  the resolved edge set at render time, emitted as sorted inline JSON, so
+  it stays deterministic and byte-identical and adds no library, asset,
+  or request. It is firewall-correct by construction: the player Atlas is
+  built from the projection, whose closure guarantees every inbound page
+  is itself a player page, so a DM page can never appear as a backlink —
+  the same seam that governs the nodes governs the panel. Leave it on;
+  the graph is only half-legible without a per-node local view.
 - **Palette.** Default: the Atlas matches the stock site shell
   (parchment/dark via `prefers-color-scheme`, category colours from a
   fixed accessible palette) and needs no assets or external requests.
@@ -86,7 +102,10 @@ Atlas simply reflects whatever the wiki says now.
   breach cannot reach the player build); (c) determinism — the same
   input yields a byte-identical `atlas.html` across two runs; (d) the
   resolver matches `eddic_lint.py` (orphan/unreachable sets agree and
-  the shared primitives are identical). It also confirms `--mode` is
+  the shared primitives are identical); and (e) the per-node backlinks
+  data is the exact inversion of the edge set, is present in the markup,
+  and — in player mode — references only player pages (the planted DM
+  page cannot appear as anyone's backlink). It also confirms `--mode` is
   required and that a DM-mode Atlas over the master, by contrast, does
   see the page — proving the source-tree choice is the firewall.
 - In the real campaign: run `eddic graph --mode player`, open
