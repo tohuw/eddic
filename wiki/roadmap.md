@@ -358,6 +358,25 @@ under the contract.
   "the party" page so it is git-tracked and diffable) and how to handle
   between-places / unnamed stops. Trigger: a campaign with enough map that
   "wait, where are we?" is a real question at the table.
+- **Discord server template: roles, categories, permissions.** The
+  [discord-setup](modules/discord-setup.md) module reconciles a server's
+  standing spec today (channels, additive-only, lint-style drift). Extend the
+  spec to the three things standing up a fresh D&D server actually needs. (1)
+  **Role creation** — declare the roles a campaign uses (a player role, a
+  spectator role, per-table roles), created idempotently and captured back into
+  config so the ping/quorum roles convene and the recorder already consume
+  auto-wire to them instead of being hand-set. (2) **Category nesting** —
+  channels declared under categories (a table category, an OOC category, a
+  DM-only category) so the reconcile places each channel in the right parent.
+  (3) **Permission overwrites** — per-role, per-channel/category: the firewall's
+  social half, so the player role sees the table channels, the DM keeps a
+  private planning category, and `@everyone` is scoped. All declarative,
+  additive-only, and drift-linted like the current spec, so one `discord-setup`
+  run stands up a playable server from a single file. Open questions: whether to
+  add a marked, confirmed **enforce** mode (additive-only is safe but can't fix a
+  *wrong* permission or a mis-nested channel), and how role/category IDs flow
+  back into config for auto-wiring. Trigger: onboarding a brand-new server
+  rather than adapting an existing one.
 
 ## Related pages
 
