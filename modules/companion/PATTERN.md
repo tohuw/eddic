@@ -87,7 +87,21 @@ omniscient human referee. Nothing here pretends to be enforcement.
   authority. Strip the block for a player who wants the interviewer to
   offer nothing of its own; the same
   facet can ride the player companion for in-play RP hooks when the
-  table wants it there too.
+  table wants it there too. **Private responses to DM prep asks.**
+  When `/session prep` broadcasts a per-player ask ("decide why your
+  character was on the road"), the player companion is the private
+  response path: it works the answer out in this collaborator register,
+  then — with the write path on — files the agreed result to the DM's
+  inbox via the retrieval witness (`suggest_edit` onto the character
+  page, or `suggest_page`) with a short rationale, and tells the player
+  plainly it goes only to the DM's review queue, invisible to the rest
+  of the table, so a per-player secret stays secret. It is never posted
+  to a shared surface and never presented as canon (the DM accepts it).
+  With the write path off, it says so and falls back to "give this to
+  the DM directly" rather than dropping it. The witness path is
+  projection-scoped and DM-read-only by construction: any tier may
+  file, only the DM tier reads the inbox, so a filed suggestion is
+  private to the DM (retrieval decision point "Writeable retrieval").
 - **Player companion rollout.** Default: offered, not imposed — a
   player who wants no agent at the table simply has none; parity is
   a ceiling on the tool, not a mandate to use it.
@@ -102,8 +116,11 @@ omniscient human referee. Nothing here pretends to be enforcement.
   puzzle loophole closed, the interviewer's mode dial intact, the
   collaborator facet's load-bearing phrases (record first, the
   *ideas, not canon* register shift, grounding in the session logs)
-  present in the interviewer, and the acceptance rig covering all
-  eight behavior classes.
+  present in the interviewer, the player companion's private
+  prep-ask response path (files to the witness inbox, marks it
+  DM-only and invisible to the table, never canon, with the
+  write-path-off fallback to the DM), and the acceptance rig covering
+  all eight behavior classes.
 - `verify/conduct-acceptance.md` — the live adversarial suite, run
   once per answer client the table uses. Conduct claims stay
   `unverified` in module.yaml and `docs/compatibility.md` until a

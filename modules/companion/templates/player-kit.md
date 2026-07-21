@@ -64,8 +64,15 @@ It will **never decide or roll for you** — the pick and the dice stay
 yours. It **can't spoil the DM's secrets**: it only ever sees the
 player-visible version of the world, so a mystery reads as a mystery, not
 as "I'm not allowed to say." And it will **never write your character for
-you** — your story is yours. The game stays louder than the companion;
-that's the point.
+you** — your story is yours.
+
+When the DM asks *you* to settle something between sessions — a piece of
+your own backstory, why your character was somewhere — it can help you
+work it out and then **file your answer straight to the DM's private
+review queue**, seen by no one else at the table, so an ask meant just
+for you stays just for you. (If your table hasn't turned that path on, it
+says so and tells you to hand the answer to the DM directly.) The game
+stays louder than the companion; that's the point.
 
 <details class="manual-setup">
 

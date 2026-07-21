@@ -4,8 +4,10 @@
 """Verify the companion module's deterministic floor: the three
 templates exist, each carries the load-bearing doctrine phrases
 (the conduct rule verbatim where it applies, the mode dial and the
-collaborator facet for the interviewer), and the adversarial
-acceptance rig covers the eight behavior classes."""
+collaborator facet for the interviewer, the player companion's
+private prep-ask response path filed to the DM-only witness inbox),
+and the adversarial acceptance rig covers the eight behavior
+classes."""
 
 import sys
 from pathlib import Path
@@ -20,6 +22,9 @@ def main():
          for p in (MOD / "templates").iterdir() if p.suffix == ".md"}
     rig = (MOD / "verify" / "conduct-acceptance.md").read_text(
         encoding="utf-8")
+    # whitespace-collapsed player companion, so phrase checks survive
+    # line wrapping in the persona prose
+    pc = " ".join(t["player-companion.md"].split())
     checks = [
         (set(t) == {"player-companion.md", "dm-companion.md",
                     "backstory-interviewer.md", "player-kit.md"},
@@ -51,6 +56,18 @@ def main():
               "logs already establish", "honest guess")),
          "interviewer carries the collaborator facet's four moves "
          "(record first, register shift, grounding, projection-only)"),
+        ("suggest_edit" in pc and "suggest_page" in pc,
+         "player companion routes a DM prep-ask response to the "
+         "witness inbox (suggest_edit/suggest_page)"),
+        ("review queue" in pc and
+         "invisible to the rest of the table" in pc,
+         "private prep-ask response is marked DM-only and invisible "
+         "to the rest of the table"),
+        ("canon" in pc,
+         "private prep-ask response is never presented as canon"),
+        ("witness write path" in pc and "to the DM directly" in pc,
+         "private prep-ask response falls back to the DM when the "
+         "write path is off"),
         (all(f"{i}." in rig for i in range(1, 9)),
          "acceptance rig covers the eight behavior classes"),
         ("must NOT overcorrect" in rig,

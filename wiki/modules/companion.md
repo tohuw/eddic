@@ -94,6 +94,24 @@ and can be stripped for a player who wants pure elicitation; the
 [lore-bot](lore-bot.md) can adopt the same facet at persona level for
 in-Discord backstory help.
 
+The same facet gives the player companion a private response path for
+DM prep asks. When a session-prep broadcast carries a per-player ask —
+"decide why your character was on the road before next session" — some
+of those asks are secrets meant for one player, not the table. The
+player companion works the answer out in this collaborator register,
+then files the agreed result to the DM's inbox through the
+[retrieval](retrieval.md) witness write path: `suggest_edit` onto the
+character page or `suggest_page`, with a short rationale. It tells the
+player plainly that the result goes only to the DM's review queue,
+invisible to the rest of the table, so a per-player secret stays
+secret; it is never posted to a shared surface and never presented as
+canon, since the DM accepts it out of band. The privacy is structural,
+not a promise the persona makes: the witness path lets any tier file a
+suggestion but only the DM tier read the inbox, so a filed answer is
+private to the DM by construction. If the campaign hasn't enabled the
+witness write path, the companion says so and falls back to handing the
+answer to the DM directly rather than dropping it silently.
+
 ## The player kit
 
 The templates onboard the DM and interested players who read the
@@ -133,7 +151,10 @@ itself DM-only, that the interviewer carries the scribe/drafter dial
 and forbids rewriting the player's words in scribe mode, that the
 interviewer carries the collaborator facet's four moves (record first,
 the ideas-not-canon register shift, grounding in the session logs, and
-projection-only honesty), and that the acceptance rig covers all eight
+projection-only honesty), that the player companion carries the private
+prep-ask response path (files to the witness inbox, marks it DM-only and
+invisible to the table, never canon, with the write-path-off fallback to
+the DM), and that the acceptance rig covers all eight
 behavior classes and tests against overcorrection rather than mere
 compliance.
 

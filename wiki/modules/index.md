@@ -22,7 +22,7 @@ companion layer on once the campaign is live.
 | [lore-bot](lore-bot.md) | the Discord lore-keeper: answers the table's questions from the player projection (corpus prompt-cached), self-refreshing by polling per the freshness contract; the convene session-lifecycle capability rides it | 0.3.2 |
 | [transcriber](transcriber.md) | local whisper.cpp session transcription, per-speaker merge | 0.1.0 |
 | [contribs](contribs.md) | the transaction arc: overlays, hash-pinned consent, derivation-graph rights, the sale-build fence | 0.1.0 |
-| [companion](companion.md) | at-the-table companions under the knowledge-parity doctrine; backstory interviewer with collaborator facet; single-source player kit handed off as one companion-page URL | 0.2.0 |
+| [companion](companion.md) | at-the-table companions under the knowledge-parity doctrine; backstory interviewer with collaborator facet; single-source player kit handed off as one companion-page URL; private responses to DM prep asks filed to the DM-only inbox | 0.2.1 |
 | [orlog](orlog.md) | fork-first timeline reconciliation and the time-question query cookbook | 0.1.0 |
 | [routines](routines.md) | the maintenance-routine contract and runner chain; freshness loop and the agentic semantic-review as standard routines, the latter runnable as a hosted cloud routine | 0.3.0 |
 | [capture](capture.md) | session audio by the table's route (free Craig default), staged for local transcription, no folder navigation | 0.1.0 |
