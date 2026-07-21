@@ -9,7 +9,7 @@ shares the archivist's always-on lifecycle exactly, convene rides the one
 existing hosting process and adds zero new spend and no second host. It
 depends on the [lore-bot](lore-bot.md) module being applied and deployed
 first, and targets that bot's Discord library. Its current release is
-0.3.0.
+0.4.0.
 
 Convene drives Discord's own Guild Scheduled Events rather than rebuilding
 them. The event card, the "interested" list, and the live countdown remain
@@ -18,6 +18,25 @@ the native event it supplies the things the platform and generic
 scheduling bots cannot: quorum, lifecycle nudges, recap announcement, the
 reveal digest for pages newly opened to players, and the between-sessions
 prep ask.
+
+## Sessions and other events
+
+By default convene treats every scheduled event as a session, so a calendar
+used only for play needs no configuration. When the same guild schedules
+movie nights, one-shots, or planning calls alongside sessions, a keyword —
+set from Discord with `/session keyword <word>`, with the env `SESSION_MATCH`
+as a first-boot bootstrap — tells convene which entries are sessions: an event
+is a session iff its name contains that keyword, case-insensitively, and
+everything else is a non-session. The slash setting persists in the state
+file and wins over the env; `/session keyword` with no word clears it, so
+every event is a session again. A non-session gets a single light
+heads-up — one neutral "a new event is on the calendar" notice, pinging the
+session role, posted to the auto-events channel on first sight and tracked by
+event id so it never repeats — and receives nothing further: no quorum, no
+at-risk flag, no go-ahead, and no stage-and-transcribe nudge. That one
+announce is convene's entire involvement with a non-session. Leaving
+`SESSION_MATCH` unset preserves the original behaviour exactly, so existing
+deployments are unaffected.
 
 ## Quorum
 
@@ -103,11 +122,13 @@ Two layers compose. An environment baseline is the durable floor that
 survives a host redeploy wiping local state: the maintainer and DM
 identities (the DM defaulting to the maintainer when they are the same
 person), the quorum count and DM-required switch, the player role, the
-ping role, and the one auto-events channel. Convene also reuses the
+ping role, and the one auto-events channel. An optional `SESSION_MATCH`
+keyword scopes which calendar entries are sessions (see Sessions and other
+events above); left unset, every event is a session. Convene also reuses the
 bot's site URL for recap links. On top of that the DM tunes settings live
 through slash commands that use Discord's native pickers, so no IDs are
 pasted: `/session dm`, `/session quorum`, `/session role`, `/session
-channel`, plus `/session prep` and `/session status`. The configuring
+channel`, `/session keyword`, plus `/session prep` and `/session status`. The configuring
 commands are gated to the maintainer. Slash
 settings persist in the state file and win over the environment while that
 state lives; once a redeploy wipes it, the environment is the fallback.
@@ -128,6 +149,10 @@ The scheduling source defaults to convene, but a table wanting only a
 calendar and reminders can keep the free Apollo bot untouched; convene
 earns its place only for quorum, lifecycle orchestration, and recap
 announcement, and a table that wants none of those simply never enables it.
+Whether a scheduled event is a session defaults to yes for every event,
+backward-compatibly; setting a keyword with `/session keyword <word>` (env
+`SESSION_MATCH` is the bootstrap/fallback) carves out non-sessions, which get
+a one-time light heads-up and nothing more.
 The quorum shape, the RSVP model (the native "interested" button counts as
 attending, honest that it is interest and not a commitment), the reminder
 wording, the prep voice, and the recorder nudge are each set to a sensible
@@ -159,7 +184,13 @@ player pages yields one batched delta of exactly those pages, a re-poll adds
 nothing, DM-only pages never appear, and a simulated restart re-announces
 nothing — along with two durability regressions: a reminder due while the
 announce channel is unset stays unfired until a channel exists, and a corrupt
-state file loads as empty rather than crashing the bot at import. The
+state file loads as empty rather than crashing the bot at import.
+Session-vs-other-event handling is golden-tested as well: with a keyword set,
+a name-matching event runs the full session lifecycle while a non-matching one
+yields exactly one heads-up and never quorum, at-risk, imminent, or ended; that
+heads-up is idempotent per event id; with no keyword every event is a session,
+back-compatibly; and the new heads-up template validates through the same
+override machinery. The
 live driving of real scheduled events is proven separately, once deployed,
 and is treated as unproven until that pass is recorded.
 

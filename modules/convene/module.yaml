@@ -1,5 +1,5 @@
 name: convene
-version: 0.3.1
+version: 0.4.0
 summary: >
   Session lifecycle as a capability of the always-on lore bot: drives
   Discord's native scheduled events, adds quorum (a session runs iff
@@ -17,6 +17,13 @@ summary: >
   fired when the announce channel is unset (they re-fire once one
   exists), and the state file is written atomically and parsed
   defensively so a crash mid-write can't wedge the bot at startup.
+  0.4.0 adds session-vs-other-event handling: SESSION_MATCH identifies a
+  session by name keyword (case-insensitive), so a shared calendar can
+  carry movie nights and one-shots alongside sessions. Unset, every event
+  is a session as before (backward-compatible); set, only name-matching
+  events run the quorum lifecycle while anything else gets one neutral
+  "new event on the calendar" heads-up (the new EVENT reminder) and
+  nothing more — no quorum, no DM mention, no lifecycle nudges.
 touches:
   - lore-bot
 depends:

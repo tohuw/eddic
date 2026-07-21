@@ -45,6 +45,13 @@ PREP = "prep"
 # projection into one "the veil lifts" post. They share the same
 # override/translation machinery.
 REVEAL, REVEAL_ITEM = "reveal", "reveal_item"
+# EVENT is the one neutral heads-up a NON-session scheduled event gets.
+# When SESSION_MATCH carves sessions out by name keyword, everything that
+# is not a session announces once on first sight and convene then stays
+# out — no quorum, no lifecycle, no DM framing. It is event-tracked and
+# fired-once like the lifecycle reminders (recurrence is id-keyed), but
+# evaluate() emits it only for non-session events.
+EVENT = "event"
 
 REMINDERS = {
     CREATED:  "{ping}A session is on the calendar: **{title}**, {when}. "
@@ -70,6 +77,11 @@ REMINDERS = {
     REVEAL:      "{ping}The veil lifts — {count} new page(s) in the "
                  "archive:\n{entries}",
     REVEAL_ITEM: "• **{title}**{link}",
+    # EVENT: the single neutral heads-up a non-session event gets. It pings
+    # the session role like CREATED ({ping}) but carries no quorum, no DM
+    # mention, no session framing — convene's entire involvement with a
+    # calendar entry that is not a session.
+    EVENT:    "{ping}A new event is on the calendar: **{title}**, {when}.",
 }
 
 AT_RISK_WINDOW_H = 36     # flag the DM this many hours out if short
@@ -77,15 +89,24 @@ IMMINENT_WINDOW_H = 2     # the go/no-go nudge
 
 
 def evaluate(session, now, quorum, require_dm=True,
-             at_risk_h=AT_RISK_WINDOW_H, imminent_h=IMMINENT_WINDOW_H):
+             at_risk_h=AT_RISK_WINDOW_H, imminent_h=IMMINENT_WINDOW_H,
+             is_session=True):
     """The reminder keys due now and not yet fired, for one tracked
-    session. Pure — no clock, no Discord.
+    event. Pure — no clock, no Discord.
 
     session: {start: epoch, count: int, dm_in: bool,
               status: scheduled|active|completed|canceled,
               fired: iterable[str]}
+
+    is_session: True (default) runs the full quorum lifecycle — the
+    backward-compatible path when no session keyword is configured. False
+    means the caller classified this as a NON-session calendar entry: it
+    gets exactly one neutral EVENT heads-up on first sight (fired-once by
+    id) and no quorum, AT_RISK, IMMINENT, or ENDED ever.
     """
     fired = set(session.get("fired", ()))
+    if not is_session:
+        return [] if EVENT in fired else [EVENT]
     status = session.get("status", "scheduled")
     hours_out = (session["start"] - now) / 3600.0
     met = session["count"] >= quorum and (
@@ -105,6 +126,16 @@ def evaluate(session, now, quorum, require_dm=True,
     if 0 < hours_out <= imminent_h and met and IMMINENT not in fired:
         due.append(IMMINENT)
     return due
+
+
+def is_session_name(name, session_match):
+    """Classify a scheduled event by name keyword. Pure. An empty
+    session_match ⇒ every event is a session (the backward-compatible
+    default). Otherwise an event is a session iff its name contains the
+    keyword, case-insensitively — everything else is a non-session that
+    gets one neutral heads-up and no lifecycle."""
+    return (not session_match
+            or session_match.lower() in (name or "").lower())
 
 
 def load_messages(path, defaults=None):
@@ -227,8 +258,19 @@ def setup(client):
     SITE_URL = os.environ.get("SITE_URL", "").rstrip("/")
     TICK = envint("REFRESH_MINUTES", 5) * 60
     DURATION_S = envint("SESSION_DURATION_HOURS", 4) * 3600
+    # SESSION_MATCH carves sessions out of a shared calendar by name
+    # keyword. Unset/empty ⇒ every scheduled event is a session (the
+    # original behaviour, unchanged). Set ⇒ an event is a session iff its
+    # name contains the keyword, case-insensitively; anything else is a
+    # non-session that gets one neutral heads-up and nothing more.
+    SESSION_MATCH = os.environ.get("SESSION_MATCH", "")
     MESSAGES = load_messages(
         HERE / os.environ.get("CONVENE_MESSAGES", "convene_messages.json"))
+
+    def is_session_event(name):
+        # Precedence: the persisted slash-set keyword wins, else the
+        # SESSION_MATCH env bootstrap, else empty (every event a session).
+        return is_session_name(name, cfg["session_match"])
 
     tree = app_commands.CommandTree(client)
     state = load_state(STATE_FILE)
@@ -245,6 +287,7 @@ def setup(client):
         "player_role": os.environ.get("PLAYER_ROLE", ""),
         "role_id": envint("SESSION_ROLE_ID"),
         "announce_channel_id": envint("ANNOUNCE_CHANNEL_ID"),
+        "session_match": SESSION_MATCH,
     }
     cfg = {**defaults, **state.get("settings", {})}
 
@@ -333,8 +376,10 @@ def setup(client):
                                "fired": rec["fired"]}
                     ping = (f"<@&{cfg['role_id']}> " if cfg["role_id"]
                             else "")
-                    for key in evaluate(session, now, cfg["quorum"],
-                                        require_dm=require_dm):
+                    for key in evaluate(
+                            session, now, cfg["quorum"],
+                            require_dm=require_dm,
+                            is_session=is_session_event(event.name)):
                         if chan is None:
                             # No announce channel configured yet: leave the
                             # reminder unfired so it re-fires once one is set
@@ -405,6 +450,21 @@ def setup(client):
         save()
         await inter.response.send_message(
             f"Sessions will ping {role.mention}.", ephemeral=True)
+
+    @grp.command(name="keyword",
+                 description="Word a session's title must contain (omit "
+                 "to treat every event as a session)")
+    async def keyword_cmd(inter, word: str = ""):
+        if not await _gate(inter):
+            return
+        cfg["session_match"] = word.strip()
+        save()
+        if cfg["session_match"]:
+            msg = (f"Events whose title contains **{cfg['session_match']}** "
+                   "are now sessions.")
+        else:
+            msg = "Cleared — every event is treated as a session again."
+        await inter.response.send_message(msg, ephemeral=True)
 
     @grp.command(name="channel",
                  description="Channel for session reminders")
@@ -570,8 +630,10 @@ def setup(client):
                                    status_name(event), start, now,
                                    end=end, duration_s=DURATION_S),
                                "fired": rec["fired"]}
-                    for key in evaluate(session, now, cfg["quorum"],
-                                        require_dm=require_dm):
+                    for key in evaluate(
+                            session, now, cfg["quorum"],
+                            require_dm=require_dm,
+                            is_session=is_session_event(event.name)):
                         if key not in rec["fired"]:
                             rec["fired"].append(key)
             state["events"] = reconcile(state, live_ids)

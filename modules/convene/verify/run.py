@@ -108,11 +108,12 @@ def main():
 
     # settings persist through the state file (slash-set config)
     st2 = {"events": {}, "announced": [],
-           "settings": {"dm_id": 512, "quorum": 4}}
+           "settings": {"dm_id": 512, "quorum": 4, "session_match": "DnD"}}
     convene.save_state(sf, st2)
     checks.append((convene.load_state(sf).get("settings")
-                   == {"dm_id": 512, "quorum": 4},
-                   "slash-set settings survive the state file"))
+                   == {"dm_id": 512, "quorum": 4, "session_match": "DnD"},
+                   "slash-set settings survive the state file "
+                   "(including session_match)"))
     st3 = {"events": {}, "announced": []}
     convene.save_state(sf, st3)
     checks.append(("settings" not in convene.load_state(sf),
@@ -357,6 +358,131 @@ def main():
     checks.append((rmsgs[convene.REVEAL_ITEM]
                    == convene.REMINDERS[convene.REVEAL_ITEM],
                    "a reveal_item with an unknown placeholder is rejected"))
+
+    # ---- Session vs. other events: SESSION_MATCH classifies a scheduled
+    # event as a session (full quorum lifecycle) or a non-session (one
+    # neutral EVENT heads-up, fired once by id, and nothing more). The
+    # classifier is_session_name is pure; evaluate takes an is_session flag.
+    #
+    # Classification by name keyword, case-insensitive. Empty match ⇒ every
+    # event is a session (backward-compatible); set ⇒ substring match.
+    checks.append((convene.is_session_name("Movie Night", "") is True,
+                   "unset SESSION_MATCH: every event is a session"))
+    checks.append((convene.is_session_name("Session 12: The Deep", "session"),
+                   "a name containing the keyword is a session"))
+    checks.append((convene.is_session_name("SESSION 12", "session"),
+                   "keyword match is case-insensitive"))
+    checks.append((convene.is_session_name("Movie Night", "session") is False,
+                   "a non-matching name is not a session"))
+    checks.append((convene.is_session_name("", "session") is False,
+                   "an empty name is not a session when a keyword is set"))
+
+    # A non-session yields exactly one EVENT on first sight, then nothing —
+    # and never quorum/AT_RISK/IMMINENT/ENDED, in any status or window.
+    checks.append((ev(sess(72, 0), is_session=False) == [convene.EVENT],
+                   "non-session yields exactly one EVENT on first sight"))
+    checks.append((ev(sess(72, 0, fired=["event"]), is_session=False) == [],
+                   "EVENT is idempotent — never fires twice for one id"))
+    for label, s in (
+            ("at-risk window, short of quorum", sess(30, 0)),
+            ("imminent window, quorum met", sess(1, 3)),
+            ("completed", sess(-2, 3, status="completed")),
+            ("canceled", sess(30, 0, status="canceled")),
+            ("active", sess(1, 3, status="active"))):
+        keys = ev(s, is_session=False)
+        first = keys == [convene.EVENT]
+        no_lifecycle = all(k not in keys for k in (
+            convene.CREATED, convene.AT_RISK, convene.IMMINENT,
+            convene.ENDED))
+        checks.append((first and no_lifecycle,
+                       "non-session (%s) yields only EVENT, no lifecycle"
+                       % label))
+    # once EVENT has fired, a non-session stays silent through every state
+    for label, s in (
+            ("imminent window", sess(1, 3, fired=["event"])),
+            ("completed", sess(-2, 3, status="completed", fired=["event"]))):
+        checks.append((ev(s, is_session=False) == [],
+                       "non-session (%s) stays silent after EVENT" % label))
+
+    # A session (is_session=True, the default) runs the full lifecycle
+    # unchanged — the flag defaults True, so existing behaviour is intact.
+    checks.append((ev(sess(72, 0), is_session=True) == ["created"]
+                   and ev(sess(72, 0)) == ["created"],
+                   "a session runs the created→lifecycle path (default True)"))
+    checks.append((convene.IMMINENT in ev(sess(1, 3, fired=["created"]),
+                                          is_session=True),
+                   "a session still fires imminent when quorum is met"))
+    checks.append((convene.evaluate(
+        sess(-2, 3, status="completed", fired=["created"]), now, 3,
+        is_session=True) == ["ended"],
+        "a session still fires ended when it completes"))
+    # EVENT never leaks into a session's lifecycle
+    checks.append((convene.EVENT not in ev(sess(1, 3, fired=["created"]),
+                                           is_session=True),
+                   "EVENT never fires for a session"))
+
+    # EVENT is a registered, overridable/translatable template that pings
+    # like CREATED and validates through the override machinery.
+    checks.append((convene.EVENT in convene.REMINDERS,
+                   "EVENT is a registered reminder template"))
+    ev_txt = convene.render(convene.EVENT, title="Movie Night",
+                            when="Fri", ping="<@&7> ")
+    checks.append(("Movie Night" in ev_txt and ev_txt.startswith("<@&7> "),
+                   "EVENT renders title and pings the role like created"))
+    mf4 = tmp / "convene_messages_event.json"
+    mf4.write_text(_json.dumps({
+        "event": "{ping}¡Nuevo evento! **{title}** — {when}",
+        "created": "{title} usa {desconocido}"}), encoding="utf-8")  # bad
+    emsgs = convene.load_messages(mf4)
+    checks.append((emsgs[convene.EVENT].startswith("{ping}¡Nuevo evento!"),
+                   "a valid event override replaces the default template"))
+    checks.append((emsgs[convene.CREATED]
+                   == convene.REMINDERS[convene.CREATED],
+                   "an event-file override with a bad placeholder is rejected"))
+    checks.append((convene.load_messages(tmp / "absent.json")[convene.EVENT]
+                   == convene.REMINDERS[convene.EVENT],
+                   "event falls back to the default frame when not overridden"))
+    # the tick and ready paths both classify by name before evaluating
+    checks.append((src.count("is_session=is_session_event(event.name)") >= 2,
+                   "tick and the ready catch-up both classify by name keyword"))
+
+    # /session keyword sets SESSION_MATCH from Discord, persisted through the
+    # same settings mechanism. Classification reads the RESOLVED keyword with
+    # precedence persisted-setting > SESSION_MATCH env > empty — mirror
+    # setup()'s cfg = {**{"session_match": env}, **settings} merge here.
+    def resolved_match(env, settings):
+        return {**{"session_match": env}, **settings}["session_match"]
+    r = resolved_match("Session", {"session_match": "DnD"})
+    checks.append((r == "DnD"
+                   and convene.is_session_name("Weekly DnD Night", r)
+                   and not convene.is_session_name("Session 1", r),
+                   "classifier prefers the persisted keyword over the env"))
+    r = resolved_match("Session", {})
+    checks.append((r == "Session"
+                   and convene.is_session_name("Session 1", r)
+                   and not convene.is_session_name("Movie Night", r),
+                   "SESSION_MATCH env is the bootstrap when nothing persisted"))
+    r = resolved_match("Session", {"session_match": ""})
+    checks.append((r == "" and convene.is_session_name("Movie Night", r),
+                   "a cleared keyword (persisted empty) reverts to "
+                   "every-event-a-session, overriding the env"))
+    # session_match round-trips through the settings file on its own
+    convene.save_state(sf, {"events": {}, "announced": [],
+                            "settings": {"session_match": "DnD"}})
+    checks.append((convene.load_state(sf)["settings"]["session_match"] == "DnD",
+                   "session_match round-trips through the settings file"))
+    # the command exists under the session group, gated like /session role,
+    # and writes the persisted keyword; the classifier reads the resolved cfg
+    kw_body = src.partition('name="keyword"')[2].partition(
+        "@grp.command(")[0]
+    checks.append(('name="keyword"' in src
+                   and "if not await _gate(inter):" in kw_body
+                   and 'cfg["session_match"] = word.strip()' in kw_body,
+                   "/session keyword is gated like the others and persists "
+                   "session_match"))
+    checks.append(('is_session_name(name, cfg["session_match"])' in src,
+                   "is_session_event reads the resolved cfg keyword, not raw "
+                   "env"))
 
     # convene.py imports clean without discord (pure core only)
     import py_compile

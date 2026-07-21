@@ -49,10 +49,14 @@ the players verbatim inside the bot's voice.
    announcements all post there). Then the DM tunes it live with
    **slash commands** using Discord's native pickers — no IDs to
    paste: `/session dm @person`, `/session quorum N`, `/session role
-   @Players`, `/session channel #auto-events`. Slash settings
+   @Players`, `/session channel #auto-events`, and `/session keyword
+   <word>` (the session name keyword; omit the word to clear it). Slash
+   settings
    persist and win over env until a redeploy wipes them, then env
    is the fallback. Convene reuses `REFRESH_MINUTES` for its poll
-   cadence and `SITE_URL` for recap links. `/session prep` opens a
+   cadence and `SITE_URL` for recap links. `SESSION_MATCH` (optional)
+   scopes which calendar entries are sessions when the guild's schedule
+   carries more than sessions — see the decision point below. `/session prep` opens a
    pop-up where the DM types a between-sessions ask; `/session status`
    shows the current config, quorum against live "interested", and the
    outstanding prep ask.
@@ -89,6 +93,22 @@ the players verbatim inside the bot's voice.
   earns its place only for quorum + lifecycle + announce; a table
   that wants none of those simply never enables it, and Apollo is
   untouched.
+- **Session vs. other events.** Default: `SESSION_MATCH` **unset** — every
+  scheduled event is a session, so a calendar used only for sessions needs
+  no configuration and behaves exactly as before. When the guild's schedule
+  also carries movie nights, one-shots, or planning calls, set the keyword
+  with `/session keyword <word>` (e.g. `/session keyword Session`) — env
+  `SESSION_MATCH` is the bootstrap/fallback for the first boot, but the
+  slash setting persists and wins thereafter, and `/session keyword` with no
+  word clears it back to every-event-a-session. An event is then a session
+  iff its name contains the keyword, case-insensitively. Non-session events
+  get a single light heads-up — one neutral "a new event is on the calendar"
+  @-ping to the auto-events channel on first sight, tracked by event id so it
+  never repeats — and nothing else: no quorum, no rally-or-reschedule flag,
+  no go-ahead, no stage-and-transcribe nudge. That one announce is convene's
+  entire involvement with a non-session. Re-voice or translate it through the
+  `event` template in `convene_messages.json` (placeholders `{ping}`,
+  `{title}`, `{when}`).
 - **Quorum.** Default: DM plus 3 players, DM required. Set
   `SESSION_QUORUM` and `REQUIRE_DM` to the table's shape.
 - **RSVP model.** Default: the native "interested" button counts as
