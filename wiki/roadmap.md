@@ -321,6 +321,21 @@ under the contract.
   systems, so decide whether to scope to "GM-led TTRPGs" or widen the
   projection/firewall model. Trigger: a non-D&D campaign adopting Eddic, or a
   public positioning pass that shouldn't over-index on one system.
+- **Atlas follow-ons (DM tier + backlinks).** The [atlas](modules/atlas.md)
+  module shipped v1 as the player map. Two extensions were designed alongside it
+  and fold into the same module. (1) **A DM-tier Atlas** — the same map built
+  from the master wiki, with the linter's orphan/stub/unreachable signals
+  rendered dimmed so the archive's health is spatial, not a table; served only
+  behind the retrieval DM tier or a DM-local build, never the public deploy
+  (the `graph --mode dm` output already exists; the open piece is DM-tier
+  serving, which is the one thing that would touch `worker.js`). (2) **Per-page
+  backlinks** — a "what links here / mentioned by" panel computed from the same
+  resolved edge graph, firewall-correct by the projection's closure on the
+  player site; belongs in the Atlas module as its per-node local view (render's
+  charter excludes index-generation). Both are zero-authoring and derive from
+  data already present. Trigger: a table wanting the maintenance view, or a
+  campaign big enough that "who cares about this NPC?" needs answering
+  structurally.
 
 ## Related pages
 
