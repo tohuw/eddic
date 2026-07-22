@@ -1,0 +1,328 @@
+<!doctype html>
+<!--
+  Learner's Primer — reference implementation for the companion module's
+  learners-primer capability. Self-contained: inline CSS/JS, no external
+  fetches, opens offline, prints, theme-aware, reduced-motion safe.
+
+  This example uses the verify fixtures' invented world (the Sunken City,
+  the Warden) and a sample level-2 Rogue named Wren, deliberately NOT a
+  spellcaster, to show the layout generalizes across classes. When you
+  build a real primer you replace ALL content with the player's actual
+  character (numbers from their sheet) and campaign (context and links
+  from the player projection). Swap the example.com links for the
+  campaign's published site base. Keep the two interactions (cross-
+  reference flash; glossary popovers) and the accessibility.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Sunken City — Learner's Primer</title>
+<style>
+  :root {
+    --ground:#e7e9e0; --panel:#f3f4ee; --panel-2:#eaece2; --panel-3:#e1e4d8;
+    --ink:#191c25; --ink-soft:#464c5a; --ink-faint:#6b7182;
+    --line:#cdd0c4; --line-strong:#b4b8a8;
+    --accent:#3d50c6; --accent-soft:#5568df; --gold:#916819; --risk:#ab382f; --good:#2f7d4f;
+    --accent-wash:rgba(61,80,198,.09); --gold-wash:rgba(145,104,25,.11);
+    --risk-wash:rgba(171,56,47,.09); --good-wash:rgba(47,125,79,.10); --flash:rgba(61,80,198,.55);
+    --shadow:0 1px 0 rgba(0,0,0,.03),0 10px 26px -20px rgba(25,28,37,.5);
+    --display:"Iowan Old Style","Palatino Linotype","Book Antiqua",Palatino,Georgia,serif;
+    --body:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme:dark){:root{
+    --ground:#0c0e17; --panel:#151a29; --panel-2:#1a2032; --panel-3:#202741;
+    --ink:#e8ebf5; --ink-soft:#b2b8cd; --ink-faint:#808799; --line:#262d43; --line-strong:#364063;
+    --accent:#91a6ff; --accent-soft:#7789e8; --gold:#dbb166; --risk:#e57a71; --good:#6fca97;
+    --accent-wash:rgba(145,166,255,.13); --gold-wash:rgba(219,177,102,.13);
+    --risk-wash:rgba(229,122,113,.12); --good-wash:rgba(111,202,151,.12); --flash:rgba(145,166,255,.7);
+    --shadow:0 1px 0 rgba(0,0,0,.25),0 14px 34px -22px rgba(0,0,0,.85);
+  }}
+  :root[data-theme="light"]{--ground:#e7e9e0;--panel:#f3f4ee;--panel-2:#eaece2;--panel-3:#e1e4d8;--ink:#191c25;--ink-soft:#464c5a;--ink-faint:#6b7182;--line:#cdd0c4;--line-strong:#b4b8a8;--accent:#3d50c6;--accent-soft:#5568df;--gold:#916819;--risk:#ab382f;--good:#2f7d4f;--accent-wash:rgba(61,80,198,.09);--gold-wash:rgba(145,104,25,.11);--risk-wash:rgba(171,56,47,.09);--good-wash:rgba(47,125,79,.10);--flash:rgba(61,80,198,.55);--shadow:0 1px 0 rgba(0,0,0,.03),0 10px 26px -20px rgba(25,28,37,.5);}
+  :root[data-theme="dark"]{--ground:#0c0e17;--panel:#151a29;--panel-2:#1a2032;--panel-3:#202741;--ink:#e8ebf5;--ink-soft:#b2b8cd;--ink-faint:#808799;--line:#262d43;--line-strong:#364063;--accent:#91a6ff;--accent-soft:#7789e8;--gold:#dbb166;--risk:#e57a71;--good:#6fca97;--accent-wash:rgba(145,166,255,.13);--gold-wash:rgba(219,177,102,.13);--risk-wash:rgba(229,122,113,.12);--good-wash:rgba(111,202,151,.12);--flash:rgba(145,166,255,.7);--shadow:0 1px 0 rgba(0,0,0,.25),0 14px 34px -22px rgba(0,0,0,.85);}
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  @media (min-width:1728px){html{font-size:17.5px}}
+  @media (min-width:2160px){html{font-size:19px}}
+  @media (min-width:2880px){html{font-size:21px}}
+  body{margin:0;background:radial-gradient(115% 70% at 100% -8%,var(--accent-wash),transparent 55%),radial-gradient(80% 55% at -8% 108%,var(--gold-wash),transparent 52%),var(--ground);color:var(--ink);font-family:var(--body);line-height:1.5;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:92.5rem;margin:0 auto;padding:clamp(1rem,2.6vw,2.8rem)}
+  a{color:var(--accent);text-underline-offset:2px}
+  .gl{position:relative;border:0;background:none;font:inherit;color:inherit;padding:0;cursor:help;border-bottom:1.5px dotted var(--accent)}
+  .gl:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:2px}
+  .gl-pop{position:absolute;left:50%;bottom:calc(100% + 8px);transform:translateX(-50%);width:max-content;max-width:260px;background:var(--panel);color:var(--ink-soft);border:1px solid var(--line-strong);border-radius:8px;padding:.55rem .7rem;font-family:var(--body);font-size:.8rem;line-height:1.42;text-align:left;font-weight:400;text-transform:none;letter-spacing:normal;box-shadow:0 10px 30px -12px rgba(0,0,0,.45);z-index:30;opacity:0;visibility:hidden;transition:opacity .12s ease;pointer-events:none}
+  .gl-pop b{color:var(--ink)}
+  .gl:hover .gl-pop,.gl:focus .gl-pop,.gl:focus-within .gl-pop,.gl.open .gl-pop,.idchip.info:hover .gl-pop,.idchip.info:focus-within .gl-pop,.idchip.info.open .gl-pop{opacity:1;visibility:visible}
+  .mast{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:clamp(1rem,3vw,2.6rem);align-items:end;padding-bottom:1.15rem;border-bottom:2px solid var(--line-strong)}
+  @media (max-width:860px){.mast{grid-template-columns:1fr;align-items:start}}
+  .eyebrow{font-family:var(--mono);font-size:.7rem;letter-spacing:.22em;text-transform:uppercase;color:var(--accent);margin:0 0 .5rem}
+  h1{font-family:var(--display);font-weight:600;font-size:clamp(2.8rem,7.5vw,5.2rem);line-height:.92;margin:0;letter-spacing:-.015em}
+  .idline{display:flex;flex-wrap:wrap;gap:.4rem;margin:.85rem 0 0}
+  .idchip{font-family:var(--mono);font-size:.73rem;padding:.3rem .6rem;border-radius:6px;background:var(--accent-wash);color:var(--accent);border:1px solid var(--accent)}
+  .idchip.plain{background:var(--panel-2);color:var(--ink-soft);border-color:var(--line-strong)}
+  a.idchip{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:2px}
+  a.idchip:hover{text-decoration-thickness:2px}
+  .idchip.info{position:relative;cursor:help;text-decoration:underline dotted;text-decoration-thickness:1px;text-underline-offset:2px}
+  .subtitle{font-family:var(--display);font-style:italic;color:var(--ink-soft);font-size:clamp(1.02rem,2.1vw,1.28rem);margin:.75rem 0 0;max-width:40ch}
+  .meta{display:flex;flex-direction:column;gap:.5rem}
+  .mrow{display:grid;grid-template-columns:8.5rem 1fr;gap:.9rem;align-items:baseline;padding-bottom:.5rem;border-bottom:1px solid var(--line)}
+  .mrow .lbl{font-family:var(--mono);font-size:.66rem;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-faint)}
+  .mrow.warn .lbl{color:var(--risk)}
+  .mrow .val{font-size:.95rem;color:var(--ink)}
+  .mrow .val b{font-weight:650}
+  .disclaim{margin-top:.7rem;font-size:.82rem;color:var(--ink-faint);border-left:2px solid var(--gold);padding-left:.85rem}
+  .disclaim b{color:var(--ink-soft)}
+  .statbar{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:.5rem;margin:1.1rem 0 0}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:.55rem .7rem;text-align:center}
+  .stat .sv{font-family:var(--mono);font-weight:650;font-size:1.15rem;color:var(--ink);font-variant-numeric:tabular-nums}
+  .stat .sl{font-family:var(--mono);font-size:.6rem;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-faint);margin-top:.1rem}
+  .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:1rem;margin-top:1.5rem}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:1.2rem 1.3rem 1.3rem;box-shadow:var(--shadow);scroll-margin-top:1.5rem}
+  .col-4{grid-column:span 4}.col-5{grid-column:span 5}.col-7{grid-column:span 7}.col-12{grid-column:span 12}
+  @media (max-width:1080px){.col-4,.col-5,.col-7{grid-column:span 6}}
+  @media (max-width:680px){.grid{grid-template-columns:1fr}.col-4,.col-5,.col-7,.col-12{grid-column:1/-1}}
+  .card h2{font-family:var(--display);font-size:1.4rem;font-weight:600;margin:0 0 .15rem;display:flex;align-items:baseline;gap:.55rem}
+  .card h2 .n{font-family:var(--mono);font-size:.72rem;color:var(--accent);font-weight:400;letter-spacing:.08em}
+  .lead{color:var(--ink-soft);font-size:.92rem;margin:.1rem 0 .9rem}
+  a.ref{font-weight:600;text-decoration:none;border-bottom:1.5px solid var(--accent-soft);cursor:pointer}
+  @keyframes flashpulse{0%{box-shadow:0 0 0 0 var(--flash);border-color:var(--accent)}100%{box-shadow:0 0 0 14px rgba(0,0,0,0);border-color:var(--line)}}
+  .flash{animation:flashpulse .5s ease-out 3}
+  @media (prefers-reduced-motion:reduce){.flash{animation:none;outline:3px solid var(--accent);outline-offset:2px}}
+  ol.steps{list-style:none;counter-reset:s;margin:0;padding:0;display:flex;flex-direction:column;gap:.75rem}
+  ol.steps li{counter-increment:s;display:grid;grid-template-columns:1.9rem 1fr;gap:.85rem}
+  ol.steps li::before{content:counter(s);font-family:var(--mono);font-weight:650;font-size:.9rem;color:var(--accent);width:1.9rem;height:1.9rem;display:grid;place-items:center;border:1.5px solid var(--accent);border-radius:50%;align-self:start}
+  ol.steps .term{grid-column:2;font-family:var(--display);font-size:1.35rem;font-weight:600;line-height:1.15}
+  ol.steps .def{grid-column:2;color:var(--ink-soft);font-size:.92rem;display:block;margin-top:.1rem}
+  ul.tick{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.5rem}
+  ul.tick li{position:relative;padding-left:1.35rem;font-size:.92rem;color:var(--ink-soft)}
+  ul.tick li::before{content:"";position:absolute;left:0;top:.5em;width:.5rem;height:.5rem;border:1.5px solid var(--accent);border-radius:2px;transform:rotate(45deg)}
+  ul.tick li b{color:var(--ink);font-weight:650}
+  .k{font-family:var(--mono);font-size:.82em;background:var(--accent-wash);color:var(--accent);padding:.04rem .34rem;border-radius:4px;white-space:nowrap}
+  .note{margin-top:.8rem;font-size:.85rem;color:var(--ink-faint)}
+  .bdg{font-family:var(--mono);font-size:.56rem;letter-spacing:.06em;text-transform:uppercase;padding:.08rem .32rem;border-radius:4px;vertical-align:middle;margin-left:.3rem;border:1px solid;font-weight:600;white-space:nowrap}
+  .bdg.any{color:var(--good);border-color:var(--good);background:var(--good-wash)}
+  .bdg.cls{color:var(--accent);border-color:var(--accent);background:var(--accent-wash)}
+  .legend{display:flex;gap:1rem;flex-wrap:wrap;font-size:.76rem;color:var(--ink-faint);margin:0 0 .75rem}
+  .legend span{display:inline-flex;align-items:center;gap:.4rem}
+  details.more{margin-top:.75rem;border-top:1px solid var(--line);padding-top:.55rem}
+  details.more summary{font-family:var(--mono);font-size:.72rem;letter-spacing:.05em;text-transform:uppercase;color:var(--accent);cursor:pointer;list-style:none}
+  details.more summary::-webkit-details-marker{display:none}
+  details.more summary::before{content:"▸ "}
+  details.more[open] summary::before{content:"▾ "}
+  details.more p{font-size:.9rem;color:var(--ink-soft);margin:.55rem 0 0}
+  .abilities{display:grid;grid-template-columns:repeat(auto-fill,minmax(268px,1fr));gap:.9rem}
+  .ab{border:1px solid var(--line-strong);border-radius:11px;background:var(--panel-2);padding:.9rem 1rem 1rem}
+  .ab.react{border-color:var(--accent);background:linear-gradient(180deg,var(--accent-wash),transparent 34%),var(--panel-2)}
+  .ab-top{display:flex;flex-direction:column-reverse;align-items:flex-start;gap:.12rem}
+  .ab h3{margin:0;font-size:1.02rem;font-weight:700;font-family:var(--body)}
+  .ab .src{font-family:var(--mono);font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint);white-space:normal}
+  .ab-stats{display:flex;flex-wrap:wrap;gap:.3rem;margin:.55rem 0 .6rem}
+  .ab-stats span{font-family:var(--mono);font-size:.66rem;background:var(--panel-3);color:var(--ink-soft);border-radius:5px;padding:.18rem .42rem}
+  .ab-stats .cost{color:var(--accent);background:var(--accent-wash)}
+  .ab-body{font-size:.88rem;color:var(--ink-soft)}
+  .ab-body b{color:var(--ink);font-weight:650}
+  .ab-eff{margin-top:.5rem;border-left:2.5px solid var(--accent);padding-left:.6rem;font-size:.86rem}
+  .ab-eff .rider{color:var(--gold);font-weight:650}
+  .band{grid-column:1/-1;border:1px solid var(--accent);border-radius:15px;background:linear-gradient(180deg,var(--accent-wash),transparent 26%),var(--panel);padding:1.4rem clamp(1.1rem,3vw,1.9rem);box-shadow:var(--shadow);scroll-margin-top:1.5rem}
+  .band h2{font-family:var(--display);font-size:clamp(1.5rem,3vw,2rem);margin:.1rem 0 .3rem}
+  .band-head{display:flex;justify-content:space-between;align-items:flex-start;gap:1.5rem;flex-wrap:wrap}
+  .band-head-text{flex:1 1 360px;min-width:0}
+  .band-legend{flex:0 0 auto;display:flex;flex-direction:column;gap:.4rem;margin-top:.35rem;background:var(--panel-2);border:1px solid var(--line);border-radius:9px;padding:.7rem .85rem;font-size:.78rem;color:var(--ink-faint)}
+  .band-legend span{display:inline-flex;align-items:center;gap:.5rem;white-space:nowrap}
+  .band-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:.9rem 1.5rem;margin-top:1.1rem}
+  .fact{border-top:1.5px solid var(--line-strong);padding-top:.55rem}
+  .fact h4{margin:0 0 .22rem;font-size:.95rem;font-weight:700}
+  .fact p{margin:0;font-size:.87rem;color:var(--ink-soft)}
+  .fact.good{border-top-color:var(--good)}.fact.risk{border-top-color:var(--risk)}
+  .ovl{display:inline-block;width:1.5rem;height:0;border-top:2px solid;vertical-align:middle}
+  .ovl.good{border-color:var(--good)}.ovl.risk{border-color:var(--risk)}.ovl.neutral{border-color:var(--line-strong)}
+  .rows{display:flex;flex-direction:column;gap:.6rem}
+  .rows .r{display:grid;grid-template-columns:8rem 1fr;gap:.8rem}
+  .rows .r .t{font-weight:650;font-size:.9rem}
+  .rows .r .d{color:var(--ink-soft);font-size:.9rem}
+  footer{margin-top:2rem;padding-top:1.1rem;border-top:2px solid var(--line-strong);color:var(--ink-faint);font-size:.85rem}
+  footer b{color:var(--ink-soft)}
+  @media print{body{background:#fff;color:#000}.card,.band,.ab{break-inside:avoid;box-shadow:none}.gl-pop{display:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="mast">
+    <div>
+      <p class="eyebrow">A learner's primer · your 2nd session</p>
+      <h1>Wren</h1>
+      <div class="idline">
+        <span class="idchip info" tabindex="0">Rogue 2<span class="gl-pop">Your class and level — a Rogue at level 2: a Dexterity skirmisher with Sneak Attack and Cunning Action.</span></span>
+        <span class="idchip info" tabindex="0">Human<span class="gl-pop">Your species. Versatile: an extra skill and a feat at level 1.</span></span>
+        <a class="idchip" href="https://example.com/classes/rogue-thief" target="_blank" rel="noopener">Thief</a>
+        <span class="idchip plain info" tabindex="0">Dexterity attacker<span class="gl-pop">Dexterity drives your attacks, AC, Stealth, and initiative — your key stat.</span></span>
+      </div>
+      <p class="subtitle">How a turn works, what you can do, and the things nobody tells a new player.</p>
+    </div>
+    <div>
+      <div class="meta">
+        <div class="mrow warn"><span class="lbl">Status effects</span><span class="val"><b>None</b> right now — you're rested and whole.</span></div>
+        <div class="mrow"><span class="lbl">Location</span><span class="val">The drowned market of <a href="https://example.com/places/the-sunken-city" target="_blank" rel="noopener">the Sunken City</a></span></div>
+        <div class="mrow"><span class="lbl">Party</span><span class="val">The four who took the Warden's coin</span></div>
+        <div class="mrow"><span class="lbl">Current mission</span><span class="val">Find what the <a href="https://example.com/factions/the-warden" target="_blank" rel="noopener">Warden</a> lost below</span></div>
+      </div>
+      <p class="disclaim">This sheet says what is <b>true</b> and what is <b>possible</b> — never what is <b>best</b>. The pick and the dice are yours. Numbers are from your character sheet; hover over <span class="gl" tabindex="0">dotted terms<span class="gl-pop">Hover or tap any dotted term for a plain-language explanation — no need to leave the page.</span></span> for info.</p>
+    </div>
+  </header>
+
+  <div class="statbar">
+    <div class="stat"><div class="sv">14</div><div class="sl"><span class="gl" tabindex="0">AC<span class="gl-pop"><b>Armor Class.</b> How hard you are to hit. An attacker rolls this or higher on the d20.</span></span></div></div>
+    <div class="stat"><div class="sv">17</div><div class="sl"><span class="gl" tabindex="0">HP<span class="gl-pop"><b>Hit Points.</b> Your life bar. At 0 you make death saves.</span></span></div></div>
+    <div class="stat"><div class="sv">+6</div><div class="sl"><span class="gl" tabindex="0">Attack<span class="gl-pop"><b>Attack bonus</b> with a finesse weapon = 2 prof + 4 Dex.</span></span></div></div>
+    <div class="stat"><div class="sv">+2</div><div class="sl">Prof</div></div>
+    <div class="stat"><div class="sv">18</div><div class="sl">DEX (+4)</div></div>
+    <div class="stat"><div class="sv">1d6</div><div class="sl"><span class="gl" tabindex="0">Sneak<span class="gl-pop"><b>Sneak Attack die</b> at level 2. Added once per turn when you qualify — see the ability card.</span></span></div></div>
+  </div>
+
+  <div class="grid">
+
+    <section class="card col-4" id="turn">
+      <h2><span class="n">01</span> Your turn, in order</h2>
+      <p class="lead">Five separate budgets, every turn. Interleave them freely.</p>
+      <ol class="steps">
+        <li><span class="term">Move</span><span class="def">Up to <span class="k">30 ft</span>; split it around your action.</span></li>
+        <li><span class="term">Action</span><span class="def">Your big thing — menu in <a class="ref" href="#actions">card 02</a>.</span></li>
+        <li><span class="term">Bonus action</span><span class="def">Only when something grants one — for you, <b>Cunning Action</b>.</span></li>
+        <li><span class="term">Object interaction</span><span class="def">One free quick thing: draw a dagger, yank a lever.</span></li>
+        <li><span class="term">Reaction</span><span class="def">One per round, usually off-turn — see <a class="ref" href="#react">the reactions box</a>.</span></li>
+      </ol>
+      <p class="note">You can also talk, and you can pass.</p>
+    </section>
+
+    <section class="card col-4" id="actions">
+      <h2><span class="n">02</span> The action menu</h2>
+      <p class="lead">What your <em>action</em> can be. Never just "attack."</p>
+      <div class="legend">
+        <span><span class="bdg any">anyone</span> everyone at the table can do this</span>
+        <span><span class="bdg cls">yours</span> a class thing, unique to you</span>
+      </div>
+      <ul class="tick">
+        <li><b>Attack</b><span class="bdg any">anyone</span> — a weapon or unarmed strike.</li>
+        <li><b>Dash</b><span class="bdg any">anyone</span> — double your movement.</li>
+        <li><b>Disengage</b><span class="bdg any">anyone</span> — move without provoking.</li>
+        <li><b>Dodge</b><span class="bdg any">anyone</span> — attackers roll at disadvantage on you.</li>
+        <li><b>Help</b><span class="bdg any">anyone</span> — hand an ally advantage.</li>
+        <li><b>Hide</b><span class="bdg any">anyone</span> — Stealth vs. Perception.</li>
+        <li><b>Ready</b><span class="bdg any">anyone</span> — "when X, I do Y." Spends your reaction.</li>
+        <li><b>Search / Study / Influence</b><span class="bdg any">anyone</span> — look, recall, sway.</li>
+        <li><b>Shove / Grapple</b><span class="bdg any">anyone</span> — knock prone or hold.</li>
+        <li><b>Improvise</b><span class="bdg any">anyone</span> — <b>anything you can describe.</b></li>
+      </ul>
+      <p class="note">Almost the whole menu is <b>universal</b> — your tablemates pick from the same list. When someone's turn stalls, any "anyone" action is on the table for them too.</p>
+    </section>
+
+    <section class="card col-4" id="react">
+      <h2>Reactions — your off-turn move</h2>
+      <p class="lead">The whole idea, since beginners forget they have one.</p>
+      <ul class="tick">
+        <li><b>Everyone gets one</b> per round; it refreshes at the start of your turn.</li>
+        <li>It fires on <b>someone else's</b> turn, in response to a trigger.</li>
+      </ul>
+      <p class="note" style="margin-bottom:.2rem;color:var(--ink-soft)"><b>Your reaction options:</b></p>
+      <ul class="tick">
+        <li><b>Opportunity attack</b> — a free strike when a foe leaves your reach. <b>No setup.</b></li>
+        <li><b>Ready</b> — the one you <em>do</em> pre-plan, on your turn.</li>
+      </ul>
+      <p class="note">One reaction between your turns — a Ready spends the same reaction you'd want for an opportunity attack, so not both.</p>
+    </section>
+
+    <section class="card col-12" id="kit">
+      <h2><span class="n">03</span> Your abilities, spelled out</h2>
+      <p class="lead">Each option with its stat line and the <span class="rider" style="color:var(--gold);font-weight:650">rider</span> a new player misses called out in gold.</p>
+      <div class="abilities">
+
+        <div class="ab">
+          <div class="ab-top"><h3>Sneak Attack</h3><span class="src">Rogue</span></div>
+          <div class="ab-stats"><span class="cost">once per turn</span><span>+1d6</span></div>
+          <div class="ab-body">Extra <span class="k">1d6</span> damage when you hit with a finesse or ranged weapon.
+            <div class="ab-eff"><span class="rider">The condition:</span> you need <b>advantage</b>, <b>or</b> an ally within 5 ft of the target and no disadvantage. <span class="rider">Once per turn</span> — but that includes your reaction, so an opportunity attack can carry it too.</div>
+          </div>
+        </div>
+
+        <div class="ab">
+          <div class="ab-top"><h3>Rapier</h3><span class="src">Finesse weapon</span></div>
+          <div class="ab-stats"><span class="cost">Action</span><span>Melee</span><span>+6 to hit</span></div>
+          <div class="ab-body"><span class="k">1d8+4</span> piercing (Dexterity, because it's finesse).
+            <div class="ab-eff"><span class="rider">Mastery — Vex:</span> on a hit, you have advantage on your next attack against that creature.</div>
+          </div>
+        </div>
+
+        <div class="ab react">
+          <div class="ab-top"><h3>Cunning Action</h3><span class="src">Rogue</span></div>
+          <div class="ab-stats"><span class="cost">Bonus action</span><span>every turn</span></div>
+          <div class="ab-body">Dash, Disengage, or Hide as a <b>bonus action</b>, every turn.
+            <div class="ab-eff"><span class="rider">This is why rogues feel slippery:</span> strike, then Disengage away with your bonus action and take no opportunity attack.</div>
+          </div>
+        </div>
+
+        <div class="ab">
+          <div class="ab-top"><h3>Expertise</h3><span class="src">Rogue</span></div>
+          <div class="ab-stats"><span class="cost">passive</span><span>2 skills</span></div>
+          <div class="ab-body">Double your proficiency on two chosen skills (e.g. Stealth, Thieves' Tools).
+            <div class="ab-eff">On those, you add <span class="k">+4</span>, not +2 — you're the party's specialist there.</div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <section class="band" id="didntknow">
+      <div class="band-head">
+        <div class="band-head-text">
+          <p class="eyebrow" style="color:var(--accent)">⚡ Things you probably didn't know — or haven't considered</p>
+          <h2>The stuff that turns "I attack" into a real turn</h2>
+          <p class="lead">Not advice on what to pick — just rules new players miss, so your options are wider than they look.</p>
+        </div>
+        <div class="band-legend" aria-label="What the overlines mean">
+          <span><span class="ovl good"></span> an edge you have</span>
+          <span><span class="ovl risk"></span> a way to get hurt</span>
+          <span><span class="ovl neutral"></span> just a rule</span>
+        </div>
+      </div>
+      <div class="band-grid">
+        <div class="fact good"><h4>You have a reaction every round</h4><p>A whole extra action, off-turn. See <a class="ref" href="#react">the reactions box</a>.</p></div>
+        <div class="fact risk"><h4>Leaving reach provokes — but not always</h4><p>Moving <em>within</em> reach, forced movement, and teleport don't. Disengage cancels it.</p></div>
+        <div class="fact"><h4>Split your move around your action</h4><p>Move, strike, move the rest. It's one turn.</p></div>
+        <div class="fact good"><h4>Help is a gift you can give</h4><p>Trade your action for an ally's advantage — and, for a rogue, it sets up an ally's flank too.</p></div>
+        <div class="fact"><h4>Advantage doesn't stack</h4><p>It's <span class="k">2d20</span> take the better, no matter how many reasons.</p></div>
+        <div class="fact risk"><h4>Zero HP isn't death</h4><p>Death saves; a nat 20 revives at 1; allies can stabilize you.</p></div>
+      </div>
+    </section>
+
+  </div>
+
+  <footer>
+    <p><b>How to use this:</b> glance, don't read. Tap a dotted term for what it means; click a <a class="ref" href="#turn">bold cross-link</a> and the box it points to flashes. Built from your character sheet; your kit changes as you level, so re-check then.</p>
+    <p style="margin-top:.6rem;color:var(--ink-faint)">The Sunken City · a companion aid · rules are 5e as your table plays them.</p>
+  </footer>
+
+</div>
+<script>
+  (function () {
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    document.addEventListener('click', function (e) {
+      var a = e.target.closest('a.ref[href^="#"]');
+      if (a) {
+        var el = document.getElementById(a.getAttribute('href').slice(1));
+        if (el) {
+          e.preventDefault();
+          el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' });
+          el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
+        }
+      }
+      var g = e.target.closest('.gl, .idchip.info');
+      document.querySelectorAll('.gl.open, .idchip.info.open').forEach(function (o) { if (o !== g) o.classList.remove('open'); });
+      if (g) g.classList.toggle('open');
+    });
+  })();
+</script>
+</body>
+</html>

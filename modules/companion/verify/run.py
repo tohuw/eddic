@@ -27,8 +27,10 @@ def main():
     pc = " ".join(t["player-companion.md"].split())
     checks = [
         (set(t) == {"player-companion.md", "dm-companion.md",
-                    "backstory-interviewer.md", "player-kit.md"},
-         "the templates ship (three companions plus the player kit)"),
+                    "backstory-interviewer.md", "player-kit.md",
+                    "learners-primer.md"},
+         "the templates ship (three companions, the player kit, "
+         "the learner's primer)"),
         ("{{PLAYER_MCP_URL}}" in t["player-kit.md"] and
          "{{PLAYER_COMPANION}}" in t["player-kit.md"],
          "player kit carries the per-request connector URL sentinel "
@@ -68,6 +70,16 @@ def main():
         ("witness write path" in pc and "to the DM directly" in pc,
          "private prep-ask response falls back to the DM when the "
          "write path is off"),
+        (t.get("learners-primer.md", "").find("never optimizes the build") >= 0,
+         "primer extends never-better to the build (never optimizes)"),
+        ("Never fabricate a value" in t.get("learners-primer.md", ""),
+         "primer forbids fabricating a number (the sheet is the source)"),
+        (all(s in t.get("learners-primer.md", "") for s in
+             ("projection", "off-site")),
+         "primer is projection-scoped and explains rules in place, "
+         "not off-site"),
+        ("Learner's Primer" in pc,
+         "player companion advertises the learner's primer capability"),
         (all(f"{i}." in rig for i in range(1, 9)),
          "acceptance rig covers the eight behavior classes"),
         ("must NOT overcorrect" in rig,

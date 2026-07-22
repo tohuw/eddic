@@ -35,7 +35,14 @@ omniscient human referee. Nothing here pretends to be enforcement.
    The template also carries the collaborator facet — how it answers
    generative asks ("give me ideas", "what might") — kept or stripped
    per the decision point below.
-4. Publish the player kit as a page, then hand each player a URL — no
+4. For a player learning the game: `templates/learners-primer.md` is
+   the capability the player companion follows on request to build a
+   one-page HTML Learner's Primer of that player's own character and
+   turn — numbers from the player's sheet, context and links from the
+   projection, rules explained in place, under the companion's
+   possible-and-true / never-better rule. Reference implementation:
+   `templates/learners-primer.skeleton.html`.
+5. Publish the player kit as a page, then hand each player a URL — no
    files to fill or email. Vendor the two single-source templates into
    the campaign so the retrieval worker can render them:
 
@@ -59,7 +66,7 @@ omniscient human referee. Nothing here pretends to be enforcement.
    guarantees it), the page renders only on a valid tier token, and the
    companion's conduct is verified (see Verify), so nothing DM-only and
    no unbounded advice rides along.
-5. Log a `schema` entry naming which companions the table runs.
+6. Log a `schema` entry naming which companions the table runs.
 
 ## Decision points
 
@@ -102,6 +109,14 @@ omniscient human referee. Nothing here pretends to be enforcement.
   projection-scoped and DM-read-only by construction: any tier may
   file, only the DM tier reads the inbox, so a filed suggestion is
   private to the DM (retrieval decision point "Writeable retrieval").
+- **Learner's primer.** Default: offered on request, not pushed — the
+  player companion mentions it to a new player or builds one when
+  asked, never as an unsolicited artifact. It is a facet of the player
+  companion under the same conduct rule; the build teaches the option
+  landscape and never optimizes. Every number comes from the player's
+  own character sheet (never fabricated); world terms link into the
+  projection, rules terms are explained in place, and an unclear value
+  is sent to the DM rather than guessed.
 - **Player companion rollout.** Default: offered, not imposed — a
   player who wants no agent at the table simply has none; parity is
   a ceiling on the tool, not a mandate to use it.
@@ -121,6 +136,11 @@ omniscient human referee. Nothing here pretends to be enforcement.
   DM-only and invisible to the table, never canon, with the
   write-path-off fallback to the DM), and the acceptance rig covering
   all eight behavior classes.
+- The learner's primer template and its skeleton ship, the primer
+  carries its guardrails (never optimizes the build, never fabricates
+  a number, projection-scoped, rules explained in place), and the
+  player companion advertises the capability — all checked by
+  `run.py` above.
 - `verify/conduct-acceptance.md` — the live adversarial suite, run
   once per answer client the table uses. Conduct claims stay
   `unverified` in module.yaml and `docs/compatibility.md` until a
