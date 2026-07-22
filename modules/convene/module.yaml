@@ -1,5 +1,5 @@
 name: convene
-version: 0.5.0
+version: 0.5.1
 summary: >
   Session lifecycle as a capability of the always-on lore bot: drives
   Discord's native scheduled events, adds quorum (a session runs iff

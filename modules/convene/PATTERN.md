@@ -166,7 +166,20 @@ never a channel, never the table's eyes.
   bot hands the player their words back in the same ephemeral thread
   rather than losing them. Requires the retrieval pattern's witness
   write path (an `INBOX` KV binding); unconfigured, `/session respond`
-  refuses cleanly before the modal opens.
+  refuses cleanly before the modal opens — with a player-facing line
+  that names none of this: it tells the player to send the answer to
+  the DM directly and to ask them to turn it on. That refusal is the
+  agent's cue, and turning it on is the agent's job, not the DM's. A
+  non-technical DM need only ask ("turn on private prep responses"),
+  and the applying agent (1) confirms the retrieval pattern's witness
+  write path is live (its `INBOX` KV binding); (2) reuses the campaign's
+  existing **player-tier** token — the same low-sensitivity token the
+  player companion already uses — and the worker's base URL from config;
+  (3) sets them as `WITNESS_TOKEN` and `WITNESS_URL` in the bot host's
+  environment with the secrets helper, never slash-typed into Discord;
+  (4) redeploys and confirms with `/session respond`. The DM never
+  touches a token or an env var — they ask, the agent wires it, and the
+  players' private path lights up.
 - **Recorder nudge.** Default: on — the go-ahead reminds the DM to
   bring the recorder. Turn it off (`RECORDER_NUDGE=0`) for a table
   that captures with Craig instead.

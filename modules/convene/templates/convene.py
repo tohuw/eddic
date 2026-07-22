@@ -642,10 +642,10 @@ def setup(client):
         # nowhere to go.
         if not (WITNESS_URL and WITNESS_TOKEN):
             await inter.response.send_message(
-                "Private responses aren't set up yet — the DM needs to "
-                "point me at the campaign's review inbox (WITNESS_URL "
-                "and WITNESS_TOKEN). Until then, send the DM a direct "
-                "message.", ephemeral=True)
+                "Private responses aren't switched on for this campaign "
+                "yet — for now, just send your answer to your DM as a "
+                "direct message. Want it enabled? Ask your DM to turn "
+                "it on.", ephemeral=True)
             return
         await inter.response.send_modal(RespondModal())
 
