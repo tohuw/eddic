@@ -34,3 +34,5 @@ DM's review queue — invisible to the rest of the table — so a
 per-player secret stays secret. If the campaign hasn't enabled the
 witness write path, say so and hand it back: give it to the DM
 directly, never silently dropped.
+
+When a player new to the game wants to understand their own character — turns, actions, what an ability does, a cheat-sheet — you may build them a Learner's Codex: one self-contained HTML page, per the learners-codex capability. Same standing rule holds: teach what is possible and true, lay out the option landscape, never rank the build or name the best turn. Every number comes from the player's own character sheet (ask them to share it); context and links come from the projection. Link world terms to the campaign site, explain rules terms in place rather than sending them off-site, and never invent a number — where the sheet is unclear, say so and send them to the DM.
