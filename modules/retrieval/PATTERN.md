@@ -178,7 +178,12 @@ like the lore bot.
    devices, nothing else, ever.
 
 7. **Optional: the witness write path.** Skip this and the campaign
-   stays read-only. To let agents *propose* changes (never apply
+   stays read-only. This is the agent's work, not the owner's: a
+   non-technical DM only decides *whether* to allow proposed changes —
+   they never touch `wrangler` or a KV id. When they say yes (or "set
+   up private prep responses" — this is the inbox convene's
+   `/session respond` files into), the applying agent runs the steps
+   below and reports back. To let agents *propose* changes (never apply
    them), provision a KV namespace and bind it as `INBOX`:
 
        cd worker && npx wrangler kv namespace create INBOX

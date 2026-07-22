@@ -18,7 +18,7 @@ companion layer on once the campaign is live.
 | [wiki](wiki.md) | campaign knowledge architecture: schema, fail-closed visibility, twin pages, contributor attribution, overlays, player projection | 0.3.1 |
 | [render](render.md) | purpose-built md→html renderer with a self-contained template, real 404, and served `static/` branding | 0.2.1 |
 | [publish](publish.md) | Cloudflare Pages deploy behind the lint→project→build safety pipeline | 0.1.0 |
-| [retrieval](retrieval.md) | unified-host Worker: player site at /, the one-URL player companion page at /&lt;token&gt;/companion, MCP + Actions REST facade behind two bearer tokens (DM tier = master, player tier = projection), and the optional witness write path (suggest_edit/suggest_page → DM-reviewed inbox) | 0.6.1 |
+| [retrieval](retrieval.md) | unified-host Worker: player site at /, the one-URL player companion page at /&lt;token&gt;/companion, MCP + Actions REST facade behind two bearer tokens (DM tier = master, player tier = projection), and the optional witness write path (suggest_edit/suggest_page → DM-reviewed inbox) | 0.6.2 |
 | [lore-bot](lore-bot.md) | the Discord lore-keeper: answers the table's questions from the player projection (corpus prompt-cached), self-refreshing by polling per the freshness contract; the convene session-lifecycle capability rides it | 0.3.2 |
 | [transcriber](transcriber.md) | local whisper.cpp session transcription, per-speaker merge | 0.1.0 |
 | [contribs](contribs.md) | the transaction arc: overlays, hash-pinned consent, derivation-graph rights, the sale-build fence | 0.1.0 |

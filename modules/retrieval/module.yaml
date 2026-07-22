@@ -1,5 +1,5 @@
 name: retrieval
-version: 0.6.1
+version: 0.6.2
 summary: >
   The campaign's agentic retrieval surface: a Cloudflare Worker MCP
   server with two bearer tokens — the DM token sees the master wiki,
