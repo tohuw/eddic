@@ -1,9 +1,12 @@
 name: ci
 
+# Manual-only: the deterministic floor runs locally on pre-push
+# (.githooks/pre-push) so no metered Actions minutes are spent on every
+# push/PR. Trigger this by hand when you want the full cross-OS
+# (Linux + macOS + Windows) matrix — e.g. before a release or after
+# touching anything portability-sensitive.
 on:
-  push:
-    branches: [master]
-  pull_request:
+  workflow_dispatch:
 
 jobs:
   floor:

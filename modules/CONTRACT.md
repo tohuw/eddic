@@ -54,7 +54,13 @@ recommendation names its free fallback. Every module must be satisfiable
 inside the baseline build unless its manifest says otherwise and its
 pattern says why.
 
-## The deterministic floor (CI-enforced)
+## The deterministic floor (enforced on pre-push)
+
+Enforced by a local git pre-push hook (`.githooks/pre-push`, activated
+per clone with `git config core.hooksPath .githooks`): every push is
+gated without spending metered CI minutes. The full Linux + macOS +
+Windows runner matrix is a manual `ci` workflow dispatch, run when
+portability-sensitive machinery changes.
 
 Small and mechanical, because semantic review is bad at catching
 mechanical rot — a broken script reads fine:

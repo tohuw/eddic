@@ -1,0 +1,32 @@
+#!/bin/sh
+# Eddic CI floor — runs locally on every push so no GitHub Actions minutes are
+# spent (the ci.yml workflow is manual-only). Blocks the push if the
+# deterministic floor, the module verifiers, or the end-to-end check fail.
+#
+# Activate once per clone:  git config core.hooksPath .githooks
+#
+# This runs on the pushing developer's OS only. The floor is written to be
+# cross-platform (no bash-isms, uv-run Python); when you need the full
+# Linux + macOS + Windows matrix, trigger the ci workflow by hand.
+
+echo "eddic pre-push: contract floor + module verifiers (local CI)..."
+
+python3 tools/floor.py || {
+	echo "eddic pre-push: FLOOR failed — push blocked. (--no-verify to override)"
+	exit 1
+}
+
+if command -v uv >/dev/null 2>&1; then
+	uv run tools/verify_all.py || {
+		echo "eddic pre-push: verify_all failed — push blocked. (--no-verify to override)"
+		exit 1
+	}
+	uv run tools/verify_e2e.py || {
+		echo "eddic pre-push: verify_e2e failed — push blocked. (--no-verify to override)"
+		exit 1
+	}
+else
+	echo "eddic pre-push: WARNING — uv not found; ran floor only. Install uv to run the full floor."
+fi
+
+echo "eddic pre-push: green."
