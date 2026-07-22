@@ -9,7 +9,7 @@ shares the archivist's always-on lifecycle exactly, convene rides the one
 existing hosting process and adds zero new spend and no second host. It
 depends on the [lore-bot](lore-bot.md) module being applied and deployed
 first, and targets that bot's Discord library. Its current release is
-0.4.0.
+0.5.0.
 
 Convene drives Discord's own Guild Scheduled Events rather than rebuilding
 them. The event card, the "interested" list, and the live countdown remain
@@ -17,7 +17,7 @@ the platform's; convene reads them and never reconstructs them. On top of
 the native event it supplies the things the platform and generic
 scheduling bots cannot: quorum, lifecycle nudges, recap announcement, the
 reveal digest for pages newly opened to players, and the between-sessions
-prep ask.
+prep ask with its private return path.
 
 ## Sessions and other events
 
@@ -116,6 +116,27 @@ mechanical relay rather than authorship. The last ask is remembered so
 `/session status` can show what remains outstanding. A channel reference
 typed as `<#id>` renders as a link when posted.
 
+## The private response path
+
+`/session respond` is the ask's return path for a player who runs no
+companion. Any member — the command is deliberately ungated, unlike the
+DM/config commands — opens a pop-up whose single field goes privately to
+the DM: convene files the text verbatim as a `suggest_page` into the
+[retrieval](retrieval.md) module's witness inbox on the player's behalf,
+tied back to the outstanding ask by its timestamp id, with the responder
+named in the drop's rationale so the DM's review file reads in context.
+The whole interaction is private by construction: the modal is answered
+ephemerally, the response content is never echoed even in the receipt,
+and nothing about a response — not even that one was made — ever reaches
+a shared channel. The inbox is DM-tier-only to read, so the table cannot
+see responses and one player cannot read another's; the DM triages them
+with `eddic suggestions` like any other witness drop. The prep record
+keeps a count-only tally — never the text — which `/session status`
+shows. If the witness write fails or the inbox is unconfigured, convene
+refuses or reports the miss in the same ephemeral thread and hands the
+player their words back to deliver directly, rather than losing them —
+and never falls back to posting in a channel.
+
 ## Configuration
 
 Two layers compose. An environment baseline is the durable floor that
@@ -124,7 +145,12 @@ identities (the DM defaulting to the maintainer when they are the same
 person), the quorum count and DM-required switch, the player role, the
 ping role, and the one auto-events channel. An optional `SESSION_MATCH`
 keyword scopes which calendar entries are sessions (see Sessions and other
-events above); left unset, every event is a session. Convene also reuses the
+events above); left unset, every event is a session. Two optional env-only
+settings, `WITNESS_URL` (the retrieval worker's base URL) and
+`WITNESS_TOKEN` (a **player-tier** token — any valid tier may suggest, and
+the DM token belongs on the DM's own devices, never a bot host), turn on
+`/session respond`; they ride env only because a token slash-typed into
+Discord would live on in client history. Convene also reuses the
 bot's site URL for recap links. On top of that the DM tunes settings live
 through slash commands that use Discord's native pickers, so no IDs are
 pasted: `/session dm`, `/session quorum`, `/session role`, `/session
@@ -156,7 +182,10 @@ a one-time light heads-up and nothing more.
 The quorum shape, the RSVP model (the native "interested" button counts as
 attending, honest that it is interest and not a commitment), the reminder
 wording, the prep voice, and the recorder nudge are each set to a sensible
-default with room to tune. The reveal digest is on by default, batched per
+default with room to tune. The private response path defaults to off and
+turns on by setting `WITNESS_URL` and `WITNESS_TOKEN` in the bot's env; it
+requires the retrieval pattern's witness write path, and unconfigured,
+`/session respond` refuses cleanly before the modal opens. The reveal digest is on by default, batched per
 lifecycle beat, and scoped to newly-revealed pages, with each of those three
 choices adjustable through wording overrides and the same durability seam as
 the recaps. State durability is the last: the announced set
@@ -190,7 +219,12 @@ a name-matching event runs the full session lifecycle while a non-matching one
 yields exactly one heads-up and never quorum, at-risk, imminent, or ended; that
 heads-up is idempotent per event id; with no keyword every event is a session,
 back-compatibly; and the new heads-up template validates through the same
-override machinery. The
+override machinery. The private response path is golden-tested at its pure
+seam: the filed drop carries the player's words verbatim, ties back to the
+ask's timestamp id, fits the worker's field caps, and the witness request is
+a header-auth `tools/call` that never puts the token in the URL; source-level
+checks pin `/session respond` ungated, every reply ephemeral, and no channel
+send anywhere in the respond path. The
 live driving of real scheduled events is proven separately, once deployed,
 and is treated as unproven until that pass is recorded.
 

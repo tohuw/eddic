@@ -242,6 +242,66 @@ def new_projected_pages(corpus, announced):
             and p.rsplit("/", 1)[-1] not in botlib.NON_CONTENT]
 
 
+def respond_args(text, responder="", prep=None):
+    """The suggest_page arguments for one private prep response — the
+    witness-inbox drop /session respond files on a player's behalf.
+    The player's words are the content, verbatim — mechanical relay,
+    never rewritten. The rationale ties the response back to the prep
+    ask it answers (the ask's timestamp is its id, `prep-<at>`) and
+    quotes the ask's first line so the DM's review file reads in
+    context without opening the state file. Pure."""
+    who = (responder or "").strip() or "a player"
+    if prep and prep.get("text"):
+        first = prep["text"].strip().splitlines()[0]
+        snip = first[:120] + ("…" if len(first) > 120 else "")
+        rationale = (f"Private /session respond reply from {who} to "
+                     f"prep-{int(prep.get('at', 0))}: “{snip}”")
+    else:
+        rationale = (f"Private /session respond reply from {who} — no "
+                     "prep ask is outstanding.")
+    return {"title": f"Prep response — {who}",
+            "content": text,
+            "rationale": rationale}
+
+
+def witness_request(base_url, token, tool, arguments):
+    """The MCP tools/call request that files one suggestion into the
+    retrieval worker's witness inbox: returns (url, body_bytes,
+    headers). Header auth keeps the token out of the URL (path-borne
+    tokens leak through logs and screenshots); the plain client UA
+    matters because a Cloudflare-fronted host with bot controls on
+    403s Python-urllib's default. Pure — file_suggestion does the
+    network."""
+    url = base_url.rstrip("/") + "/mcp"
+    body = json.dumps({"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+                       "params": {"name": tool, "arguments": arguments}}
+                      ).encode("utf-8")
+    headers = {"content-type": "application/json",
+               "accept": "application/json",
+               "user-agent": "eddic-convene",
+               "authorization": f"Bearer {token}"}
+    return url, body, headers
+
+
+def file_suggestion(base_url, token, tool, arguments, timeout=30):
+    """Send one witness write; raise on any refusal (worker error,
+    isError tool result) so the caller can tell the player their words
+    did not land — and hand them back rather than lose them."""
+    import urllib.request
+    url, body, headers = witness_request(base_url, token, tool, arguments)
+    req = urllib.request.Request(url, data=body, method="POST",
+                                 headers=headers)
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        payload = json.loads(resp.read().decode("utf-8"))
+    if "error" in payload:
+        raise RuntimeError(f"worker error: {payload['error']}")
+    result = payload.get("result", {})
+    if result.get("isError"):
+        raise RuntimeError((result.get("content") or [{}])[0].get(
+            "text", "unknown error"))
+    return result
+
+
 # ---- discord wiring (only touched at runtime) ----------------------
 def setup(client):
     import asyncio
@@ -264,6 +324,14 @@ def setup(client):
     # name contains the keyword, case-insensitively; anything else is a
     # non-session that gets one neutral heads-up and nothing more.
     SESSION_MATCH = os.environ.get("SESSION_MATCH", "")
+    # The witness inbox — where /session respond privately files a
+    # player's prep answer. WITNESS_URL is the retrieval worker's base
+    # URL; WITNESS_TOKEN a tier token (player tier is the right blast
+    # radius — any valid tier may suggest, and the DM token belongs on
+    # the DM's own devices, never a bot host). Env-only on purpose: a
+    # token slash-typed into Discord would live on in client history.
+    WITNESS_URL = os.environ.get("WITNESS_URL", "").rstrip("/")
+    WITNESS_TOKEN = os.environ.get("WITNESS_TOKEN", "")
     MESSAGES = load_messages(
         HERE / os.environ.get("CONVENE_MESSAGES", "convene_messages.json"))
 
@@ -514,6 +582,73 @@ def setup(client):
             return                     # leaving the response free for the
         await inter.response.send_modal(PrepModal())   # modal on success
 
+    class RespondModal(discord.ui.Modal, title="Respond to the prep ask"):
+        # One paragraph field mirroring the prep modal. The player's
+        # words go to the DM's witness review inbox VERBATIM and
+        # nowhere else — never a channel post, never rewritten. Every
+        # reply back to the player is ephemeral, so nothing about the
+        # response (not even that one was made) reaches the table.
+        answer = discord.ui.TextInput(
+            label="Your private response",
+            style=discord.TextStyle.paragraph,
+            placeholder="Goes only to the DM's review queue — "
+                        "the table never sees it.",
+            max_length=3800, required=True)
+
+        async def on_submit(self, inter):
+            # The witness write is a network call: ack the modal inside
+            # its 3 s budget, then file off the event loop (blocking
+            # urllib on the loop would stall the gateway heartbeat).
+            await inter.response.defer(ephemeral=True, thinking=True)
+            text = str(self.answer.value)
+            args = respond_args(text, responder=inter.user.display_name,
+                                prep=state.get("prep"))
+            try:
+                await asyncio.to_thread(
+                    file_suggestion, WITNESS_URL, WITNESS_TOKEN,
+                    "suggest_page", args)
+            except Exception as e:
+                # Never lose the player's words: the miss and their text
+                # come back in the same private thread, chunked under
+                # Discord's 2000-char message cap.
+                await inter.followup.send(
+                    "Couldn't reach the DM's review queue "
+                    f"({str(e)[:300]}). Your words, so they aren't "
+                    "lost — try again later or hand them to the DM "
+                    "directly:", ephemeral=True)
+                for i in range(0, len(text), 1900):
+                    await inter.followup.send(text[i:i + 1900],
+                                              ephemeral=True)
+                return
+            # count-only receipt on the prep record (never the text, so
+            # the state file holds no player secrets): /session status
+            # can show the DM how many answers are in.
+            if state.get("prep"):
+                state["prep"]["responses"] = (
+                    state["prep"].get("responses", 0) + 1)
+                save_state(STATE_FILE, state)
+            await inter.followup.send(
+                "Filed to the DM's review queue — only the DM can read "
+                "it. Run `/session respond` again to add more.",
+                ephemeral=True)
+
+    @grp.command(name="respond",
+                 description="Answer the prep ask privately — only the "
+                             "DM sees it")
+    async def respond_cmd(inter):
+        # Open to EVERY member on purpose — the gate is for DM/config
+        # commands, and this is the players' door. Config is checked
+        # before the modal opens so nobody types an answer that has
+        # nowhere to go.
+        if not (WITNESS_URL and WITNESS_TOKEN):
+            await inter.response.send_message(
+                "Private responses aren't set up yet — the DM needs to "
+                "point me at the campaign's review inbox (WITNESS_URL "
+                "and WITNESS_TOKEN). Until then, send the DM a direct "
+                "message.", ephemeral=True)
+            return
+        await inter.response.send_modal(RespondModal())
+
     @grp.command(name="status", description="Sessions, quorum, and config")
     async def status_cmd(inter, debug: bool = False):
         await inter.response.defer(ephemeral=True)
@@ -527,7 +662,9 @@ def setup(client):
             first = prep["text"].strip().splitlines()[0] if prep["text"] \
                 else ""
             snip = (first[:80] + "…") if len(first) > 80 else first
-            lines.append(f"prep out: “{snip}” · set <t:{int(prep['at'])}:R>")
+            n = prep.get("responses", 0)
+            lines.append(f"prep out: “{snip}” · set <t:{int(prep['at'])}:R>"
+                         + (f" · {n} private response(s) in" if n else ""))
         for guild in client.guilds:
             for event in await guild.fetch_scheduled_events():
                 count, dm_in = await count_interested(event)

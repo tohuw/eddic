@@ -1,5 +1,5 @@
 name: convene
-version: 0.4.0
+version: 0.5.0
 summary: >
   Session lifecycle as a capability of the always-on lore bot: drives
   Discord's native scheduled events, adds quorum (a session runs iff
@@ -24,8 +24,18 @@ summary: >
   events run the quorum lifecycle while anything else gets one neutral
   "new event on the calendar" heads-up (the new EVENT reminder) and
   nothing more — no quorum, no DM mention, no lifecycle nudges.
+  0.5.0 adds the prep ask's private return path, the companion-less
+  half of player prep responses: /session respond, an ephemeral modal
+  open to every member, whose text the bot files verbatim as a
+  suggest_page into the retrieval worker's DM-tier witness inbox
+  (WITNESS_URL + a player-tier WITNESS_TOKEN, env-only) — tied back to
+  the outstanding ask by its timestamp id, receipt ephemeral, a
+  count-only tally on the prep record for /session status, and the
+  player's words handed back in the same private thread if the write
+  fails. Nothing about a response ever touches a channel.
 touches:
   - lore-bot
+  - retrieval
 depends:
   - lore-bot
 cost_posture:

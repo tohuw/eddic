@@ -484,6 +484,92 @@ def main():
                    "is_session_event reads the resolved cfg keyword, not raw "
                    "env"))
 
+    # ---- /session respond: the companion-less private prep answer.
+    # respond_args builds the suggest_page drop the bot files into the
+    # DM's witness inbox on a player's behalf: the player's words are
+    # the content VERBATIM (mechanical relay, like the prep ask), the
+    # rationale ties back to the prep ask it answers by the ask's
+    # timestamp id, and the title names the responder for the DM's
+    # review file.
+    ans = "I was headed to Sunton to sell {contraband}. Don't ask."
+    args = convene.respond_args(ans, responder="Wren",
+                                prep={"text": body, "at": 1000, "by": 7})
+    checks.append((args["content"] == ans,
+                   "respond: the player's words are the content, verbatim "
+                   "(braces survive)"))
+    checks.append(("Wren" in args["title"],
+                   "respond: the title names the responder"))
+    checks.append(("prep-1000" in args["rationale"]
+                   and body.splitlines()[0][:40] in args["rationale"],
+                   "respond: the rationale ties back to the prep ask id "
+                   "and quotes its first line"))
+    args2 = convene.respond_args(ans, responder="", prep=None)
+    checks.append((args2["content"] == ans and args2["title"]
+                   and "no prep ask" in args2["rationale"],
+                   "respond: still files when no ask is outstanding"))
+    # the filed fields fit the worker's caps (title 256, content 16384,
+    # rationale 4096) even at the modal's 3800-char maximum and a long ask
+    la = convene.respond_args("y" * 3800, responder="n" * 32,
+                              prep={"text": "x" * 4000, "at": 1, "by": 1})
+    checks.append((len(la["title"]) <= 256 and len(la["content"]) <= 16384
+                   and len(la["rationale"]) <= 4096,
+                   "respond: filed fields fit the worker's field caps"))
+    # witness_request is the pure half of the write: an MCP tools/call
+    # against <base>/mcp with header auth (the token never rides the
+    # URL) and a plain client UA (a Cloudflare-fronted host with bot
+    # controls on 403s Python-urllib's default).
+    url, wbody, hdrs = convene.witness_request(
+        "https://example.test/", "tok-player", "suggest_page", la)
+    wreq = _json.loads(wbody.decode("utf-8"))
+    checks.append((url == "https://example.test/mcp"
+                   and wreq["method"] == "tools/call"
+                   and wreq["params"]["name"] == "suggest_page"
+                   and wreq["params"]["arguments"]["content"]
+                   == la["content"],
+                   "respond: witness_request builds a tools/call for "
+                   "suggest_page against <base>/mcp"))
+    checks.append((hdrs["authorization"] == "Bearer tok-player"
+                   and "tok-player" not in url
+                   and hdrs.get("user-agent", "") not in ("", None),
+                   "respond: header auth keeps the token out of the URL, "
+                   "with a plain client UA"))
+    # the count-only receipt rides the prep record through the state
+    # file — never the text, so state holds no player secrets
+    convene.save_state(sf, {"events": {}, "announced": [],
+                            "prep": {"text": "t", "at": 1, "by": 2,
+                                     "responses": 3}})
+    checks.append((convene.load_state(sf)["prep"].get("responses") == 3,
+                   "respond: the private-response count rides the prep "
+                   "record through the state file"))
+    # the command wiring, at the source level (the modal runs live):
+    # /session respond is open to every member — the players' door,
+    # never _gate'd like the DM/config commands — and opens a modal.
+    src = (MOD / "templates" / "convene.py").read_text(encoding="utf-8")
+    resp_body = src.partition('name="respond"')[2].partition(
+        "@grp.command(")[0]
+    checks.append((resp_body != "" and "_gate" not in resp_body
+                   and "send_modal" in resp_body,
+                   "/session respond is ungated (players' door) and opens "
+                   "a modal"))
+    checks.append(("WITNESS_URL and WITNESS_TOKEN" in resp_body,
+                   "/session respond refuses cleanly before the modal "
+                   "when the witness inbox is unconfigured"))
+    # the modal files off the event loop, replies only ephemerally, and
+    # never posts to any channel — nothing about a response (not even
+    # that one was made) reaches the table
+    modal_body = src.partition("class RespondModal")[2].partition(
+        "@grp.command(")[0]
+    checks.append(("to_thread" in modal_body
+                   and "chan.send" not in modal_body
+                   and modal_body.count("followup.send")
+                   <= modal_body.count("ephemeral=True"),
+                   "the respond modal files off the event loop and every "
+                   "reply is ephemeral — no channel ever sees a response"))
+    checks.append(('"responses"' in modal_body
+                   and 'state["prep"]["responses"]' in modal_body,
+                   "a landed response bumps the count-only receipt on the "
+                   "prep record"))
+
     # convene.py imports clean without discord (pure core only)
     import py_compile
     try:

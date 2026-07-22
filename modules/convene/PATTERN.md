@@ -14,7 +14,10 @@ the projection the bot already polls becomes an announcement) — which
 restores the announce that the source stack's bot once did by cron,
 now in its rightful always-on home — and the **prep ask**, the DM's
 between-sessions "decide this before we play" broadcast, relayed to
-the players verbatim inside the bot's voice.
+the players verbatim inside the bot's voice, with its private return
+path: **`/session respond`**, an ephemeral modal any player can open
+whose answer files straight into the DM's witness review inbox —
+never a channel, never the table's eyes.
 
 ## Preflight
 
@@ -59,7 +62,11 @@ the players verbatim inside the bot's voice.
    carries more than sessions — see the decision point below. `/session prep` opens a
    pop-up where the DM types a between-sessions ask; `/session status`
    shows the current config, quorum against live "interested", and the
-   outstanding prep ask.
+   outstanding prep ask (with how many private responses have come in).
+   `WITNESS_URL` and `WITNESS_TOKEN` (both optional, env-only — a
+   token slash-typed into Discord would live on in client history)
+   turn on `/session respond`, the players' private answer path — see
+   the decision point below.
 
 3. Redeploy the bot. On connect convene syncs its `/session`
    commands per guild, snapshots the recaps already in the projection
@@ -84,6 +91,12 @@ the players verbatim inside the bot's voice.
    headed to the Sunken City") into a pop-up; convene broadcasts it to
    the player role in the DM's own words, wrapped in the bot's voice,
    and remembers it so `/session status` can show what's outstanding.
+   Players answer with `/session respond`: a pop-up of their own whose
+   text the bot files verbatim into the DM's witness review inbox as a
+   pending suggestion, tied back to the ask it answers — the player
+   gets an ephemeral receipt, the table sees nothing, and the DM
+   triages with `eddic suggestions` exactly like any other witness
+   drop.
 
 ## Decision points
 
@@ -130,6 +143,30 @@ the players verbatim inside the bot's voice.
   or translate it, edit the frame around `{body}`. A channel reference
   in the ask is just `<#id>` in the DM's text — Discord renders it as a
   link when posted.
+- **Private prep responses (the companion-less path).** Default: off —
+  set `WITNESS_URL` (the retrieval worker's base URL) and
+  `WITNESS_TOKEN` (a tier token) in the bot's env to turn on
+  `/session respond`. It is the private return path for a player who
+  does not run a companion: an ephemeral modal, open to **every**
+  member (deliberately ungated — the gate is for DM/config commands),
+  whose text the bot files verbatim as a `suggest_page` into the
+  retrieval module's witness inbox on the player's behalf. The
+  destination is the point: the inbox is DM-tier-only, so the table
+  never sees a response and even the submitting player cannot read
+  others' — a no-read-history channel can NOT substitute, because
+  Discord's history permission is all-or-nothing (it neither hides
+  co-present players' live replies nor preserves a player's own). Use
+  the **player-tier** token: any valid tier may suggest, and the DM
+  token belongs on the DM's own devices, never a bot host. Collect it
+  with the secrets helper at setup; it rides env only, never Discord.
+  Each drop's rationale names the responder and quotes the outstanding
+  ask (tied by its timestamp id) so review files read in context; the
+  prep record keeps a count-only receipt — never the text — for
+  `/session status`. If the write fails (inbox full, worker down), the
+  bot hands the player their words back in the same ephemeral thread
+  rather than losing them. Requires the retrieval pattern's witness
+  write path (an `INBOX` KV binding); unconfigured, `/session respond`
+  refuses cleanly before the modal opens.
 - **Recorder nudge.** Default: on — the go-ahead reminds the DM to
   bring the recorder. Turn it off (`RECORDER_NUDGE=0`) for a table
   that captures with Craig instead.
@@ -185,7 +222,14 @@ the players verbatim inside the bot's voice.
   restart. Two durability regressions are covered as well: a reminder
   due while the announce channel is unset stays unfired (it re-fires
   once a channel exists), and a corrupt state file loads as empty
-  rather than crashing the bot at import.
+  rather than crashing the bot at import. The private respond path is
+  golden-tested at its pure seam: the filed drop carries the player's
+  words verbatim (braces survive), ties back to the ask's timestamp id,
+  fits the worker's field caps even at the modal's maximum, and the
+  witness request is a header-auth `tools/call` that never puts the
+  token in the URL; source-level checks pin `/session respond` ungated,
+  every reply ephemeral, and no channel send anywhere in the respond
+  path.
 - Live, once deployed: create a scheduled event, watch `/session
   status` track "interested" against quorum, let it cross the
   threshold and confirm the go-ahead fires, then publish a session
