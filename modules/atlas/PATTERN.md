@@ -86,6 +86,21 @@ Atlas simply reflects whatever the wiki says now.
   is itself a player page, so a DM page can never appear as a backlink —
   the same seam that governs the nodes governs the panel. Leave it on;
   the graph is only half-legible without a per-node local view.
+- **The Party mark.** Default: on, and there is nothing to configure. If
+  the wiki has a `party.md` (the standing roster page whose links to
+  `characters/*` are the player-character set), those PC nodes get a warm
+  gold ring and a "The Party" legend control that spotlights just the PCs
+  — dimming the rest — on hover, and pins on click, in the same spirit as
+  the backlinks panel. It is derived entirely from `party.md`'s links via
+  the same resolved edge set the graph already computes, so it adds no
+  authoring and no new frontmatter, stays deterministic, and is
+  firewall-correct by construction: `party.md` is player-visible and its
+  PCs are player pages, so a DM-only page can never be a party member (it
+  is not in the projection, so it yields no edge and no membership). If
+  the wiki has no `party.md`, the Atlas is byte-identical to one built
+  without this feature — no party styling, no legend entry. Leave it on;
+  "which of these is our crew?" is the first question a reader asks of a
+  world map.
 - **Palette.** Default: the Atlas matches the stock site shell
   (parchment/dark via `prefers-color-scheme`, category colours from a
   fixed accessible palette) and needs no assets or external requests.
@@ -105,9 +120,13 @@ Atlas simply reflects whatever the wiki says now.
   the shared primitives are identical); and (e) the per-node backlinks
   data is the exact inversion of the edge set, is present in the markup,
   and — in player mode — references only player pages (the planted DM
-  page cannot appear as anyone's backlink). It also confirms `--mode` is
-  required and that a DM-mode Atlas over the master, by contrast, does
-  see the page — proving the source-tree choice is the firewall.
+  page cannot appear as anyone's backlink); and (f) the party mark —
+  party.md's `characters/*` links define the PC set (a non-character it
+  also links is excluded), those nodes are marked and the "The Party"
+  focus control ships, and a wiki with no party.md yields byte-identical,
+  party-free output. It also confirms `--mode` is required and that a
+  DM-mode Atlas over the master, by contrast, does see the page — proving
+  the source-tree choice is the firewall.
 - In the real campaign: run `eddic graph --mode player`, open
   `dist/site/atlas.html`, drag/scroll to pan and zoom, click a node and
   confirm it opens that page. Grep the file for any known DM-only page

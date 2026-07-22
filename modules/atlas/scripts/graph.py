@@ -187,11 +187,34 @@ def category_of(rel):
     return rel.split("/")[0] if "/" in rel else "root"
 
 
+PARTY_PAGE = "party.md"       # the standing roster page (issue #27)
+PARTY_CATEGORY = "characters"  # PCs live under characters/
+
+
+def party_set(pages, edges):
+    """The player-character set: the pages `party.md` links that resolve
+    under characters/. Derived straight from the already-resolved,
+    already-sorted edge set (the SAME resolver every edge uses), never a
+    second parse — so it inherits the firewall and the determinism for
+    free. A page party.md names but that isn't in the source tree — a
+    DM-only character absent from the projection, say — yields no edge
+    and thus no membership, so the player Atlas can only ever mark player
+    characters. Empty (no marking at all, byte-identical to a party-less
+    Atlas) when the wiki has no party.md."""
+    if PARTY_PAGE not in pages:
+        return set()
+    return {d for s, d in edges
+            if s == PARTY_PAGE and category_of(d) == PARTY_CATEGORY}
+
+
 def build_nodes(pages, edges, inbound):
     """Node records with lint-derived flags. Reachability and orphan
     rules mirror eddic_lint: roots are index.md / index.dm.md, orphans
-    have no inbound link, unreachable = not reachable from the roots."""
+    have no inbound link, unreachable = not reachable from the roots.
+    `is_party` marks the player characters party.md links (empty and
+    inert when there is no party.md)."""
     roots = {r for r in ("index.md", "index.dm.md") if r in pages}
+    party = party_set(pages, edges)
     adj = {rel: set() for rel in pages}
     for s, d in edges:
         adj[s].add(d)
@@ -217,6 +240,7 @@ def build_nodes(pages, edges, inbound):
             "is_stub": page.is_stub,
             "is_orphan": inbound[rel] == 0 and rel not in roots,
             "is_unreachable": bool(roots) and rel not in seen,
+            "is_party": rel in party,
         })
     return nodes
 
@@ -340,10 +364,22 @@ def render_html(nodes, edges, pos, cats, mode, site_name):
             flags.append("orphan")
         if n["is_unreachable"]:
             flags.append("unreachable")
+        # A party (player-character) node carries the `party` class and a
+        # gold halo ring drawn just outside its circle. The fill stays the
+        # taxonomy colour, so the mark composes on top of the category
+        # rather than replacing it. Non-party nodes emit exactly the bytes
+        # they did before the feature — the ring string is empty.
+        ring = ""
+        if n["is_party"]:
+            cls += " party"
+            flags.insert(0, "party")
+            ring = (f'<circle class="ring" cx="{x:.2f}" cy="{y:.2f}" '
+                    f'r="{r + 3:.2f}"/>')
         tip = n["label"] + (f" [{', '.join(flags)}]" if flags else "")
         parts.append(
             f'<a class="{cls}" href="{href_for(n["id"])}" '
             f'data-id="{esc(n["id"])}" aria-label="{esc(n["label"])}">'
+            f'{ring}'
             f'<circle cx="{x:.2f}" cy="{y:.2f}" r="{r:.2f}" '
             f'fill="{color[n["category"]]}"/>'
             f'<title>{esc(tip)}</title>'
@@ -355,6 +391,13 @@ def render_html(nodes, edges, pos, cats, mode, site_name):
     legend = "\n".join(
         f'<span class="key"><i style="background:{color[c]}"></i>'
         f'{esc(c)}</span>' for c in cats)
+    # "The Party" focus control and its styling/behaviour ship ONLY when
+    # the wiki has a party.md (some node carries is_party). Absent that,
+    # all three expand to "" and the Atlas is byte-identical to before.
+    has_party = any(n["is_party"] for n in nodes)
+    party_legend = PARTY_LEGEND if has_party else ""
+    party_css = PARTY_CSS if has_party else ""
+    party_js = PARTY_JS if has_party else ""
 
     # Backlinks data: per-node inbound ("mentioned by") and outbound
     # ("links to") adjacency, inverted from the resolved edge set, plus a
@@ -376,7 +419,62 @@ def render_html(nodes, edges, pos, cats, mode, site_name):
     return HTML_TEMPLATE.format(
         title=title, mode=esc(mode), site_hdr=site_hdr,
         node_count=len(nodes), edge_count=len(edges),
-        viewbox=vb, svg_body=svg_body, legend=legend, panel_data=panel_data)
+        viewbox=vb, svg_body=svg_body, legend=legend, panel_data=panel_data,
+        party_css=party_css, party_legend=party_legend, party_js=party_js)
+
+
+# --- "The Party" highlight (issue #27) -------------------------------
+# All three fragments are substituted as .format() *arguments*, so their
+# single braces are literal — no doubling. They are emitted only when the
+# wiki has a party.md; otherwise render_html passes "" for each and the
+# output is byte-for-byte the pre-feature Atlas. Colours are literal
+# (not new :root variables) so nothing party-related touches the shell's
+# CSS in the no-party case. Warm gold on parchment, softer gold on dark.
+PARTY_LEGEND = ('<button type="button" class="key party-key" '
+                'aria-pressed="false">'
+                '<span class="ring-swatch"></span>The Party</button>')
+
+PARTY_CSS = """
+  .node.party .ring { fill: none; stroke: #b9822c; stroke-width: 1.6;
+    opacity: 0.9; pointer-events: none; transition: opacity 0.1s; }
+  .party-key { font: inherit; color: inherit; cursor: pointer;
+    background: none; border: 0; padding: 0; display: inline-flex;
+    align-items: center; gap: 0.3rem; }
+  .party-key .ring-swatch { width: 0.8rem; height: 0.8rem;
+    border-radius: 50%; border: 2px solid #b9822c; box-sizing: border-box;
+    display: inline-block; }
+  .party-key[aria-pressed="true"] { font-weight: 600; }
+  #atlas.party-focus .node:not(.party) { opacity: 0.12; }
+  #atlas.party-focus .edges { opacity: 0.06; }
+  #atlas.party-focus .node.party .ring { opacity: 1; stroke-width: 2.4; }
+  #atlas.party-focus .node.party text { opacity: 1; }
+  @media (prefers-color-scheme: dark) {
+    .node.party .ring { stroke: #e6c06a; }
+    .party-key .ring-swatch { border-color: #e6c06a; }
+  }"""
+
+PARTY_JS = """
+<script>
+(function() {
+  // "The Party" focus: hover the legend key to spotlight the player
+  // characters (dim everything else); click to pin. Same spirit as the
+  // backlinks/veil affordances — a focus, nothing navigational.
+  var svg = document.getElementById('atlas');
+  var key = document.querySelector('.party-key');
+  if (!svg || !key) return;
+  var pinned = false;
+  function focus(on) { svg.classList.toggle('party-focus', on); }
+  key.addEventListener('mouseenter', function() { if (!pinned) focus(true); });
+  key.addEventListener('mouseleave', function() { if (!pinned) focus(false); });
+  key.addEventListener('focus', function() { if (!pinned) focus(true); });
+  key.addEventListener('blur', function() { if (!pinned) focus(false); });
+  key.addEventListener('click', function() {
+    pinned = !pinned;
+    focus(pinned);
+    key.setAttribute('aria-pressed', pinned ? 'true' : 'false');
+  });
+})();
+</script>"""
 
 
 HTML_TEMPLATE = """<!doctype html>
@@ -456,14 +554,14 @@ HTML_TEMPLATE = """<!doctype html>
   }}
   #panel-close:hover {{ color: var(--ink); }}
   footer {{ padding: 0.4rem 1rem; border-top: 1px solid var(--rule);
-    color: var(--faint); font-size: 0.78rem; }}
+    color: var(--faint); font-size: 0.78rem; }}{party_css}
 </style>
 </head>
 <body>
 <header>
   <h1>Atlas{site_hdr}</h1>
   <span class="meta">{node_count} pages, {edge_count} links &middot; {mode} view</span>
-  <span class="legend">{legend}</span>
+  <span class="legend">{legend}{party_legend}</span>
 </header>
 <svg id="atlas" viewBox="{viewbox}" preserveAspectRatio="xMidYMid meet"
      xmlns="http://www.w3.org/2000/svg">
@@ -562,7 +660,7 @@ var ATLAS_DATA = {panel_data};
   }});
   svg.addEventListener('click', function() {{ if (!moved) close(); }});
 }})();
-</script>
+</script>{party_js}
 </body>
 </html>
 """
