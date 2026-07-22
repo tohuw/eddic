@@ -54,7 +54,7 @@
   .gl:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:2px}
   .gl-pop{position:absolute;left:50%;bottom:calc(100% + 8px);transform:translateX(-50%);width:max-content;max-width:260px;background:var(--panel);color:var(--ink-soft);border:1px solid var(--line-strong);border-radius:8px;padding:.55rem .7rem;font-family:var(--body);font-size:.8rem;line-height:1.42;text-align:left;font-weight:400;text-transform:none;letter-spacing:normal;box-shadow:0 10px 30px -12px rgba(0,0,0,.45);z-index:30;opacity:0;visibility:hidden;transition:opacity .12s ease;pointer-events:none}
   .gl-pop b{color:var(--ink)}
-  .gl:hover .gl-pop,.gl:focus .gl-pop,.gl:focus-within .gl-pop,.gl.open .gl-pop{opacity:1;visibility:visible}
+  .gl:hover .gl-pop,.gl:focus .gl-pop,.gl:focus-within .gl-pop,.gl.open .gl-pop,.idchip.info:hover .gl-pop,.idchip.info:focus-within .gl-pop,.idchip.info.open .gl-pop{opacity:1;visibility:visible}
   .mast{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:clamp(1rem,3vw,2.6rem);align-items:end;padding-bottom:1.15rem;border-bottom:2px solid var(--line-strong)}
   @media (max-width:860px){.mast{grid-template-columns:1fr;align-items:start}}
   .eyebrow{font-family:var(--mono);font-size:.7rem;letter-spacing:.22em;text-transform:uppercase;color:var(--accent);margin:0 0 .5rem}
@@ -62,6 +62,9 @@
   .idline{display:flex;flex-wrap:wrap;gap:.4rem;margin:.85rem 0 0}
   .idchip{font-family:var(--mono);font-size:.73rem;padding:.3rem .6rem;border-radius:6px;background:var(--accent-wash);color:var(--accent);border:1px solid var(--accent)}
   .idchip.plain{background:var(--panel-2);color:var(--ink-soft);border-color:var(--line-strong)}
+  a.idchip{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:2px}
+  a.idchip:hover{text-decoration-thickness:2px}
+  .idchip.info{position:relative;cursor:help;text-decoration:underline dotted;text-decoration-thickness:1px;text-underline-offset:2px}
   .subtitle{font-family:var(--display);font-style:italic;color:var(--ink-soft);font-size:clamp(1.02rem,2.1vw,1.28rem);margin:.75rem 0 0;max-width:40ch}
   .meta{display:flex;flex-direction:column;gap:.5rem}
   .mrow{display:grid;grid-template-columns:8.5rem 1fr;gap:.9rem;align-items:baseline;padding-bottom:.5rem;border-bottom:1px solid var(--line)}
@@ -152,10 +155,10 @@
       <p class="eyebrow">A learner's codex · your 2nd session</p>
       <h1>Wren</h1>
       <div class="idline">
-        <span class="idchip">Rogue 2</span>
-        <span class="idchip">Human</span>
-        <span class="idchip">Thief</span>
-        <span class="idchip plain">Dexterity attacker</span>
+        <span class="idchip info" tabindex="0">Rogue 2<span class="gl-pop">Your class and level — a Rogue at level 2: a Dexterity skirmisher with Sneak Attack and Cunning Action.</span></span>
+        <span class="idchip info" tabindex="0">Human<span class="gl-pop">Your species. Versatile: an extra skill and a feat at level 1.</span></span>
+        <a class="idchip" href="https://example.com/classes/rogue-thief" target="_blank" rel="noopener">Thief</a>
+        <span class="idchip plain info" tabindex="0">Dexterity attacker<span class="gl-pop">Dexterity drives your attacks, AC, Stealth, and initiative — your key stat.</span></span>
       </div>
       <p class="subtitle">How a turn works, what you can do, and the things nobody tells a new player.</p>
     </div>
@@ -315,8 +318,8 @@
           el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
         }
       }
-      var g = e.target.closest('.gl');
-      document.querySelectorAll('.gl.open').forEach(function (o) { if (o !== g) o.classList.remove('open'); });
+      var g = e.target.closest('.gl, .idchip.info');
+      document.querySelectorAll('.gl.open, .idchip.info.open').forEach(function (o) { if (o !== g) o.classList.remove('open'); });
       if (g) g.classList.toggle('open');
     });
   })();

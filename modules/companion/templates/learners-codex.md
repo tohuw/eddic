@@ -49,7 +49,7 @@ start from a blank file.
 
 Sections, in this spirit (adapt to the character's class and level):
 
-- **Identity + a labeled status strip.** Class, level, species up front.
+- **Identity + a labeled status strip.** Class, level, species up front, each identity chip made meaningful — a link to its wiki page where one exists, otherwise a glossary popover, never an inert pill.
   Then the live situation as *labeled* rows, not a wall of pills — **Status
   effects**, **Location**, **Party**, **Current mission** — each value
   linking into the wiki where a page exists (see linking, below).
