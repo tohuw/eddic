@@ -112,8 +112,8 @@
   details.more summary::before{content:"▸ "}
   details.more[open] summary::before{content:"▾ "}
   details.more p{font-size:.9rem;color:var(--ink-soft);margin:.55rem 0 0}
-  .abilities{display:grid;grid-template-columns:repeat(auto-fill,minmax(268px,1fr));gap:.9rem}
-  .ab{border:1px solid var(--line-strong);border-radius:11px;background:var(--panel-2);padding:.9rem 1rem 1rem}
+  .abilities{columns:21rem;column-gap:.9rem}
+  .ab{border:1px solid var(--line-strong);border-radius:11px;background:var(--panel-2);padding:.9rem 1rem 1rem;break-inside:avoid;margin-bottom:.9rem}
   .ab.react{border-color:var(--accent);background:linear-gradient(180deg,var(--accent-wash),transparent 34%),var(--panel-2)}
   .ab-top{display:flex;flex-direction:column-reverse;align-items:flex-start;gap:.12rem}
   .ab h3{margin:0;font-size:1.02rem;font-weight:700;font-family:var(--body)}
