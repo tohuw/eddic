@@ -44,8 +44,11 @@
   *{box-sizing:border-box}
   html{scroll-behavior:smooth}
   @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  @media (min-width:1728px){html{font-size:17.5px}}
+  @media (min-width:2160px){html{font-size:19px}}
+  @media (min-width:2880px){html{font-size:21px}}
   body{margin:0;background:radial-gradient(115% 70% at 100% -8%,var(--accent-wash),transparent 55%),radial-gradient(80% 55% at -8% 108%,var(--gold-wash),transparent 52%),var(--ground);color:var(--ink);font-family:var(--body);line-height:1.5;-webkit-font-smoothing:antialiased}
-  .wrap{max-width:1480px;margin:0 auto;padding:clamp(1rem,2.6vw,2.8rem)}
+  .wrap{max-width:92.5rem;margin:0 auto;padding:clamp(1rem,2.6vw,2.8rem)}
   a{color:var(--accent);text-underline-offset:2px}
   .gl{position:relative;border:0;background:none;font:inherit;color:inherit;padding:0;cursor:help;border-bottom:1.5px dotted var(--accent)}
   .gl:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:2px}
@@ -82,7 +85,7 @@
   .lead{color:var(--ink-soft);font-size:.92rem;margin:.1rem 0 .9rem}
   a.ref{font-weight:600;text-decoration:none;border-bottom:1.5px solid var(--accent-soft);cursor:pointer}
   @keyframes flashpulse{0%{box-shadow:0 0 0 0 var(--flash);border-color:var(--accent)}100%{box-shadow:0 0 0 14px rgba(0,0,0,0);border-color:var(--line)}}
-  .flash{animation:flashpulse 1.15s ease-out}
+  .flash{animation:flashpulse .5s ease-out 3}
   @media (prefers-reduced-motion:reduce){.flash{animation:none;outline:3px solid var(--accent);outline-offset:2px}}
   ol.steps{list-style:none;counter-reset:s;margin:0;padding:0;display:flex;flex-direction:column;gap:.75rem}
   ol.steps li{counter-increment:s;display:grid;grid-template-columns:1.9rem 1fr;gap:.85rem}
@@ -126,6 +129,8 @@
   .fact h4{margin:0 0 .22rem;font-size:.95rem;font-weight:700}
   .fact p{margin:0;font-size:.87rem;color:var(--ink-soft)}
   .fact.good{border-top-color:var(--good)}.fact.risk{border-top-color:var(--risk)}
+  .ovl{display:inline-block;width:1.5rem;height:0;border-top:2px solid;vertical-align:middle}
+  .ovl.good{border-color:var(--good)}.ovl.risk{border-color:var(--risk)}.ovl.neutral{border-color:var(--line-strong)}
   .rows{display:flex;flex-direction:column;gap:.6rem}
   .rows .r{display:grid;grid-template-columns:8rem 1fr;gap:.8rem}
   .rows .r .t{font-weight:650;font-size:.9rem}
@@ -219,7 +224,7 @@
         <li><b>Opportunity attack</b> — a free strike when a foe leaves your reach. <b>No setup.</b></li>
         <li><b>Ready</b> — the one you <em>do</em> pre-plan, on your turn.</li>
       </ul>
-      <details class="more"><summary>The catch</summary><p>One reaction between your turns. A Ready spends the same reaction you'd need for an opportunity attack — not both.</p></details>
+      <p class="note">One reaction between your turns — a Ready spends the same reaction you'd want for an opportunity attack, so not both.</p>
     </section>
 
     <section class="card col-12" id="kit">
@@ -266,9 +271,10 @@
       <p class="eyebrow" style="color:var(--accent)">⚡ Things you probably didn't know — or haven't considered</p>
       <h2>The stuff that turns "I attack" into a real turn</h2>
       <p class="lead">Not advice on what to pick — just rules new players miss, so your options are wider than they look.</p>
+      <p class="legend" style="margin:.1rem 0 0"><span><span class="ovl good"></span> an edge you have</span><span><span class="ovl risk"></span> a way to get hurt</span><span><span class="ovl neutral"></span> just a rule</span></p>
       <div class="band-grid">
         <div class="fact good"><h4>You have a reaction every round</h4><p>A whole extra action, off-turn. See <a class="ref" href="#react">the reactions box</a>.</p></div>
-        <div class="fact"><h4>Leaving reach provokes — but not always</h4><p>Moving <em>within</em> reach, forced movement, and teleport don't. Disengage cancels it.</p></div>
+        <div class="fact risk"><h4>Leaving reach provokes — but not always</h4><p>Moving <em>within</em> reach, forced movement, and teleport don't. Disengage cancels it.</p></div>
         <div class="fact"><h4>Split your move around your action</h4><p>Move, strike, move the rest. It's one turn.</p></div>
         <div class="fact good"><h4>Help is a gift you can give</h4><p>Trade your action for an ally's advantage — and, for a rogue, it sets up an ally's flank too.</p></div>
         <div class="fact"><h4>Advantage doesn't stack</h4><p>It's <span class="k">2d20</span> take the better, no matter how many reasons.</p></div>
