@@ -17,7 +17,12 @@ offline. Asserts:
   (e) the per-node backlinks adjacency is the exact inversion of the
       resolved edge set, the panel markup and data are present in the
       emitted HTML, and the player-mode backlinks reference only player
-      pages — the planted DM page cannot surface as anyone's backlink.
+      pages — the planted DM page cannot surface as anyone's backlink;
+  (f) the party mark: party.md's links to characters/* define the PC set
+      (the characters/* filter excludes a non-character it also links),
+      those nodes are marked and the "The Party" focus control ships in
+      both modes, and a wiki with NO party.md emits byte-identical,
+      party-free output — the graceful no-op.
 """
 
 import importlib.util
@@ -47,31 +52,46 @@ def write(root, rel, text):
 
 
 def plant(root):
-    # index (player) -> warden (player); warden -> index. ghost is a
-    # player stub nobody links (orphan + unreachable). secret is DM-only
-    # (no visibility marker) and links a player page: a DM->player edge,
-    # the planted breach that must never reach the player build.
+    # index (player) -> warden (player) and -> party. warden -> index.
+    # ghost is a player... no: ghost is DM-only (no visibility marker), a
+    # stub nobody links (orphan + unreachable). secret is DM-only and
+    # links a player page: a DM->player edge, the planted breach that must
+    # never reach the player build. party.md (player-visible, issue #27)
+    # is the standing roster: its links to characters/* ARE the
+    # player-character set. It links the Warden (a PC) and, deliberately,
+    # back to index.md (NOT under characters/, so it is EXCLUDED from the
+    # party) — which exercises the characters/* filter.
     write(root, "index.md",
           "---\nvisibility: player\n---\n\n# Realm\n\n"
-          "See [the Warden](characters/warden.md).\n")
+          "See [the Warden](characters/warden.md) and meet "
+          "[the party](party.md).\n")
     write(root, "characters/warden.md",
           "---\nvisibility: player\n---\n\n# The Warden\n\n"
           "Back to [the realm](../index.md).\n")
     write(root, "characters/ghost.md", "# Ghost\n\nSTUB\n")
     write(root, "lore/secret.md",
           "# The Sunken City\n\nA DM secret linking [the realm](../index.md).\n")
+    write(root, "party.md",
+          "---\nvisibility: player\n---\n\n# The Party\n\n"
+          "Our crew: [the Warden](characters/warden.md). "
+          "Return to [the realm](index.md).\n")
 
 
 GOLDEN_EDGES = [
     ("characters/warden.md", "index.md"),
     ("index.md", "characters/warden.md"),
+    ("index.md", "party.md"),
     ("lore/secret.md", "index.md"),
+    ("party.md", "characters/warden.md"),
+    ("party.md", "index.md"),
 ]
+# (category, degree, is_stub, is_orphan, is_unreachable, is_party)
 GOLDEN_NODES = {
-    "characters/ghost.md": ("characters", 0, True, True, True),
-    "characters/warden.md": ("characters", 2, False, False, False),
-    "index.md": ("root", 3, False, False, False),
-    "lore/secret.md": ("lore", 1, False, True, True),
+    "characters/ghost.md": ("characters", 0, True, True, True, False),
+    "characters/warden.md": ("characters", 3, False, False, False, True),
+    "index.md": ("root", 5, False, False, False, False),
+    "lore/secret.md": ("lore", 1, False, True, True, False),
+    "party.md": ("root", 3, False, False, False, False),
 }
 
 
@@ -97,8 +117,17 @@ def main():
     nodes = graph.build_nodes(pages, edges, inbound)
     check(results, edges == GOLDEN_EDGES, f"golden edges (got {edges})")
     got_nodes = {n["id"]: (n["category"], n["degree"], n["is_stub"],
-                           n["is_orphan"], n["is_unreachable"]) for n in nodes}
+                           n["is_orphan"], n["is_unreachable"], n["is_party"])
+                 for n in nodes}
     check(results, got_nodes == GOLDEN_NODES, f"golden nodes (got {got_nodes})")
+
+    # party detection: the PC set is exactly party.md's links that resolve
+    # under characters/. The Warden (a PC) is in; index.md — linked by
+    # party.md but not a character — is out. Same resolver as every edge.
+    pset = graph.party_set(pages, edges)
+    check(results, pset == {"characters/warden.md"},
+          f"party set = party.md's characters/* links, index.md excluded "
+          f"(got {pset})")
 
     # (e) backlinks: per-node adjacency is the exact inversion of the edge
     # set. Recompute the expected inversion here, independently of the
@@ -158,6 +187,17 @@ def main():
     check(results, 'id="panel"' in html and "var ATLAS_DATA = " in html
           and "Mentioned by" in html,
           "player Atlas emits the backlinks panel markup and data")
+    # the party mark and its "The Party" focus control are present: the
+    # Warden node is a party node, the legend entry and the focus CSS/JS
+    # ship, and the gold ring is drawn. Firewall-safe by construction —
+    # party.md is player-visible and its PCs are player pages, so the
+    # projection carries them; a DM-only character would simply be absent
+    # (no edge, no membership), which the "NO DM page" assertion above
+    # already proves for `secret`.
+    check(results, 'class="node party"' in html and "The Party" in html
+          and "party-focus" in html and "party-key" in html
+          and 'class="ring"' in html,
+          "player Atlas marks PC nodes and emits the 'The Party' focus control")
     # the DM->player edge cannot exist because its source node is gone
     ppages = graph.load_pages(proj, "log.md")
     pedges, _ = graph.resolve_graph(proj, ppages)
@@ -192,6 +232,27 @@ def main():
                        capture_output=True, text=True)
     check(results, a1.read_bytes() == a2.read_bytes(),
           "determinism: byte-identical across two runs")
+
+    # graceful no-op: a wiki with NO party.md emits zero party markup —
+    # no PC class, no ring, no "The Party" control, no focus CSS/JS — so
+    # the Atlas is exactly what it was before the feature. Built from a
+    # copy of the master with party.md removed, and byte-stable across two
+    # runs like every other build.
+    noparty = tmp / "noparty"
+    shutil.copytree(master, noparty)
+    (noparty / "party.md").unlink()
+    np1, np2 = tmp / "np1.html", tmp / "np2.html"
+    for out in (np1, np2):
+        subprocess.run(["uv", "run", str(GRAPH_PY), "--mode", "dm",
+                        "--src", str(noparty), "--out", str(out)],
+                       capture_output=True, text=True)
+    np_html = np1.read_text(encoding="utf-8")
+    party_tokens = ("The Party", "party-focus", "party-key",
+                    'class="node party"', 'class="ring"', ".node.party")
+    check(results, not any(t in np_html for t in party_tokens),
+          "no party.md: Atlas emits zero party markup (graceful no-op)")
+    check(results, np1.read_bytes() == np2.read_bytes(),
+          "no party.md: output byte-identical across two runs")
 
     # --mode is required and never inferred.
     nomode = subprocess.run(
