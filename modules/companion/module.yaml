@@ -23,7 +23,7 @@ summary: >
   the DM-only witness inbox (suggest_edit/suggest_page), invisible to the
   rest of the table and never canon, falling back to "hand it to the DM
   directly" when the write path is off.
-  Also ships the learner's codex: on a player's request the companion
+  Also ships the learner's primer: on a player's request the companion
   builds a one-page HTML cheat-sheet of that player's own character and
   turn (numbers from their sheet, context and links from the projection,
   rules explained in place), under the same possible-and-true, never-

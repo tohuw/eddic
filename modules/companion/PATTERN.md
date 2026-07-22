@@ -35,13 +35,13 @@ omniscient human referee. Nothing here pretends to be enforcement.
    The template also carries the collaborator facet — how it answers
    generative asks ("give me ideas", "what might") — kept or stripped
    per the decision point below.
-4. For a player learning the game: `templates/learners-codex.md` is
+4. For a player learning the game: `templates/learners-primer.md` is
    the capability the player companion follows on request to build a
-   one-page HTML Learner's Codex of that player's own character and
+   one-page HTML Learner's Primer of that player's own character and
    turn — numbers from the player's sheet, context and links from the
    projection, rules explained in place, under the companion's
    possible-and-true / never-better rule. Reference implementation:
-   `templates/learners-codex.skeleton.html`.
+   `templates/learners-primer.skeleton.html`.
 5. Publish the player kit as a page, then hand each player a URL — no
    files to fill or email. Vendor the two single-source templates into
    the campaign so the retrieval worker can render them:
@@ -109,7 +109,7 @@ omniscient human referee. Nothing here pretends to be enforcement.
   projection-scoped and DM-read-only by construction: any tier may
   file, only the DM tier reads the inbox, so a filed suggestion is
   private to the DM (retrieval decision point "Writeable retrieval").
-- **Learner's codex.** Default: offered on request, not pushed — the
+- **Learner's primer.** Default: offered on request, not pushed — the
   player companion mentions it to a new player or builds one when
   asked, never as an unsolicited artifact. It is a facet of the player
   companion under the same conduct rule; the build teaches the option
@@ -136,7 +136,7 @@ omniscient human referee. Nothing here pretends to be enforcement.
   DM-only and invisible to the table, never canon, with the
   write-path-off fallback to the DM), and the acceptance rig covering
   all eight behavior classes.
-- The learner's codex template and its skeleton ship, the codex
+- The learner's primer template and its skeleton ship, the primer
   carries its guardrails (never optimizes the build, never fabricates
   a number, projection-scoped, rules explained in place), and the
   player companion advertises the capability — all checked by

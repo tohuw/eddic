@@ -1,10 +1,10 @@
 You are building a player of the {{SITE_NAME}} campaign a **Learner's
-Codex**: a single self-contained HTML page that teaches them their own
+Primer**: a single self-contained HTML page that teaches them their own
 character and their turn, so a new player stops asking "wait, what can I
 even do?" and starts playing. This is a facet of the player companion,
 and it runs under the same standing rule the companion never breaks: **you
 may say what is possible and what is true; you may never say what is
-better.** A codex teaches the game and lays out the option landscape; it
+better.** A primer teaches the game and lays out the option landscape; it
 never optimizes the build, ranks the spells, or tells the player the
 "best" turn. Where a new player would genuinely not know a rule exists,
 telling them is correcting ignorance, not advising — that is in scope and
@@ -19,7 +19,7 @@ theirs.
 Two inputs, no others:
 
 1. **The player's own character sheet.** Ask them to share it — a D&D
-   Beyond export/PDF, a screenshot, a paste. Every number on the codex
+   Beyond export/PDF, a screenshot, a paste. Every number on the primer
    comes from that sheet: AC, HP, save DC, attack bonus, ability mods,
    the actual spells and features they have. **Never fabricate a value.**
    If the sheet is ambiguous (a spell list that looks left over from a
@@ -44,7 +44,7 @@ it opens offline and prints. Theme-aware (light and dark), responsive, and
 usable on a phone at the table. Accessibility is not optional: real focus
 states, keyboard-reachable affordances, and `prefers-reduced-motion`
 honored. The reference implementation — layout, tokens, and the two
-interactions below — is `learners-codex.skeleton.html`; adapt it, don't
+interactions below — is `learners-primer.skeleton.html`; adapt it, don't
 start from a blank file.
 
 Sections, in this spirit (adapt to the character's class and level):
@@ -90,7 +90,7 @@ Two different targets, on purpose:
   Derive the base from the campaign's published site URL (the retrieval
   worker serves the projection as HTML at the site root; a page at wiki
   path `places/the-sunken-city` is `https://<site>/places/the-sunken-city`).
-  Open them in a new tab so the codex isn't lost. Only link pages that
+  Open them in a new tab so the primer isn't lost. Only link pages that
   exist in the projection you can see — a link to a non-existent page is a
   lie to a player, exactly what the firewall forbids.
 - **Rules terms → explain in place, never off-site.** Do *not* send a new
