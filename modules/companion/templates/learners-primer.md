@@ -137,6 +137,12 @@ trips up new players. Phrase each as a true fact, never as advice:
 - **Cover is a number** (+2 or +5 AC; total cover blocks targeting).
 - **Zero HP isn't death** — death saves, a nat 20 revives at 1, allies can
   stabilize you.
+- **Decide-after dice (2024).** Guidance and Resistance let the d4 be
+  rolled *after* seeing the check or save result, and the die is spent
+  only when rolled — within the spell's minute an unspent d4 carries to
+  the next roll. For a character who has them, this is the tip that
+  turns a forgettable cantrip into a habit; pair it with a concrete
+  casting cue ("an ally says 'I'll try…' and you can touch them").
 - **Class-specific economy.** Surface the one a new player of this class
   gets wrong — a warlock's slots returning on a short rest; a fighter's
   action surge; a rogue's Cunning Action bonus and once-per-turn Sneak
