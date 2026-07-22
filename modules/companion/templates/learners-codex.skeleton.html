@@ -124,6 +124,10 @@
   .ab-eff .rider{color:var(--gold);font-weight:650}
   .band{grid-column:1/-1;border:1px solid var(--accent);border-radius:15px;background:linear-gradient(180deg,var(--accent-wash),transparent 26%),var(--panel);padding:1.4rem clamp(1.1rem,3vw,1.9rem);box-shadow:var(--shadow);scroll-margin-top:1.5rem}
   .band h2{font-family:var(--display);font-size:clamp(1.5rem,3vw,2rem);margin:.1rem 0 .3rem}
+  .band-head{display:flex;justify-content:space-between;align-items:flex-start;gap:1.5rem;flex-wrap:wrap}
+  .band-head-text{flex:1 1 360px;min-width:0}
+  .band-legend{flex:0 0 auto;display:flex;flex-direction:column;gap:.4rem;margin-top:.35rem;background:var(--panel-2);border:1px solid var(--line);border-radius:9px;padding:.7rem .85rem;font-size:.78rem;color:var(--ink-faint)}
+  .band-legend span{display:inline-flex;align-items:center;gap:.5rem;white-space:nowrap}
   .band-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:.9rem 1.5rem;margin-top:1.1rem}
   .fact{border-top:1.5px solid var(--line-strong);padding-top:.55rem}
   .fact h4{margin:0 0 .22rem;font-size:.95rem;font-weight:700}
@@ -268,10 +272,18 @@
     </section>
 
     <section class="band" id="didntknow">
-      <p class="eyebrow" style="color:var(--accent)">⚡ Things you probably didn't know — or haven't considered</p>
-      <h2>The stuff that turns "I attack" into a real turn</h2>
-      <p class="lead">Not advice on what to pick — just rules new players miss, so your options are wider than they look.</p>
-      <p class="legend" style="margin:.1rem 0 0"><span><span class="ovl good"></span> an edge you have</span><span><span class="ovl risk"></span> a way to get hurt</span><span><span class="ovl neutral"></span> just a rule</span></p>
+      <div class="band-head">
+        <div class="band-head-text">
+          <p class="eyebrow" style="color:var(--accent)">⚡ Things you probably didn't know — or haven't considered</p>
+          <h2>The stuff that turns "I attack" into a real turn</h2>
+          <p class="lead">Not advice on what to pick — just rules new players miss, so your options are wider than they look.</p>
+        </div>
+        <div class="band-legend" aria-label="What the overlines mean">
+          <span><span class="ovl good"></span> an edge you have</span>
+          <span><span class="ovl risk"></span> a way to get hurt</span>
+          <span><span class="ovl neutral"></span> just a rule</span>
+        </div>
+      </div>
       <div class="band-grid">
         <div class="fact good"><h4>You have a reaction every round</h4><p>A whole extra action, off-turn. See <a class="ref" href="#react">the reactions box</a>.</p></div>
         <div class="fact risk"><h4>Leaving reach provokes — but not always</h4><p>Moving <em>within</em> reach, forced movement, and teleport don't. Disengage cancels it.</p></div>
