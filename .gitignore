@@ -5,3 +5,6 @@ dist/
 .env
 __pycache__/
 .wrangler/
+
+# agent worktrees — local, never commit
+.claude/worktrees/
