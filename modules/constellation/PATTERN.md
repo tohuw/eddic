@@ -1,7 +1,7 @@
 # Pattern: the Constellation
 
 Renders the wiki's cross-link graph as one self-contained interactive
-map — pages as nodes, resolved `.md` links as edges — so a reader can
+map — pages as nodes, resolved page links as edges — so a reader can
 see the shape of the world and jump from any page to its neighbours.
 Selecting a node opens a per-page backlinks panel — who *mentions* this
 page (inbound) and what it *links to* (outbound), each a click through —

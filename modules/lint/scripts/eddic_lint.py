@@ -118,6 +118,43 @@ def link_targets(body):
     return out
 
 
+def page_ref(raw):
+    """Map a link's path (its target with any #fragment removed, already
+    known to carry no URL scheme and not to be site-rooted) to the wiki
+    page it denotes, as (candidate_md, strict), or (None, False) when the
+    target names no page.
+
+      foo/bar.md    -> ("foo/bar.md",    True)   a .md link — must resolve
+      foo/bar.html  -> ("foo/bar.md",    False)  the page's rendered form
+      foo/bar.htm   -> ("foo/bar.md",    False)
+      foo/bar       -> ("foo/bar.md",    False)  a clean/extensionless URL
+      foo/bar.dm    -> ("foo/bar.dm.md", False)  a .dm twin's clean URL
+
+    `strict` is True only for a direct .md link, whose target must exist —
+    a miss is a broken link, today's behavior. Every other shape is
+    lenient: it is judged only when its candidate .md page actually
+    exists, so a real asset (foo/pic.webp -> foo/pic.webp.md, no such
+    page) and any other non-page target fall straight through, exactly as
+    a non-.md link did before. That is what catches the .html and
+    clean-URL forms of a real page (their .md exists) while leaving assets
+    and genuine non-page links alone. A DM page linked in any of these
+    forms is therefore the same lie as linking its .md — issue #22. This
+    is a resolver primitive mirrored verbatim in modules/wiki/scripts/
+    project.py and modules/constellation/scripts/graph.py; the
+    constellation verify pins the three equal."""
+    seg = raw.rsplit("/", 1)[-1]
+    if not seg:
+        return None, False  # empty or directory-style target: not a page
+    low = seg.lower()
+    if low.endswith(".md"):
+        return raw, True
+    if low.endswith(".html"):
+        return raw[:-5] + ".md", False
+    if low.endswith(".htm"):
+        return raw[:-4] + ".md", False
+    return raw + ".md", False
+
+
 def lint(root, log_name, contribs=None):
     findings = []
 
@@ -195,20 +232,27 @@ def lint(root, log_name, contribs=None):
                     add("broken-anchor", "error", rel,
                         f"no heading for #{frag}", line)
                 continue
-            if not raw.endswith((".md", ".MD")):
-                continue  # static asset or non-wiki target; not ours to judge
+            page_md, strict = page_ref(raw)
+            if page_md is None:
+                continue  # real asset or non-page target; not ours to judge
             # resolve at the page's effective wiki location — for a
-            # contrib overlay that is the shadowed path, not the file
-            dest = ((root / page.rel).parent / raw).resolve()
+            # contrib overlay that is the shadowed path, not the file. A
+            # .html or clean/extensionless target resolves to the .md page
+            # it renders from and is judged identically; a lenient form
+            # that names no page falls through (today's behavior for a
+            # non-.md link — no new hard-fail).
+            dest = ((root / page.rel).parent / page_md).resolve()
             try:
                 dest_rel = dest.relative_to(root.resolve()).as_posix()
             except ValueError:
-                add("broken-link", "error", rel,
-                    f"link escapes the wiki: {target}", line)
+                if strict:
+                    add("broken-link", "error", rel,
+                        f"link escapes the wiki: {target}", line)
                 continue
             if dest_rel not in pages:
-                add("broken-link", "error", rel,
-                    f"target does not exist: {target}", line)
+                if strict:
+                    add("broken-link", "error", rel,
+                        f"target does not exist: {target}", line)
                 continue
             inbound[dest_rel] += 1
             graph[rel].add(dest_rel)

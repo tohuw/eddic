@@ -106,6 +106,7 @@ def main():
         return 0
     graph = load(GRAPH_PY, "constellation_graph")
     lint = load(LINT_PY, "eddic_lint")
+    project = load(PROJECT_PY, "eddic_project")
     tmp = Path(tempfile.mkdtemp(prefix="eddic-constellation-verify-"))
     master = tmp / "wiki"
     plant(master)
@@ -163,6 +164,16 @@ def main():
                and graph.link_targets("[a](b.md) [c](d.md)")
                == lint.link_targets("[a](b.md) [c](d.md)"))
     check(results, prim_ok, "resolver: shared primitives identical")
+    # page_ref (issue #22) is pinned equal across lint, projection, and the
+    # graph — the .md/.html/clean-URL/.dm-twin/asset cases must resolve
+    # identically, or the firewall the three enforce could diverge.
+    pr_cases = ["places/x.md", "places/x.html", "places/x.htm", "places/x",
+                "places/x.dm", "pic.webp", "a/b/c", "", "#", "sub/"]
+    page_ref_ok = all(
+        lint.page_ref(c) == graph.page_ref(c) == project.page_ref(c)
+        for c in pr_cases)
+    check(results, page_ref_ok,
+          "resolver: page_ref identical across lint, projection, graph")
 
     # (b) player-mode Constellation built from the projection excludes DM pages.
     proj = tmp / "dist" / "player"

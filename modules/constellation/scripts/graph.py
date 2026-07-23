@@ -108,6 +108,39 @@ def link_targets(body):
     return out
 
 
+def page_ref(raw):
+    """Map a link's path (its target with any #fragment removed, already
+    known to carry no URL scheme and not to be site-rooted) to the wiki
+    page it denotes, as (candidate_md, strict), or (None, False) when the
+    target names no page.
+
+      foo/bar.md    -> ("foo/bar.md",    True)   a .md link — must resolve
+      foo/bar.html  -> ("foo/bar.md",    False)  the page's rendered form
+      foo/bar.htm   -> ("foo/bar.md",    False)
+      foo/bar       -> ("foo/bar.md",    False)  a clean/extensionless URL
+      foo/bar.dm    -> ("foo/bar.dm.md", False)  a .dm twin's clean URL
+
+    `strict` marks a direct .md link (for the graph both shapes yield an
+    edge only when the page exists, so the flag is unused here — it is kept
+    identical to lint/projection so the resolvers stay verbatim-equal). A
+    lenient form is judged only when its candidate .md page actually
+    exists, so real assets and non-page targets yield no edge. This is why
+    a .html or clean/extensionless cross-link becomes the same edge its .md
+    would — issue #22. Mirrors modules/lint/scripts/eddic_lint.py.page_ref;
+    verify/run.py pins them equal."""
+    seg = raw.rsplit("/", 1)[-1]
+    if not seg:
+        return None, False  # empty or directory-style target: not a page
+    low = seg.lower()
+    if low.endswith(".md"):
+        return raw, True
+    if low.endswith(".html"):
+        return raw[:-5] + ".md", False
+    if low.endswith(".htm"):
+        return raw[:-4] + ".md", False
+    return raw + ".md", False
+
+
 class Page:
     """Mirrors eddic_lint.Page (the fields the graph needs)."""
 
@@ -150,9 +183,11 @@ def resolve_graph(root, pages):
     """(edges, inbound) where edges is a sorted list of (src, dst) and
     inbound maps rel -> inbound count. Link resolution mirrors the loop
     in eddic_lint.lint(): external schemes, site-rooted (/) links,
-    same-page anchors, and non-.md targets yield no edge; a target that
+    same-page anchors, and non-page targets yield no edge; a target that
     escapes the wiki or does not exist yields no edge (lint reports it,
-    the graph omits it)."""
+    the graph omits it). A .html or clean/extensionless target that names
+    a real page resolves to that page and yields an edge, exactly as its
+    .md would (page_ref, issue #22)."""
     inbound = {rel: 0 for rel in pages}
     adj = {rel: set() for rel in pages}
     root_res = root.resolve()
@@ -165,15 +200,19 @@ def resolve_graph(root, pages):
             raw, _, _frag = target.partition("#")
             if not raw:
                 continue  # same-page anchor
-            if not raw.endswith((".md", ".MD")):
-                continue  # asset / non-wiki target
-            dest = ((root / page.rel).parent / raw).resolve()
+            page_md, _strict = page_ref(raw)
+            if page_md is None:
+                continue  # real asset / non-page target
+            # a .html or clean/extensionless target resolves to the .md
+            # page it renders from — the same edge lint and projection see;
+            # a lenient form naming no page yields no edge.
+            dest = ((root / page.rel).parent / page_md).resolve()
             try:
                 dest_rel = dest.relative_to(root_res).as_posix()
             except ValueError:
                 continue  # escapes the wiki
             if dest_rel not in pages:
-                continue  # broken link
+                continue  # broken or non-page link
             if dest_rel not in adj[rel]:
                 inbound[dest_rel] += 1
                 adj[rel].add(dest_rel)

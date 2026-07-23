@@ -24,9 +24,13 @@ EXPECTED = Counter({
     "broken-anchor": 1,      # sunken-city -> warden.md#no-such-heading
     "absolute-link": 1,      # sunken-city -> /maps/atlas.html
     "missing-h1": 1,         # lost-shrine
-    "firewall-breach": 3,    # index and warden link the DM-only vault
+    "firewall-breach": 5,    # index and warden link the DM-only vault
                              # (inline); sunken-city links it via a
-                             # reference-style [the vault][v] link
+                             # reference-style [the vault][v] link; and,
+                             # via non-.md forms (issue #22), index links
+                             # the DM-only hidden-annex by its .html and
+                             # warden links it by its clean/extensionless
+                             # URL — each resolved to the .md and judged
     "log-malformed": 2,      # unknown type 'conjure'; freeform ## header
     "orphan": 2,             # lost-shrine; contributed field-notes
     "unreachable": 2,        # lost-shrine; contributed field-notes

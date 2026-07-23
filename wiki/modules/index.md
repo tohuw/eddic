@@ -13,9 +13,9 @@ companion layer on once the campaign is live.
 | module | facility | status |
 |---|---|---|
 | [cli](cli.md) | the vendored `.eddic/` CLI: dispatcher, config, author declaration, manifest, secrets intake, `eddic run` service launcher | 0.4.1 |
-| [lint](lint.md) | wiki health check: links, anchors, absolute links, stubs, orphans, log format, spoiler firewall, contrib overlays; plus the agent-run semantic-review seam (review packet + findings schema) | 0.4.1 |
-| [constellation](constellation.md) | the wiki's cross-link graph as a self-contained, firewall-safe interactive map (player Constellation from the projection, DM Constellation from master); reuses the linter's resolver, deterministic output, per-node "mentioned by / links to" backlinks panel, a "the party" mark spotlighting the PCs party.md names | 0.3.0 |
-| [wiki](wiki.md) | campaign knowledge architecture: schema, fail-closed visibility, twin pages, contributor attribution, overlays, player projection | 0.3.1 |
+| [lint](lint.md) | wiki health check: links, anchors, absolute links, stubs, orphans, log format, spoiler firewall, contrib overlays; plus the agent-run semantic-review seam (review packet + findings schema) | 0.4.2 |
+| [constellation](constellation.md) | the wiki's cross-link graph as a self-contained, firewall-safe interactive map (player Constellation from the projection, DM Constellation from master); reuses the linter's resolver, deterministic output, per-node "mentioned by / links to" backlinks panel, a "the party" mark spotlighting the PCs party.md names | 0.3.1 |
+| [wiki](wiki.md) | campaign knowledge architecture: schema, fail-closed visibility, twin pages, contributor attribution, overlays, player projection | 0.3.2 |
 | [render](render.md) | purpose-built md→html renderer with a self-contained template, real 404, and served `static/` branding | 0.2.1 |
 | [publish](publish.md) | Cloudflare Pages deploy behind the lint→project→build safety pipeline | 0.1.0 |
 | [retrieval](retrieval.md) | unified-host Worker: player site at /, the one-URL player companion page at /&lt;token&gt;/companion, MCP + Actions REST facade behind two bearer tokens (DM tier = master, player tier = projection), and the optional witness write path (suggest_edit/suggest_page → DM-reviewed inbox) | 0.6.2 |
