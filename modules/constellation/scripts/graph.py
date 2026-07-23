@@ -1,8 +1,8 @@
 # /// script
 # requires-python = ">=3.9"
 # ///
-"""eddic atlas — render a wiki's cross-link graph as one self-contained,
-firewall-safe, interactive map.
+"""eddic constellation — render a wiki's cross-link graph as one
+self-contained, firewall-safe, interactive map.
 
 Usage:
     uv run graph.py --mode player|dm [--src DIR] [--out FILE]
@@ -12,22 +12,23 @@ Usage:
 --mode is explicit and NEVER inferred: it selects the SOURCE TREE.
 
   player  reads the projection (config `projection_dir`, default
-          dist/player) and writes the player Atlas (default
-          <site_dir>/atlas.html). The projection is a closed set — a
-          player page can only link player pages — so the player Atlas
-          cannot contain a DM page or a DM-only edge. That closure,
-          not any filtering in this file, is what makes it safe.
+          dist/player) and writes the player Constellation (default
+          <site_dir>/constellation.html). The projection is a closed set
+          — a player page can only link player pages — so the player
+          Constellation cannot contain a DM page or a DM-only edge. That
+          closure, not any filtering in this file, is what makes it safe.
 
   dm      reads the master wiki (config `wiki_dir`, default wiki) and
-          writes the DM Atlas (default <campaign>/atlas.dm.html), which
-          is DM-local and must never reach a player-facing deploy.
+          writes the DM Constellation (default
+          <campaign>/constellation.dm.html), which is DM-local and must
+          never reach a player-facing deploy.
 
 The graph is nodes (pages) and edges (resolved `.md` -> `.md` links).
 Both are extracted with a resolver that MIRRORS eddic_lint.py (see
-resolve_graph), so the Atlas's edges are exactly the links the linter
-validates. Layout is deterministic — a seeded, fixed-math radial
+resolve_graph), so the Constellation's edges are exactly the links the
+linter validates. Layout is deterministic — a seeded, fixed-math radial
 cluster, everything sorted — so the same input tree yields a
-byte-identical atlas.html. No Math.random, no clock, no unseeded
+byte-identical constellation.html. No Math.random, no clock, no unseeded
 ordering, no network, stdlib only.
 
 Exit codes: 0 written, 2 usage error.
@@ -44,7 +45,7 @@ NON_CONTENT = {"CLAUDE.md", "AGENTS.md", "README.md"}
 LINK = re.compile(r"(?<!\!)\[[^\]]*\]\(([^)\s]+)\)")
 # Inline HTML anchor and Markdown reference-definition targets — the two
 # link forms the inline LINK regex misses. Mirrors eddic_lint.py so the
-# Atlas's edges stay exactly the links the linter validates.
+# Constellation's edges stay exactly the links the linter validates.
 HREF = re.compile(r"""<a\b[^>]*?\shref\s*=\s*["']([^"'>\s]+)["']""", re.I)
 REFDEF = re.compile(r"""^\s{0,3}\[[^\]]+\]:\s+<?([^>\s]+)>?""")
 HEADING = re.compile(r"^(#{1,6})\s+(.*?)\s*$")
@@ -198,9 +199,9 @@ def party_set(pages, edges):
     second parse — so it inherits the firewall and the determinism for
     free. A page party.md names but that isn't in the source tree — a
     DM-only character absent from the projection, say — yields no edge
-    and thus no membership, so the player Atlas can only ever mark player
-    characters. Empty (no marking at all, byte-identical to a party-less
-    Atlas) when the wiki has no party.md."""
+    and thus no membership, so the player Constellation can only ever mark
+    player characters. Empty (no marking at all, byte-identical to a
+    party-less Constellation) when the wiki has no party.md."""
     if PARTY_PAGE not in pages:
         return set()
     return {d for s, d in edges
@@ -303,8 +304,8 @@ def esc(text):
 
 def raw_href(rel):
     """The page-relative .html path a page renders to (unescaped). The
-    Atlas sits at the tree root, so this resolves both locally and behind
-    the ASSETS binding."""
+    Constellation sits at the tree root, so this resolves both locally and
+    behind the ASSETS binding."""
     return rel[:-3] + ".html" if rel.endswith(".md") else rel
 
 
@@ -320,8 +321,8 @@ def adjacency(nodes, edges):
     Because `edges` is globally sorted by (src, dst), every appended list
     comes out sorted, so the emitted data is byte-stable. This is the
     'what links here' relation: inbound[p] is exactly the pages whose
-    resolved links point at p. On the player Atlas the source tree is the
-    projection, whose closure guarantees every such page is itself a
+    resolved links point at p. On the player Constellation the source tree
+    is the projection, whose closure guarantees every such page is itself a
     player page — so no DM page is representable here by construction."""
     ids = [n["id"] for n in nodes]
     inbound = {i: [] for i in ids}
@@ -393,7 +394,7 @@ def render_html(nodes, edges, pos, cats, mode, site_name):
         f'{esc(c)}</span>' for c in cats)
     # "The Party" focus control and its styling/behaviour ship ONLY when
     # the wiki has a party.md (some node carries is_party). Absent that,
-    # all three expand to "" and the Atlas is byte-identical to before.
+    # all three expand to "" and the Constellation is byte-identical to before.
     has_party = any(n["is_party"] for n in nodes)
     party_legend = PARTY_LEGEND if has_party else ""
     party_css = PARTY_CSS if has_party else ""
@@ -414,7 +415,8 @@ def render_html(nodes, edges, pos, cats, mode, site_name):
         panel_obj, sort_keys=True, separators=(",", ":"),
         ensure_ascii=True).replace("<", "\\u003c")
 
-    title = f"Atlas — {esc(site_name)}" if site_name else f"Atlas ({mode})"
+    title = (f"Constellation — {esc(site_name)}" if site_name
+             else f"Constellation ({mode})")
     site_hdr = f" &mdash; {esc(site_name)}" if site_name else ""
     return HTML_TEMPLATE.format(
         title=title, mode=esc(mode), site_hdr=site_hdr,
@@ -427,7 +429,7 @@ def render_html(nodes, edges, pos, cats, mode, site_name):
 # All three fragments are substituted as .format() *arguments*, so their
 # single braces are literal — no doubling. They are emitted only when the
 # wiki has a party.md; otherwise render_html passes "" for each and the
-# output is byte-for-byte the pre-feature Atlas. Colours are literal
+# output is byte-for-byte the pre-feature Constellation. Colours are literal
 # (not new :root variables) so nothing party-related touches the shell's
 # CSS in the no-party case. Warm gold on parchment, softer gold on dark.
 PARTY_LEGEND = ('<button type="button" class="key party-key" '
@@ -444,10 +446,10 @@ PARTY_CSS = """
     border-radius: 50%; border: 2px solid #b9822c; box-sizing: border-box;
     display: inline-block; }
   .party-key[aria-pressed="true"] { font-weight: 600; }
-  #atlas.party-focus .node:not(.party) { opacity: 0.12; }
-  #atlas.party-focus .edges { opacity: 0.06; }
-  #atlas.party-focus .node.party .ring { opacity: 1; stroke-width: 2.4; }
-  #atlas.party-focus .node.party text { opacity: 1; }
+  #constellation.party-focus .node:not(.party) { opacity: 0.12; }
+  #constellation.party-focus .edges { opacity: 0.06; }
+  #constellation.party-focus .node.party .ring { opacity: 1; stroke-width: 2.4; }
+  #constellation.party-focus .node.party text { opacity: 1; }
   @media (prefers-color-scheme: dark) {
     .node.party .ring { stroke: #e6c06a; }
     .party-key .ring-swatch { border-color: #e6c06a; }
@@ -459,7 +461,7 @@ PARTY_JS = """
   // "The Party" focus: hover the legend key to spotlight the player
   // characters (dim everything else); click to pin. Same spirit as the
   // backlinks/veil affordances — a focus, nothing navigational.
-  var svg = document.getElementById('atlas');
+  var svg = document.getElementById('constellation');
   var key = document.querySelector('.party-key');
   if (!svg || !key) return;
   var pinned = false;
@@ -515,9 +517,9 @@ HTML_TEMPLATE = """<!doctype html>
   .key {{ display: inline-flex; align-items: center; gap: 0.3rem; }}
   .key i {{ width: 0.8rem; height: 0.8rem; border-radius: 50%;
     display: inline-block; }}
-  #atlas {{ flex: 1; width: 100%; touch-action: none;
+  #constellation {{ flex: 1; width: 100%; touch-action: none;
     background: var(--paper); cursor: grab; }}
-  #atlas:active {{ cursor: grabbing; }}
+  #constellation:active {{ cursor: grabbing; }}
   .edges line {{ stroke: var(--edge); stroke-width: 1; }}
   .node circle {{ stroke: var(--paper); stroke-width: 1.2;
     transition: opacity 0.1s; }}
@@ -559,11 +561,11 @@ HTML_TEMPLATE = """<!doctype html>
 </head>
 <body>
 <header>
-  <h1>Atlas{site_hdr}</h1>
+  <h1>Constellation{site_hdr}</h1>
   <span class="meta">{node_count} pages, {edge_count} links &middot; {mode} view</span>
   <span class="legend">{legend}{party_legend}</span>
 </header>
-<svg id="atlas" viewBox="{viewbox}" preserveAspectRatio="xMidYMid meet"
+<svg id="constellation" viewBox="{viewbox}" preserveAspectRatio="xMidYMid meet"
      xmlns="http://www.w3.org/2000/svg">
 <g id="viewport">
 {svg_body}
@@ -579,9 +581,9 @@ HTML_TEMPLATE = """<!doctype html>
 <footer>Drag to pan, scroll to zoom, click a page for its backlinks;
 open it from the panel. Dimmed = stub, orphan, or unreachable.</footer>
 <script>
-var ATLAS_DATA = {panel_data};
+var CONSTELLATION_DATA = {panel_data};
 (function() {{
-  var svg = document.getElementById('atlas');
+  var svg = document.getElementById('constellation');
   var vp = document.getElementById('viewport');
   var s = 1, tx = 0, ty = 0, drag = false, moved = false, px = 0, py = 0;
   function apply() {{
@@ -608,7 +610,7 @@ var ATLAS_DATA = {panel_data};
   // by") and outbound ("links to") pages, computed from the inverted
   // edge set. The node's own page opens from the panel, so a plain
   // click no longer navigates — it selects.
-  var data = ATLAS_DATA;
+  var data = CONSTELLATION_DATA;
   var panel = document.getElementById('panel');
   var pTitle = document.getElementById('panel-title');
   var pOpen = document.getElementById('panel-open');
@@ -699,16 +701,17 @@ def resolve_paths(argv):
         if mode == "player":
             src = root / cfg.get("projection_dir", "dist/player")
             if out is None:
-                out = root / cfg.get("site_dir", "dist/site") / "atlas.html"
+                out = (root / cfg.get("site_dir", "dist/site")
+                       / "constellation.html")
         else:
             src = root / cfg.get("wiki_dir", "wiki")
             if out is None:
-                out = root / "atlas.dm.html"
+                out = root / "constellation.dm.html"
     if src is None:
         raise Usage("no --src and no EDDIC_CONFIG; cannot locate the wiki")
     if out is None:
-        out = src.parent / ("atlas.html" if mode == "player"
-                            else "atlas.dm.html")
+        out = src.parent / ("constellation.html" if mode == "player"
+                            else "constellation.dm.html")
     return mode, src, out, log_name, site_name
 
 
@@ -736,7 +739,7 @@ def main(argv):
     html = render_html(nodes, edges, pos, cats, mode, site_name)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(html, encoding="utf-8")
-    print(f"atlas ({mode}): {len(nodes)} node(s), {len(edges)} edge(s) "
+    print(f"constellation ({mode}): {len(nodes)} node(s), {len(edges)} edge(s) "
           f"-> {out}")
     return 0
 

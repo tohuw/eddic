@@ -1,14 +1,14 @@
 # /// script
 # requires-python = ">=3.9"
 # ///
-"""Verify the atlas module against a planted fixture. Deterministic and
+"""Verify the constellation module against a planted fixture. Deterministic and
 offline. Asserts:
 
   (a) node/edge extraction matches a golden;
-  (b) the player-mode Atlas, built from the projection, contains NO
+  (b) the player-mode Constellation, built from the projection, contains NO
       DM page and NO DM-only edge — a planted DM->player breach in the
       master cannot reach the player build (the projection's closure);
-  (c) determinism — the same input yields a byte-identical atlas.html
+  (c) determinism — the same input yields a byte-identical constellation.html
       across two runs;
   (d) the resolver matches eddic_lint.py: orphan and unreachable sets
       (pure functions of the resolved edge graph) agree, and the shared
@@ -104,9 +104,9 @@ def main():
     if not shutil.which("uv"):
         print("SKIP: uv not on PATH")
         return 0
-    graph = load(GRAPH_PY, "atlas_graph")
+    graph = load(GRAPH_PY, "constellation_graph")
     lint = load(LINT_PY, "eddic_lint")
-    tmp = Path(tempfile.mkdtemp(prefix="eddic-atlas-verify-"))
+    tmp = Path(tempfile.mkdtemp(prefix="eddic-constellation-verify-"))
     master = tmp / "wiki"
     plant(master)
     results = []
@@ -164,7 +164,7 @@ def main():
                == lint.link_targets("[a](b.md) [c](d.md)"))
     check(results, prim_ok, "resolver: shared primitives identical")
 
-    # (b) player-mode Atlas built from the projection excludes DM pages.
+    # (b) player-mode Constellation built from the projection excludes DM pages.
     proj = tmp / "dist" / "player"
     pr = subprocess.run(
         ["uv", "run", str(PROJECT_PY), "--src", str(master),
@@ -173,20 +173,21 @@ def main():
           f"projection succeeds ({pr.stderr.strip()})")
     check(results, not (proj / "lore" / "secret.md").exists(),
           "projection withholds the DM page")
-    player_atlas = tmp / "dist" / "site" / "atlas.html"
+    player_constellation = tmp / "dist" / "site" / "constellation.html"
     ar = subprocess.run(
         ["uv", "run", str(GRAPH_PY), "--mode", "player", "--src", str(proj),
-         "--out", str(player_atlas)], capture_output=True, text=True)
-    check(results, ar.returncode == 0, f"player atlas builds ({ar.stderr.strip()})")
-    html = player_atlas.read_text(encoding="utf-8")
+         "--out", str(player_constellation)], capture_output=True, text=True)
+    check(results, ar.returncode == 0,
+          f"player constellation builds ({ar.stderr.strip()})")
+    html = player_constellation.read_text(encoding="utf-8")
     check(results, "secret" not in html and "Sunken City" not in html,
-          "player Atlas contains NO DM page")
+          "player Constellation contains NO DM page")
     check(results, "warden.html" in html,
-          "player Atlas does contain a player page node")
+          "player Constellation does contain a player page node")
     # the backlinks panel and its data are present in the emitted markup.
-    check(results, 'id="panel"' in html and "var ATLAS_DATA = " in html
+    check(results, 'id="panel"' in html and "var CONSTELLATION_DATA =" in html
           and "Mentioned by" in html,
-          "player Atlas emits the backlinks panel markup and data")
+          "player Constellation emits the backlinks panel markup and data")
     # the party mark and its "The Party" focus control are present: the
     # Warden node is a party node, the legend entry and the focus CSS/JS
     # ship, and the gold ring is drawn. Firewall-safe by construction —
@@ -197,12 +198,12 @@ def main():
     check(results, 'class="node party"' in html and "The Party" in html
           and "party-focus" in html and "party-key" in html
           and 'class="ring"' in html,
-          "player Atlas marks PC nodes and emits the 'The Party' focus control")
+          "player Constellation marks PC nodes and emits the 'The Party' focus control")
     # the DM->player edge cannot exist because its source node is gone
     ppages = graph.load_pages(proj, "log.md")
     pedges, _ = graph.resolve_graph(proj, ppages)
     check(results, all(s != "lore/secret.md" for s, _ in pedges),
-          "player Atlas contains NO DM-only edge")
+          "player Constellation contains NO DM-only edge")
     # the player backlinks reference ONLY player pages: the planted DM
     # page appears nowhere — not as a key, an inbound, or an outbound.
     pnodes = graph.build_nodes(ppages, pedges,
@@ -214,15 +215,15 @@ def main():
     check(results, not leaked,
           "player backlinks reference only player pages (no DM page)")
 
-    # a DM-mode atlas over the master, by contrast, DOES see the breach,
+    # a DM-mode constellation over the master, by contrast, DOES see the breach,
     # proving mode selection (source-tree choice) is the firewall.
-    dm_atlas = tmp / "atlas.dm.html"
+    dm_constellation = tmp / "constellation.dm.html"
     dr = subprocess.run(
         ["uv", "run", str(GRAPH_PY), "--mode", "dm", "--src", str(master),
-         "--out", str(dm_atlas)], capture_output=True, text=True)
+         "--out", str(dm_constellation)], capture_output=True, text=True)
     check(results, dr.returncode == 0 and "secret.html" in
-          dm_atlas.read_text(encoding="utf-8"),
-          "DM Atlas (master source) does see the DM page — mode is the seam")
+          dm_constellation.read_text(encoding="utf-8"),
+          "DM Constellation (master source) does see the DM page — mode is the seam")
 
     # (c) determinism — same input, byte-identical output across runs.
     a1, a2 = tmp / "d1.html", tmp / "d2.html"
@@ -235,7 +236,7 @@ def main():
 
     # graceful no-op: a wiki with NO party.md emits zero party markup —
     # no PC class, no ring, no "The Party" control, no focus CSS/JS — so
-    # the Atlas is exactly what it was before the feature. Built from a
+    # the Constellation is exactly what it was before the feature. Built from a
     # copy of the master with party.md removed, and byte-stable across two
     # runs like every other build.
     noparty = tmp / "noparty"
@@ -250,7 +251,7 @@ def main():
     party_tokens = ("The Party", "party-focus", "party-key",
                     'class="node party"', 'class="ring"', ".node.party")
     check(results, not any(t in np_html for t in party_tokens),
-          "no party.md: Atlas emits zero party markup (graceful no-op)")
+          "no party.md: Constellation emits zero party markup (graceful no-op)")
     check(results, np1.read_bytes() == np2.read_bytes(),
           "no party.md: output byte-identical across two runs")
 
@@ -264,7 +265,7 @@ def main():
         print(("ok  " if ok else "FAIL"), msg)
     if any(not ok for ok, _ in results):
         return 1
-    print("verify ok: atlas module")
+    print("verify ok: constellation module")
     return 0
 
 

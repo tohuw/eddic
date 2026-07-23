@@ -321,12 +321,12 @@ under the contract.
   systems, so decide whether to scope to "GM-led TTRPGs" or widen the
   projection/firewall model. Trigger: a non-D&D campaign adopting Eddic, or a
   public positioning pass that shouldn't over-index on one system.
-- **Atlas follow-ons (DM tier + backlinks).** ([#17](https://github.com/tohuw/eddic/issues/17)) The [atlas](modules/atlas.md)
+- **Constellation follow-ons (DM tier + backlinks).** ([#17](https://github.com/tohuw/eddic/issues/17)) The [constellation](modules/constellation.md)
   module shipped v1 as the player map. **Per-page backlinks are now shipped in
-  atlas 0.2.0** — a node panel showing "mentioned by / links to", inverted from
+  constellation 0.2.0** — a node panel showing "mentioned by / links to", inverted from
   the resolved edge set, firewall-inherited on the player tier. The DM-tier
-  Atlas remains open (tracked as #17). Two extensions were designed alongside it
-  and fold into the same module. (1) **A DM-tier Atlas** — the same map built
+  Constellation remains open (tracked as #17). Two extensions were designed alongside it
+  and fold into the same module. (1) **A DM-tier Constellation** — the same map built
   from the master wiki, with the linter's orphan/stub/unreachable signals
   rendered dimmed so the archive's health is spatial, not a table; served only
   behind the retrieval DM tier or a DM-local build, never the public deploy
@@ -334,28 +334,28 @@ under the contract.
   serving, which is the one thing that would touch `worker.js`). (2) **Per-page
   backlinks** — a "what links here / mentioned by" panel computed from the same
   resolved edge graph, firewall-correct by the projection's closure on the
-  player site; belongs in the Atlas module as its per-node local view (render's
+  player site; belongs in the Constellation module as its per-node local view (render's
   charter excludes index-generation). Both are zero-authoring and derive from
   data already present. Trigger: a table wanting the maintenance view, or a
   campaign big enough that "who cares about this NPC?" needs answering
   structurally.
-- **The party's "you are here" (tracked location + Atlas marker).** ([#18](https://github.com/tohuw/eddic/issues/18)) Give Snorri
+- **The party's "you are here" (tracked location + Constellation marker).** ([#18](https://github.com/tohuw/eddic/issues/18)) Give Snorri
   one more thing to know — where the party currently is. A small tracked state
   (current location = a player-visible place-page path) is updated **after each
   session** by an agent reading the session log/transcript, on the same
   lifecycle beat the recap and [reveal digest](modules/convene.md) already fire
   on, so nobody hand-maintains it. Two surfaces then light up: the
   [lore bot](modules/lore-bot.md) answers "where are we?" / "how far to the
-  Sunken City?" from the state, and the [atlas](modules/atlas.md) renders a
+  Sunken City?" from the state, and the [constellation](modules/constellation.md) renders a
   **"YOU ARE HERE"** marker on that place node (a highlighted node on the
   player map, optionally a short trail of the last few locations). Firewall-safe
   by construction: the party's whereabouts are shared table knowledge, the
-  marker lives on the player Atlas, and the state only ever points at a
-  player-visible place. Deterministic core: the location state field + the Atlas
+  marker lives on the player Constellation, and the state only ever points at a
+  player-visible place. Deterministic core: the location state field + the Constellation
   reading it to place the marker + the bot reading it to answer; the agent part
   is the after-session update from the log — advisory (the DM confirms or
   overrides, since a session can end mid-journey or somewhere unnamed).
-  Composes convene's lifecycle beat, the session logs, the Atlas, and the lore
+  Composes convene's lifecycle beat, the session logs, the Constellation, and the lore
   bot — all already present, zero new authoring. Open questions: where the
   state lives (a `.eddic/party.json`, or a frontmatter field on a canonical
   "the party" page so it is git-tracked and diffable) and how to handle
