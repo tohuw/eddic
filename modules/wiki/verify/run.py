@@ -95,6 +95,43 @@ def main():
          "inline-HTML breach names the DM target"),
     ]
 
+    # A non-.md link form is judged identically (issue #22): a player
+    # page linking the DM twin as its rendered .html, or as a
+    # clean/extensionless URL, is the same lie as linking the .md and must
+    # refuse — otherwise the leak walks straight through the firewall.
+    write(src, "characters/warden.md", PLAYER_FM + "# The Warden\n\n"
+          "See [the full truth](warden.dm.html).\n")
+    proc_htmlext = run(src, out)
+    checks += [
+        (proc_htmlext.returncode == 1,
+         f".html link to DM twin refuses (got {proc_htmlext.returncode})"),
+        ("warden.dm" in proc_htmlext.stderr,
+         ".html breach names the DM target"),
+    ]
+    write(src, "characters/warden.md", PLAYER_FM + "# The Warden\n\n"
+          "See [the full truth](warden.dm).\n")
+    proc_clean = run(src, out)
+    checks += [
+        (proc_clean.returncode == 1,
+         f"clean/extensionless link to DM twin refuses (got {proc_clean.returncode})"),
+        ("warden.dm" in proc_clean.stderr,
+         "clean-URL breach names the DM target"),
+    ]
+
+    # A non-.md form that names no page is NOT newly refused: a real asset
+    # and a clean URL with no .md behind it must both project clean, or the
+    # hardening would false-positive legitimate non-page links (issue #22).
+    write(src, "characters/warden.md", PLAYER_FM + "# The Warden\n\n"
+          "A [sketch](sketch.webp) and a [draft](future-notes), neither a "
+          "page, sworn to the [realm](../index.md).\n")
+    proc_safe = run(src, out)
+    checks += [
+        (proc_safe.returncode == 0,
+         f"non-page .webp/clean links still project (got {proc_safe.returncode})"),
+        ((out / "characters/warden.md").exists(),
+         "page with only non-page non-.md links projects normally"),
+    ]
+
     # DM-only frontmatter must never ride into player output: a
     # visibility: player page still projects, but its other keys are
     # stripped so no DM secret reaches the projection.

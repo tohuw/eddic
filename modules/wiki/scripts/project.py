@@ -69,6 +69,42 @@ def link_targets(body):
     return out
 
 
+def page_ref(raw):
+    """Map a link's path (its target with any #fragment removed, already
+    known to carry no URL scheme and not to be site-rooted) to the wiki
+    page it denotes, as (candidate_md, strict), or (None, False) when the
+    target names no page.
+
+      foo/bar.md    -> ("foo/bar.md",    True)   a .md link — must resolve
+      foo/bar.html  -> ("foo/bar.md",    False)  the page's rendered form
+      foo/bar.htm   -> ("foo/bar.md",    False)
+      foo/bar       -> ("foo/bar.md",    False)  a clean/extensionless URL
+      foo/bar.dm    -> ("foo/bar.dm.md", False)  a .dm twin's clean URL
+
+    `strict` is True only for a direct .md link, whose target must exist —
+    a miss is a breach, today's behavior. Every other shape is lenient: it
+    is judged only when its candidate .md page actually exists, so a real
+    asset (foo/pic.webp -> foo/pic.webp.md, no such page) and any other
+    non-page target fall straight through, exactly as a non-.md link did
+    before. That is what catches the .html and clean-URL forms of a real
+    page (their .md exists) while leaving assets and genuine non-page
+    links alone: a DM page linked in any of these forms is the same lie as
+    linking its .md, so the projection refuses it too — issue #22. Mirrors
+    modules/lint/scripts/eddic_lint.py.page_ref verbatim (the constellation
+    verify pins the resolvers equal)."""
+    seg = raw.rsplit("/", 1)[-1]
+    if not seg:
+        return None, False  # empty or directory-style target: not a page
+    low = seg.lower()
+    if low.endswith(".md"):
+        return raw, True
+    if low.endswith(".html"):
+        return raw[:-5] + ".md", False
+    if low.endswith(".htm"):
+        return raw[:-4] + ".md", False
+    return raw + ".md", False
+
+
 def split_frontmatter(text):
     lines = text.splitlines()
     if len(lines) >= 3 and lines[0].strip() == "---":
@@ -176,18 +212,25 @@ def main(argv):
             if re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*:", target):
                 continue
             raw = target.partition("#")[0]
-            if not raw.endswith((".md", ".MD")):
+            page_md, strict = page_ref(raw)
+            if page_md is None:
                 continue
             # resolve at the page's effective wiki location — for an
-            # overlay that is the shadowed path, not the contrib file
-            dest = ((src / rel).parent / raw).resolve()
+            # overlay that is the shadowed path, not the contrib file. A
+            # .html or clean/extensionless target resolves to the .md page
+            # it renders from and is judged identically; a lenient form
+            # that names no page falls through (a legitimate non-page link
+            # is not newly refused).
+            dest = ((src / rel).parent / page_md).resolve()
             try:
                 dest_rel = dest.relative_to(src.resolve()).as_posix()
             except ValueError:
-                breaches.append((rel, target, "escapes the wiki"))
+                if strict:
+                    breaches.append((rel, target, "escapes the wiki"))
                 continue
             if dest_rel not in pages:
-                breaches.append((rel, target, "does not exist"))
+                if strict:
+                    breaches.append((rel, target, "does not exist"))
             elif dest_rel not in player:
                 breaches.append((rel, target, "is DM-only"))
 

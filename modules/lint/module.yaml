@@ -1,5 +1,5 @@
 name: lint
-version: 0.4.1
+version: 0.4.2
 summary: >
   Wiki health check: deterministic reporter for broken links and anchors,
   site-rooted (absolute) links, missing titles, stub drift, orphaned/
