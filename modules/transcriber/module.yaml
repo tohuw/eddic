@@ -1,5 +1,5 @@
 name: transcriber
-version: 0.1.0
+version: 0.1.1
 summary: >
   Local session transcription with whisper.cpp: single recordings or
   per-speaker track exports (Craig-style) merged by timestamp into a

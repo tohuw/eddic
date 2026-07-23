@@ -20,7 +20,7 @@ companion layer on once the campaign is live.
 | [publish](publish.md) | Cloudflare Pages deploy behind the lint→project→build safety pipeline | 0.1.0 |
 | [retrieval](retrieval.md) | unified-host Worker: player site at /, the one-URL player companion page at /&lt;token&gt;/companion, MCP + Actions REST facade behind two bearer tokens (DM tier = master, player tier = projection), and the optional witness write path (suggest_edit/suggest_page → DM-reviewed inbox) | 0.6.2 |
 | [lore-bot](lore-bot.md) | the Discord lore-keeper: answers the table's questions from the player projection (corpus prompt-cached), self-refreshing by polling per the freshness contract; the convene session-lifecycle capability rides it | 0.3.2 |
-| [transcriber](transcriber.md) | local whisper.cpp session transcription, per-speaker merge | 0.1.0 |
+| [transcriber](transcriber.md) | local whisper.cpp session transcription, per-speaker merge | 0.1.1 |
 | [contribs](contribs.md) | the transaction arc: overlays, hash-pinned consent, derivation-graph rights, the sale-build fence | 0.1.0 |
 | [companion](companion.md) | at-the-table companions under the knowledge-parity doctrine; backstory interviewer with collaborator facet; single-source player kit handed off as one companion-page URL; private responses to DM prep asks filed to the DM-only inbox; a learner's primer building a new player a one-page teaching aid for their own character and turn | 0.3.0 |
 | [orlog](orlog.md) | fork-first timeline reconciliation and the time-question query cookbook | 0.1.0 |

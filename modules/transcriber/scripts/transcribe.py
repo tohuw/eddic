@@ -43,6 +43,14 @@ def speaker_from_name(stem):
 def run_whisper(audio, whisper, model, workdir):
     out_base = workdir / audio.stem
     cmd = [whisper, "-f", str(audio), "-oj", "-of", str(out_base)]
+    # Per-speaker tracks (a Craig export) are mostly silence for any one
+    # voice, and vanilla whisper hallucinates loops over the silence — the
+    # same phrase repeated for minutes, which corrupts most of the file.
+    # Drop the failed silent segments instead of looping: no context
+    # carryover (-mc 0, so a loop can't feed itself), no temperature
+    # fallback (-nf, the fallback is what hallucinates), and stricter
+    # entropy/logprob fail thresholds so low-confidence silence is dropped.
+    cmd += ["-mc", "0", "-nf", "-et", "2.8", "-lpt", "-1.0"]
     if model:
         cmd += ["-m", str(model)]
     proc = subprocess.run(cmd, capture_output=True, text=True, shell=False)
