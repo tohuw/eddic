@@ -1,0 +1,31 @@
+name: constellation
+version: 0.3.0
+summary: >
+  Renders campaign wiki's cross-link graph as one self-contained,
+  firewall-safe, interactive map: nodes are pages (sized by degree,
+  coloured category, dimmed if stub/orphan/unreachable), edges resolved
+  .md->.md links linter validates. Selecting node opens per-page
+  backlinks panel — "mentioned by" (inbound) "links to" (outbound), each
+  clickable through — computed by inverting same resolved edge set.
+  player characters party.md names get gold "the party" ring, "The
+  Party" legend control spotlights just PCs on hover/click — derived from
+  party.md's characters/* links via same resolved edge set, so it adds no
+  authoring, stays deterministic, inherits firewall; with no party.md
+  Constellation byte-identical before. deterministic, seeded radial
+  layout makes same tree yield byte-identical constellation.html. player
+  Constellation built projection only, so its closure guarantees no DM
+  page or DM-only edge appear — including in backlinks party mark.
+touches:
+  - dist/site/constellation.html
+  - .eddic/lib/graph.py
+depends:
+  - cli
+  - wiki
+  - lint
+cost_posture:
+  free: >
+    Entirely local free. Stdlib-only Python (PEP 723), no external
+    libraries no network — whole Constellation one static HTML file
+    served by existing site's ASSETS binding.
+  paid: none
+  heuristic: n/a

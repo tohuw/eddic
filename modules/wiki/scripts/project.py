@@ -206,7 +206,7 @@ def main(argv):
         # Strip frontmatter: projected pages are player output. Only
         # `visibility` was ever read, and downstream consumers take the
         # body alone (render uses the H1, the corpus uses the body, the
-        # player Atlas rests on the projection's closure). Any other
+        # player Constellation rests on the projection's closure). Any other
         # frontmatter key — a DM note, a secret — would otherwise ride
         # verbatim into player hands, so none of it ships.
         _, body = split_frontmatter(
