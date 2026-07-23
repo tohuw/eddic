@@ -28,7 +28,7 @@ Every decision point in every pattern ships a recommended default. This is what 
 
 ### 6. Authorship preservation
 
-The old "immutable sources" construct is retired; the real invariant is that no agent strips the human art out of human prose. Human-authored files carry authorship frontmatter (`authorship: human`). Agents may perform owner-directed *mechanical* transforms on them (renames, spelling propagation — "change the princess' name to Aria everywhere" loses no art) but never *stylistic* rewrites. Every diff to a human-authored file traces to an owner directive via a log entry; git is the audit trail.
+Authoring the derived wiki from the table's own sources — recaps from a session transcript, lore and pages from the DM's notes — is this pipeline's whole job: the DM authors a session by running it, and the agent renders it into canon. This principle governs only the reverse direction. The old "immutable sources" construct is retired; the real invariant is that no agent strips the human art out of human prose. Human-authored files carry authorship frontmatter (`authorship: human`). Agents may perform owner-directed *mechanical* transforms on them (renames, spelling propagation — "change the princess' name to Aria everywhere" loses no art) but never *stylistic* rewrites. Every diff to a human-authored file traces to an owner directive via a log entry; git is the audit trail.
 
 ### 7. The agent-answer surface is the product
 

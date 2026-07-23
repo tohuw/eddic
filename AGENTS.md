@@ -27,8 +27,17 @@ Rules that bind you while applying patterns:
   (`.eddic/manifest.json`) so future runs are idempotent and upgradable.
 - Never let anything DM-only reach a player-facing surface. The
   projection and firewall lint exist for this; trust them, run them.
-- Respect authorship: never stylistically rewrite human-authored prose.
-  Mechanical, owner-directed transforms only. See `wiki/design/principles.md`.
+- Authoring the wiki *is* the job — write recaps, lore, place and
+  character pages from the table's own material (a session transcript,
+  the DM's notes). The DM authored the session by running it at the
+  table; you render it into canon, faithful to the source. Do this
+  freely — lifting the write-up off the table is the point of Eddic.
+  "Respect authorship" is narrower than it sounds: it bars stylistically
+  *rewriting* prose a human wrote (a file marked `authorship: human` — a
+  player's backstory, the DM's own words), where only owner-directed
+  mechanical transforms belong. It is never a bar on authoring new
+  content, and if your user asks for a recap or a page, write it. See
+  `wiki/design/principles.md`.
 
 ## You are developing Eddic itself
 

@@ -12,10 +12,14 @@ this file, CLAUDE.md, and README.md; they are never published.
   shared documents, session transcripts. Each file carries
   `authorship:` frontmatter: a **contributor id** for human writing
   (preferred — see below), or `human` (unattributed), `transcript`,
-  `agent`. **Authorship preservation is absolute**: never
-  stylistically rewrite a human-authored file. Owner-directed
-  *mechanical* transforms (a rename propagated everywhere) are fine
-  and are logged.
+  `agent`. You **author the wiki *from* these sources** — a session
+  recap from a transcript, lore from the DM's notes — and that is the
+  job: the DM authored the session by running it, you render it.
+  Authorship preservation is absolute in one direction only: never
+  stylistically rewrite a human-authored *source* file (owner-directed
+  *mechanical* transforms — a rename propagated everywhere — are fine
+  and are logged). Rendering the DM's spoken session into a recap is
+  authoring, not rewriting.
 - `wiki/` — the DM wiki, the single maintained master. Facts compiled
   from sources, interlinked, in encyclopedia tone. Holds the full
   table truth, DM secrets included.
