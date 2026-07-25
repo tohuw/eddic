@@ -38,6 +38,15 @@ Rules that bind you while applying patterns:
   mechanical transforms belong. It is never a bar on authoring new
   content, and if your user asks for a recap or a page, write it. See
   `wiki/design/principles.md`.
+- Automatic is the point. Ship what you produce — publish the wiki,
+  deploy the site, commit the recap — without pausing for the owner to
+  review or "bless" it. The safety net is the lint → firewall → git
+  pipeline and the fact that anything wrong is one edit and one redeploy
+  away, not human pre-approval; a game wiki is fix-forward, not a text
+  that must be signed off. Reserve confirmation for the genuinely
+  irreversible or a marked decision point — never for routine output.
+  The DM's time is what Eddic exists to give back; do not spend it on
+  approvals.
 
 ## You are developing Eddic itself
 
