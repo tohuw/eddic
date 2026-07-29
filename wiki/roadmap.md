@@ -50,8 +50,12 @@ surface, lint 0.3.0 checks them, retrieval 0.4.0 stages the effective corpus;
 `eddic bundle` is the sale-build fence (hash-pinned consent, derivation-graph
 rights, stale-clearance refusal). `tools/verify_e2e.py` proves the full
 composition in CI on all three OSes. Companion conduct claims are unverified
-until live adversarial passes; marketplace (15) waits on the payment-gateway
-decision.
+until live adversarial passes. The pen axis ships across the stack — wiki 0.4.0
+carries `curation`/`ingest`/`lint` and tri-state authorship, lint 0.5.0 splits
+binding checks from a quietable advisory tier, contribs 0.2.0 refuses to sell
+machine-authored prose, companion 0.4.0 adds the writing assistant. Delivery is
+settled and needs no gateway: a private repository per campaign, buyers added
+as collaborators, so marketplace (15) is now blocked on nothing but the work.
 
 ## Module queue
 
@@ -169,7 +173,10 @@ decision.
     [contribs](modules/contribs.md) module.
 15. **marketplace** — transactable campaigns as products: the author role, base
     and deluxe (session-log) offerings, packaging and refusal machinery. The
-    payment gateway is a deferred decision below.
+    refusal machinery and the packaging walkthrough ship in contribs 0.2.0, and
+    delivery is a private repository per campaign with buyers added as
+    collaborators — so what remains here is a catalog and the taking of money,
+    not the rights machinery.
 
 **Contributable thereafter:** VTT modules (Roll20, Foundry, …) by community PR
 under the contract.
@@ -195,9 +202,13 @@ under the contract.
   real-domain call is now resolved: the site is live at **eddic.quest** (apex +
   www, proxied, alongside eddic-site.pages.dev). Remaining owner call: whether
   the site grows a docs/marketplace face beyond the current five pages.
-- **Payment gateway.** Choose when the marketplace module (15) starts: a gateway
-  with checkout-and-download and no inventory overhead; cost posture per
-  principle 4. Until then the transaction arc is rights machinery, not commerce.
+- **Taking the money.** Delivery is decided — a private repository per campaign,
+  buyers added as collaborators, so the forge handles access, revocation, and
+  the download, and Eddic runs no service and holds no content. What is left is
+  narrower than the old "payment gateway" question: some way to accept payment
+  and a catalog to be found in, neither of which touches the bundle. Cost
+  posture per principle 4. Until then the transaction arc is rights machinery,
+  not commerce.
 - **Multi-tenant lore bot (convene).** ([#13](https://github.com/tohuw/eddic/issues/13)) Today one bot serves one campaign:
   [convene](modules/convene.md) counts *every* scheduled event on the guild
   toward that campaign's quorum. Two campaigns sharing a Discord server would

@@ -34,7 +34,7 @@ nothing here is enforcement. The backstop against a companion
 degenerating into an omniscient referee is table culture, not
 machinery.
 
-## The three templates
+## The conduct templates
 
 Each template is parameterized on the campaign site name and is
 installed as standing instructions in the relevant client. The player
@@ -112,6 +112,40 @@ private to the DM by construction. If the campaign hasn't enabled the
 witness write path, the companion says so and falls back to handing the
 answer to the DM directly rather than dropping it silently.
 
+## The writing assistant
+
+A fourth template generalizes the interviewer past backstory to
+anyone at the table with something unwritten: the DM's places,
+factions, and prep, a player's journal or a character's voice, the
+recap nobody has got to. The method is the interviewer's. It draws
+out what the writer already imagines rather than writing unprompted,
+asks one concrete question at a time, and keeps the writer's own
+phrases to build the page around, on the premise that their sentence
+in their voice beats the agent's paragraph. It never seizes the pen:
+no wholesale rewrite unless asked for in as many words, and no quiet
+improvement of someone's phrasing under cover of cleaning it up.
+
+Two properties distinguish it from the interviewer. It is proactive
+— it may notice something worth writing, a place named across three
+sessions with no page or a session whose recap never happened, and
+say so once in a sentence, then drop it for the session. That is the
+point of it, and also what a table will resent if the invitation
+becomes a script, so the cap of one offer sits in the template rather
+than in the assistant's tact; a table that still finds it intrusive
+strips the offering section and keeps a purely on-demand assistant.
+And it separates craft from conduct. Structure, cuts, how to open,
+what to keep — it helps with those as freely as asked, because the
+never-better rule governs play rather than prose. At the table it
+stays on the phrasing side of that line: "you could tie it back to
+the Imperial library" is a way of saying a thing and is squarely the
+assistant's to offer, while what to cast, whom to trust, and which
+door hand back to the table, and an ask sitting on the line gets its
+phrasing half answered with the choice left alone. Output is marked
+as it comes: the writer's words carry their contributor id, drafted
+prose is machine-authored, and a drafted page the writer later
+reworks in their own words becomes mixed — because they reworked it,
+never because they approved it.
+
 ## The player kit
 
 The templates onboard the DM and interested players who read the
@@ -141,8 +175,9 @@ companion conduct it points at is the verified doctrine above.
 
 ## Verification
 
-The deterministic floor is `verify/run.py`: it checks that the three
-companion templates and the player kit ship, that both companions
+The deterministic floor is `verify/run.py`: it checks that the
+templates ship — the three companions, the player kit, the learner's
+primer, and the writing assistant — that both companions
 carry the conduct rule
 verbatim, that every template is parameterized on the campaign, that
 the player template closes the puzzle loophole and keeps the option
@@ -154,7 +189,11 @@ the ideas-not-canon register shift, grounding in the session logs, and
 projection-only honesty), that the player companion carries the private
 prep-ask response path (files to the witness inbox, marks it DM-only and
 invisible to the table, never canon, with the write-path-off fallback to
-the DM), and that the acceptance rig covers all eight
+the DM), that the writing assistant carries the conduct rule verbatim
+while freeing craft help from it, interviews rather than seizing the
+pen, offers once and then drops it, reflects the writer's own phrases
+back, and keeps curation off the authorship axis, and that the
+acceptance rig covers all eight
 behavior classes and tests against overcorrection rather than mere
 compliance.
 

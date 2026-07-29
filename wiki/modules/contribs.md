@@ -95,8 +95,10 @@ author and only deliberately, asserts clean-room status by removing a
 
 `eddic bundle` refuses, writing nothing at all, when no author is
 declared, when overlays conflict, when a page marked transactable has
-ancestry reaching an uncleared contributor, when a clearance is stale, or
-when nothing is marked transactable. A clean run writes `dist/bundle/`:
+ancestry reaching an uncleared contributor, when a clearance is stale,
+when a page marked transactable carries machine authorship or names no
+author at all, or when nothing is marked transactable. A clean run
+writes `dist/bundle/`:
 the cleared wiki pages, DM-only pages included — visibility never filters
 a sale, because the buyer becomes their own table's DM and a sale ships
 the full truth — plus any assets, the campaign's agent instructions,
@@ -104,6 +106,61 @@ and a generated `CREDITS.md` listing every attribution-bearing page's
 required credit. The operation log itself never ships, nor do sources or
 `.eddic` state; sources travel only in a deluxe offering where every
 transcript already carries table consent.
+
+## Machine prose is never transactable
+
+Pure machine output carries no protectable expression, so the fence
+refuses a page marked transactable whose `authorship:` is `machine` or
+`agent`, and refuses on the same ground one that asserts sale while
+naming no author at all — a sale is exactly the moment the question
+has to be answered honestly. Both refusals name the same two remedies
+and there is no third: rewrite the page with its writer, by interview,
+until it is honestly `mixed`, or unmark it and keep it local.
+Exclusion is the projection's ordinary arithmetic, so dropping a page
+from the sale costs nothing and loses nothing — the campaign keeps it,
+still served and still linked. What the fence never does is detect.
+Nothing here inspects prose for machine tells and nothing ever will:
+authorship and curation are sworn by the people who set them, enforced
+by friction and honesty rather than forensics, because a detector
+would be wrong often enough to be worse than useless and would put a
+machine's guess ahead of a person's word about their own writing.
+
+## Packaging with the owner
+
+The fence tells the truth but tells it all at once, and an owner who
+asked whether they can sell their campaign should not meet a wall of
+refusals in a schema they never read. The pattern's packaging
+walkthrough works the refusals with them one page at a time, in their
+language rather than the schema's — this page is the one the agent
+wrote up from their notes after the fourth session, so as it stands it
+is the agent's writing and not theirs. Every page ends in one of three
+places. It **ships**, because the person who wrote it holds clean
+rights. It gets **rewritten**, the owner interviewed through the
+writing assistant until the page is theirs in their own words, which
+is the only path that converts machine prose and is worth taking only
+where the page carries something a buyer is actually paying for; it is
+real work and is quoted honestly as such. Or it **stays local**,
+unchanged in the campaign and still served, simply not sold. Remarking
+is not offered as a fourth path and is declined if it is asked for,
+because it is the one move that turns an honest refusal into a false
+claim about who wrote the thing.
+
+## Delivery
+
+A sale is a snapshot handed over, not a tenancy. The owner publishes
+the bundle as a private Git repository per campaign, on a forge they
+already use, and adds each buyer as a collaborator; the buyer's own
+agent reads that campaign exactly as it reads any other. Access
+control, revocation, and delivery are the forge's job, which is what
+keeps Eddic out of the business of running a service, holding anyone's
+content, or asking a buyer to create an account they do not already
+have. One warning is worth stating once, because the mistake cannot be
+undone: opening a pull request against a *public* repository is
+publication — fine, even good, for a campaign given away, and fatal
+for one meant to be sold. Reaching for anything heavier than
+collaborator management means the owner is running a storefront rather
+than selling a campaign, a different undertaking that Eddic's
+machinery does not pretend to cover.
 
 ## Preflight and discipline
 
