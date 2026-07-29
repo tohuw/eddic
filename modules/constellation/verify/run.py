@@ -145,8 +145,12 @@ def main():
     check(results, outbound_adj == exp_out,
           f"backlinks: outbound matches the edge set (got {outbound_adj})")
 
-    # (d) resolver matches eddic_lint.py on the shared master.
-    findings = lint.lint(master, "log.md")
+    # (d) resolver matches eddic_lint.py on the shared master. Quieting is
+    # a reporting tier layered over the resolver, not a second opinion
+    # about the graph, so both tiers count here: a page the linter judged
+    # an orphan and then hushed is still an orphan to the constellation.
+    binding, quieted = lint.lint(master, "log.md")
+    findings = binding + quieted
     lint_orphan = {f["path"] for f in findings if f["code"] == "orphan"}
     lint_unreach = {f["path"] for f in findings if f["code"] == "unreachable"}
     graph_orphan = {n["id"] for n in nodes if n["is_orphan"]}

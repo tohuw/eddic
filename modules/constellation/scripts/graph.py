@@ -158,7 +158,12 @@ class Page:
         self.links = link_targets(self.body)
         lines = [ln.strip() for ln in self.body.splitlines() if ln.strip()]
         self.is_stub = bool(lines) and lines[-1] == "STUB"
-        self.visibility = (self.frontmatter.get("visibility") or "dm").strip()
+        # Mirrors project.py's visibility_of() / eddic_lint.py: an open
+        # merge proposal is DM-side however it is marked, so the player
+        # constellation never charts unadjudicated lore.
+        self.visibility = (
+            "dm" if (self.frontmatter.get("proposes-merge-into") or "").strip()
+            else (self.frontmatter.get("visibility") or "dm").strip())
 
     def title(self):
         for line in self.body.splitlines():

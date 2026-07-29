@@ -30,7 +30,8 @@ re-litigates what the structural floor already guarantees.
 
 1. Run the reporter:
 
-       uv run scripts/eddic_lint.py <wiki_dir> [--json] [--strict] [--log NAME]
+       uv run scripts/eddic_lint.py <wiki_dir> [--json] [--strict]
+                                [--show-quieted] [--log NAME]
 
    Exit 0 is clean, 1 means errors (or warnings under `--strict`),
    2 is a usage problem. Use `--json` when you are consuming the
@@ -66,6 +67,35 @@ re-litigates what the structural floor already guarantees.
      report it and let the owner decide whether to annotate.
    - Anything whose fix would delete a page or alter human-authored
      prose (authorship preservation; see wiki/design/principles.md).
+   - `invalid-curation` / `invalid-ingest` / `invalid-lint` — a
+     pen-axis marker outside its set. The value is usually a near-miss
+     for what the owner meant, and guessing which is a judgment about
+     who holds the pen on that page; name the two valid values and
+     let them pick.
+   - `merge-proposal-visible` — an unadjudicated proposal claiming the
+     player surface. Same class as a firewall breach: fixing it means
+     either merging the lore or hiding it, and both are the DM's call.
+   - `merge-target-missing` — the proposal names a target that is not
+     there. Create the target only if the DM says the page should
+     exist; otherwise the marker is wrong, not the wiki.
+
+   Findings come in two tiers, and the reporter applies the split for
+   you. **Advisory** checks (`stub-overgrown`, `tiny-unstubbed`,
+   `orphan`, `unreachable`) go quiet on a page that says the pen is
+   held elsewhere — `curation: human`, the owner's `lint: off`, or an
+   open merge proposal — because nagging a human about the page they
+   are answerable for is noise, and holding a transient proposal to
+   canon's standards is nonsense. Every other check is **binding** and
+   never quiets, on any page, for any marker: the firewall, the rights
+   and attribution machinery, and the structural integrity a build
+   depends on. Quieting is not silence — the summary always counts what
+   it suppressed, `--show-quieted` lists it, and neither changes the
+   exit code. If a page's advisory findings vanish unexpectedly, look
+   at its markers before you look for a bug.
+
+   `merge-pending` is deliberately not advisory: open proposals are the
+   DM's work queue, so they stay visible on a quieted page. It is info
+   severity and never fails a build.
 
 3. **Semantic pass (optional, model-run).** When the campaign is large
    enough that manual consistency review stops scaling, run the semantic
@@ -122,6 +152,18 @@ re-litigates what the structural floor already guarantees.
 - **Strictness.** Default: plain mode interactively; `--strict` inside
   routines and CI, where a warning nobody reads is a warning that
   never gets fixed.
+- **Advisory opt-out.** Default: don't. When an owner is tired of
+  being nagged about a page, `curation: human` is almost always the
+  right marker instead — it quiets the same advice and says something
+  true about who is answerable, where `lint: off` only says stop
+  talking. Keep the opt-out for pages that will never satisfy the
+  advisory checks by design and would otherwise report forever: a
+  deliberately unlinked page, an archival scrap kept verbatim. It is
+  worth stating plainly when the owner asks for it, once and without
+  argument, that the mark is easy to set and easy to forget, so the
+  page goes unexamined until someone remembers to look. The safety
+  tier is unaffected either way — no marker has ever silenced the
+  firewall.
 - **Firewall scope.** Wikis with no visibility frontmatter get the
   check skipped (reported as info). Default: leave it skipped and note
   that the wiki module introduces visibility; do not invent

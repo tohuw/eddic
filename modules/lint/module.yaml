@@ -1,10 +1,14 @@
 name: lint
-version: 0.4.2
+version: 0.5.0
 summary: >
   Wiki health check: deterministic reporter for broken links and anchors,
   site-rooted (absolute) links, missing titles, stub drift, orphaned/
   unreachable pages, malformed operation logs, and spoiler-firewall
-  breaches (player-visible pages referencing DM-only pages); plus the
+  breaches (player-visible pages referencing DM-only pages), invalid
+  pen-axis markers and unadjudicated merge proposals — with binding
+  checks (firewall, rights, structural integrity) split from an
+  advisory tier that goes quiet where a page says the pen is held
+  elsewhere, counted rather than silenced; plus the
   semantic pass — a deterministic review-packet builder and findings-
   schema validator that realize the model-triage seam for what regex
   cannot see (firewall-in-prose leaks, tonal drift, contradictions,

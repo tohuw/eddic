@@ -4,22 +4,40 @@
 """eddic lint — deterministic wiki health reporter.
 
 Usage:
-    uv run eddic_lint.py <wiki_dir> [--json] [--strict] [--log NAME]
+    uv run eddic_lint.py <wiki_dir> [--json] [--strict] [--show-quieted]
+                         [--log NAME]
 
 Checks a tree of interlinked markdown pages:
 
   errors    broken relative links, broken anchors, missing H1,
             malformed operation-log entries, firewall breaches
             (player-visible page links a DM-only page; visibility
-            fails closed: no frontmatter marker means DM-only)
+            fails closed: no frontmatter marker means DM-only),
+            invalid pen-axis markers, merge proposals that name no
+            target or claim player visibility
   warnings  stub drift (STUB-marked page grown past stub size),
             orphans (no inbound links), pages unreachable from the
             root index
   info      tiny pages not marked STUB; firewall check skipped
-            because the wiki carries no visibility frontmatter yet
+            because the wiki carries no visibility frontmatter yet;
+            merge proposals awaiting the DM's adjudication
+
+Checks come in two tiers. **Advisory** checks (ADVISORY below) are
+editorial nagging and go quiet on a page that says the pen is held
+elsewhere: `curation: human` (a human is answerable for this page),
+`lint: off` (the owner's deliberate opt-out), or an open merge
+proposal (not canon yet, so not held to canon's standards). Every
+other check is **binding** — the firewall, the rights and attribution
+machinery, and the structural integrity a build depends on never go
+quiet, on any page, for any marker. A new check is binding unless it
+is deliberately added to ADVISORY; the tier fails closed like the
+visibility axis it protects.
 
 Exit codes: 0 clean (infos allowed), 1 errors (or warnings with
 --strict), 2 usage error. --json emits the machine-readable report.
+--show-quieted lists what the advisory tier suppressed (each such
+finding carries "quieted": true); the summary always counts them, so
+quieting is visible even when the findings are not.
 
 Deliberately stdlib-only and deterministic: this is the reporter half
 of the reporter/model-triage seam. It never edits anything.
@@ -33,10 +51,21 @@ from pathlib import Path
 
 NON_CONTENT = {"CLAUDE.md", "AGENTS.md", "README.md"}
 LOG_TYPES = {"ingest", "reconcile", "lint", "schema", "witness",
-             "attribution", "consent", "sever"}
+             "attribution", "consent", "sever", "merge"}
 TRANSACTABILITY = {"transactable", "transactable-with-attribution",
                    "local-only"}
-GENERIC_AUTHORSHIP = {"human", "agent", "machine", "transcript"}
+GENERIC_AUTHORSHIP = {"human", "mixed", "agent", "machine", "transcript"}
+# The pen axis (DESIGN principle 11, "Who holds the pen"): who writes
+# this page next, marked per page. `curation` is who is answerable for
+# the page as it stands and is asserted, never inferred — it does NOT
+# default from `authorship`, because a human who approves machine prose
+# has curated it, not written it.
+CURATION = {"human", "agent"}
+INGEST = {"literal", "derived"}
+LINT_OPTS = {"off"}
+# Advisory checks: editorial nagging, quieted where the pen is held
+# elsewhere. Everything not listed here is binding and never quiets.
+ADVISORY = {"stub-overgrown", "tiny-unstubbed", "orphan", "unreachable"}
 LOG_HEADER = re.compile(r"^## \[\d{4}-\d{2}-\d{2}\] (\S+) \| .+$")
 LINK = re.compile(r"(?<!\!)\[[^\]]*\]\(([^)\s]+)\)")
 # Inline HTML anchor and Markdown reference-definition targets. These
@@ -72,7 +101,24 @@ class Page:
         self.words = len(re.sub(r"[^\w\s]", " ", self.body).split())
         lines = [ln.strip() for ln in self.body.splitlines() if ln.strip()]
         self.is_stub = bool(lines) and lines[-1] == "STUB"
-        self.visibility = (self.frontmatter.get("visibility") or "dm").strip()
+        fm = self.frontmatter
+        self.curation = (fm.get("curation") or "").strip()
+        self.ingest = (fm.get("ingest") or "").strip()
+        self.lint_opt = (fm.get("lint") or "").strip()
+        self.merge_into = (fm.get("proposes-merge-into") or "").strip()
+        # What the page claims, and what it effectively gets. An open
+        # merge proposal is DM-side however it is marked — unadjudicated
+        # lore is not canon — so the firewall reads `visibility` while
+        # the marker check reads `declared` and reports the conflict.
+        # This mirrors project.py's visibility_of(): the linter must
+        # judge a breach exactly as the projection will.
+        self.declared = (fm.get("visibility") or "dm").strip()
+        self.visibility = "dm" if self.merge_into else self.declared
+        # Where the pen is held elsewhere, the advisory tier goes quiet:
+        # a human is answerable for the page, the owner opted out, or the
+        # page is a proposal and not canon yet.
+        self.quiet = bool(self.curation == "human" or self.lint_opt == "off"
+                          or self.merge_into)
 
 
 def split_frontmatter(text):
@@ -319,7 +365,45 @@ def lint(root, log_name, contribs=None):
             add("derived-from-missing", "error", rel,
                 f"derived-from: {d} names no page in the effective wiki")
 
-    return findings
+    # The pen axis: markers valid, proposals answerable and off the
+    # player surface. Binding — a page cannot use these markers to
+    # silence the check that polices them.
+    for rel in sorted(pages):
+        page = pages[rel]
+        if page.curation and page.curation not in CURATION:
+            add("invalid-curation", "error", rel,
+                f"'{page.curation}' is not one of {sorted(CURATION)} "
+                f"(no marker = agent; curation is asserted, not inferred "
+                f"from authorship)")
+        if page.ingest and page.ingest not in INGEST:
+            add("invalid-ingest", "error", rel,
+                f"'{page.ingest}' is not one of {sorted(INGEST)}")
+        if page.lint_opt and page.lint_opt not in LINT_OPTS:
+            add("invalid-lint", "error", rel,
+                f"'{page.lint_opt}' is not one of {sorted(LINT_OPTS)} "
+                f"(the opt-out covers advisory checks only)")
+        if page.merge_into:
+            if page.merge_into not in pages:
+                add("merge-target-missing", "error", rel,
+                    f"proposes-merge-into: {page.merge_into} names no page "
+                    f"in the effective wiki")
+            if page.declared == "player":
+                add("merge-proposal-visible", "error", rel,
+                    "a merge proposal is unadjudicated and may not be "
+                    "player-visible; the projection withholds it either "
+                    "way, so drop the marker or merge it first")
+            add("merge-pending", "info", rel,
+                f"awaiting adjudication into {page.merge_into}")
+
+    # Advisory findings go quiet where the pen is held elsewhere; binding
+    # ones never do. Quieted findings are returned separately, never
+    # dropped — the summary counts them and --show-quieted lists them.
+    quiet = {rel for rel, pg in pages.items() if pg.quiet}
+    kept, quieted = [], []
+    for f in findings:
+        (quieted if f["code"] in ADVISORY and f["path"] in quiet
+         else kept).append(f)
+    return kept, quieted
 
 
 def main(argv):
@@ -353,19 +437,31 @@ def main(argv):
     if contribs is None:
         contribs = root.parent / "contribs"
 
-    findings = lint(root, log_name, contribs)
+    binding, quieted = lint(root, log_name, contribs)
     sev_rank = {"error": 0, "warning": 1, "info": 2}
+    # Counts drive the exit code, so they come from the binding findings
+    # alone: --show-quieted displays what was suppressed, it never
+    # revives it into enforcement.
+    counts = {s: sum(1 for f in binding if f["severity"] == s) for s in sev_rank}
+    counts["quieted"] = len(quieted)
+    findings = binding
+    if "--show-quieted" in flags:
+        findings = binding + [dict(f, quieted=True) for f in quieted]
     findings.sort(key=lambda f: (sev_rank[f["severity"]], f["path"], f["line"] or 0))
-    counts = {s: sum(1 for f in findings if f["severity"] == s) for s in sev_rank}
 
     if "--json" in flags:
         print(json.dumps({"findings": findings, "summary": counts}, indent=2))
     else:
         for f in findings:
             loc = f"{f['path']}:{f['line']}" if f["line"] else f["path"]
-            print(f"{f['severity']:<8} {f['code']:<16} {loc} — {f['detail']}")
+            mark = " (quieted)" if f.get("quieted") else ""
+            print(f"{f['severity']:<8} {f['code']:<16} {loc} — {f['detail']}{mark}")
         print(f"\n{counts['error']} error(s), {counts['warning']} warning(s), "
               f"{counts['info']} info(s)")
+        if quieted and "--show-quieted" not in flags:
+            print(f"{counts['quieted']} advisory finding(s) quieted on "
+                  f"human-curated, opted-out, or proposal pages "
+                  f"(--show-quieted to list)")
 
     if counts["error"] or ("--strict" in flags and counts["warning"]):
         return 1

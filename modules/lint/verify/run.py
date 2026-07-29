@@ -24,16 +24,22 @@ EXPECTED = Counter({
     "broken-anchor": 1,      # sunken-city -> warden.md#no-such-heading
     "absolute-link": 1,      # sunken-city -> /maps/atlas.html
     "missing-h1": 1,         # lost-shrine
-    "firewall-breach": 5,    # index and warden link the DM-only vault
+    "firewall-breach": 6,    # index and warden link the DM-only vault
                              # (inline); sunken-city links it via a
                              # reference-style [the vault][v] link; and,
                              # via non-.md forms (issue #22), index links
                              # the DM-only hidden-annex by its .html and
                              # warden links it by its clean/extensionless
                              # URL — each resolved to the .md and judged
+                             # alike. The sixth: harbor-watch links an
+                             # open merge proposal, which is DM-side
+                             # however it marks itself — pinning the
+                             # linter to the projection's verdict
     "log-malformed": 2,      # unknown type 'conjure'; freeform ## header
-    "orphan": 2,             # lost-shrine; contributed field-notes
-    "unreachable": 2,        # lost-shrine; contributed field-notes
+    "orphan": 3,             # lost-shrine; contributed field-notes;
+                             # harbor-watch (no quiet marker, so it counts)
+    "unreachable": 3,        # lost-shrine; contributed field-notes;
+                             # harbor-watch
     "tiny-unstubbed": 1,     # lost-shrine only — kestrel's overlay
                              # replaced the tiny vault page, proving
                              # the effective view took the overlay
@@ -43,6 +49,23 @@ EXPECTED = Counter({
     "contrib-unattributed": 1,      # field-notes marked bare 'human'
     "invalid-transactability": 1,   # lost-shrine 'sellable'
     "derived-from-missing": 1,      # warden derived-from ghost-quarter
+    "invalid-curation": 1,          # rumor-of-the-warden 'reviewed'
+    "invalid-ingest": 1,            # rumor-of-the-warden 'sideways'
+    "invalid-lint": 1,              # rumor-of-the-warden 'maybe'
+    "merge-proposal-visible": 1,    # rumor-of-the-warden claims player
+    "merge-target-missing": 1,      # rumor-of-the-vault -> no-such-page
+    "merge-pending": 2,             # both rumor pages await adjudication
+})
+
+# The advisory tier, quieted where the pen is held elsewhere. Each of the
+# three quieting paths is planted once: curation (field-journal), the
+# owner's opt-out (ledger-scrap), and an open proposal (both rumor pages).
+EXPECTED_QUIETED = Counter({
+    "orphan": 3,          # field-journal, ledger-scrap, the vault rumor
+                          # (the warden rumor now has an inbound link)
+    "unreachable": 4,     # those three and the warden rumor — the page
+                          # linking it is itself outside the catalog
+    "tiny-unstubbed": 2,  # field-journal, ledger-scrap
 })
 
 
@@ -57,9 +80,44 @@ def check_reporter():
     report = json.loads(proc.stdout)
     got = Counter(f["code"] for f in report["findings"])
 
-    if got == EXPECTED and proc.returncode == 1:
+    # The advisory tier: quieted findings must be absent from the default
+    # report, counted in the summary, and listed under --show-quieted —
+    # quiet, never silent.
+    shown = subprocess.run(
+        [sys.executable, str(REPORTER), str(HERE / "fixture"), "--json",
+         "--contribs", str(HERE / "fixture-contribs"), "--show-quieted"],
+        capture_output=True, text=True)
+    full = json.loads(shown.stdout)
+    quieted = Counter(f["code"] for f in full["findings"] if f.get("quieted"))
+    tier_ok = True
+    if quieted != EXPECTED_QUIETED:
+        tier_ok = False
+        for code in sorted(set(EXPECTED_QUIETED) | set(quieted)):
+            if EXPECTED_QUIETED[code] != quieted[code]:
+                print(f"FAIL: quieted {code}: expected "
+                      f"{EXPECTED_QUIETED[code]}, got {quieted[code]}")
+    if report["summary"].get("quieted") != sum(EXPECTED_QUIETED.values()):
+        tier_ok = False
+        print(f"FAIL: summary undercounts quieting: "
+              f"{report['summary'].get('quieted')} != "
+              f"{sum(EXPECTED_QUIETED.values())}")
+    if any(f["code"] in EXPECTED_QUIETED and f["path"] in {
+            "field-journal.md", "ledger-scrap.md", "rumor-of-the-warden.md",
+            "rumor-of-the-vault.md"} for f in report["findings"]):
+        tier_ok = False
+        print("FAIL: an advisory finding survived onto a quieted page")
+    # Displaying the quieted set must not revive it into enforcement.
+    if shown.returncode != proc.returncode:
+        tier_ok = False
+        print(f"FAIL: --show-quieted changed the exit code "
+              f"({proc.returncode} -> {shown.returncode}); it is a display "
+              f"flag, not an enforcement one")
+
+    if got == EXPECTED and proc.returncode == 1 and tier_ok:
         print(f"verify ok: {sum(got.values())} findings, all expected; "
-              "exit code signals errors correctly")
+              f"{sum(quieted.values())} advisory quieted on three paths "
+              "(curation, opt-out, proposal); exit code signals errors "
+              "correctly")
         return 0
 
     if proc.returncode != 1:
