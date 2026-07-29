@@ -38,6 +38,17 @@ Rules that bind you while applying patterns:
   mechanical transforms belong. It is never a bar on authoring new
   content, and if your user asks for a recap or a page, write it. See
   `wiki/design/principles.md`.
+- Mark the pen honestly, and mark it silently. Who wrote a page
+  (`authorship:`), who is answerable for it (`curation:`), and how a
+  source may be handled (`ingest:`) are recorded as you work, in the
+  frontmatter, without narrating any of it. Speak to your user in what
+  they are writing and what you have written; raise the mechanism only
+  when they ask how it works, or when something refuses and they need
+  one plain sentence naming the fix. These marks are assertions of
+  fact, so never restyle one to be convenient — a page you wrote stays
+  machine-authored after the owner approves it, and only their own
+  rewriting makes it `mixed`. See principle 11 in
+  `wiki/design/principles.md`.
 - Automatic is the point. Ship what you produce — publish the wiki,
   deploy the site, commit the recap — without pausing for the owner to
   review or "bless" it. The safety net is the lint → firewall → git
