@@ -151,6 +151,34 @@ def main():
          "projected page starts at the H1 — frontmatter gone, body intact"),
     ]
 
+    # An open merge proposal is DM-side however it is marked:
+    # unadjudicated lore never reaches players, and a player page
+    # linking one is a breach like any other DM-only target.
+    write(src, "story/rumor.md",
+          "---\nvisibility: player\nproposes-merge-into: "
+          "characters/warden.md\n---\n\n"
+          "# A Rumor\n\nThe table's new claim, not yet adjudicated.\n")
+    proc_prop = run(src, out)
+    checks += [
+        (proc_prop.returncode == 0,
+         f"proposal alongside a clean wiki still projects "
+         f"(got {proc_prop.returncode})"),
+        (not (out / "story/rumor.md").exists(),
+         "player-marked merge proposal withheld from the projection"),
+    ]
+    write(src, "characters/warden.md", PLAYER_FM + "# The Warden\n\n"
+          "Keeper of the gate, sworn to the [realm](../index.md), and "
+          "subject of [a rumor](../story/rumor.md).\n")
+    proc_prop_link = run(src, out)
+    checks += [
+        (proc_prop_link.returncode == 1,
+         f"player page linking a proposal refuses "
+         f"(got {proc_prop_link.returncode})"),
+        ("story/rumor.md" in proc_prop_link.stderr,
+         "the refusal names the proposal it would have leaked"),
+    ]
+    (src / "story" / "rumor.md").unlink()
+
     # Contributor overlays: shadow wins on the built surface, base
     # stays in the tree; a second claim on the target refuses.
     write(src, "characters/warden.md", PLAYER_FM + "# The Warden\n\n"

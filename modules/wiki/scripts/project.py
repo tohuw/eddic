@@ -11,7 +11,9 @@ Copies every page marked `visibility: player` from the DM master into
 the projection directory, preserving the tree, with frontmatter
 stripped so no DM-only key rides into player output. Visibility fails
 closed: a page without frontmatter, or without the marker, is DM-only
-and never projects.
+and never projects. A page carrying `proposes-merge-into` is DM-side
+on the same principle — unadjudicated lore is not canon, so it stays
+off the player surface however it is marked.
 
 Contributor overlays (`contribs/<id>/...`) are applied first: a
 contrib file occupies its relative path in the wiki, or the page
@@ -119,6 +121,16 @@ def split_frontmatter(text):
     return {}, text
 
 
+def visibility_of(fm):
+    """Effective visibility, fail-closed. An open merge proposal is
+    DM-side whatever it claims: it is unadjudicated lore the DM has not
+    chosen yet, so it cannot ship to players even marked player-visible.
+    The lint reports that contradiction; this refuses to act on it."""
+    if (fm.get("proposes-merge-into") or "").strip():
+        return "dm"
+    return (fm.get("visibility") or "dm").strip()
+
+
 def load_overlays(contribs, log_name):
     """Map effective wiki path -> (contributor, file path). Conflicts
     are fatal to the caller; returned separately."""
@@ -174,7 +186,7 @@ def main(argv):
         rel = p.relative_to(src).as_posix()
         fm, _ = split_frontmatter(p.read_text(encoding="utf-8",
                                               errors="replace"))
-        pages[rel] = ((fm.get("visibility") or "dm").strip(), p)
+        pages[rel] = (visibility_of(fm), p)
 
     overlays, conflicts = load_overlays(contribs, log_name)
     overlay_errors = [
@@ -193,7 +205,7 @@ def main(argv):
                 f"contribs: {who}'s replaces target {target} "
                 f"does not exist in the wiki")
             continue
-        pages[target] = ((fm.get("visibility") or "dm").strip(), p)
+        pages[target] = (visibility_of(fm), p)
     if overlay_errors:
         print("projection REFUSED — contributor overlays are "
               "inconsistent; nothing was written:", file=sys.stderr)

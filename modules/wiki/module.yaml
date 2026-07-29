@@ -1,11 +1,14 @@
 name: wiki
-version: 0.3.3
+version: 0.4.0
 summary: >
   The campaign knowledge architecture: a DM-master wiki schema with
   fail-closed page-level visibility, twin pages for progressive
   reveal, authorship-marked sources, a typed operation log, and the
   deterministic player projection (the `project` verb) that refuses
-  to ship a firewall breach.
+  to ship a firewall breach. Carries the pen axis — tri-state
+  authorship, curation asserted separately from it, literal vs
+  derived ingest — and the propose-adjudicate-merge flow that lands
+  new table lore as a transient page the DM adjudicates.
 touches:
   - AGENTS.md
   - CLAUDE.md

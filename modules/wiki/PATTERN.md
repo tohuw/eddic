@@ -81,6 +81,26 @@ on — and the schema you (the agent) maintain across sessions.
 - **Adoption bulk-marking.** Default: no. Visibility marking on an
   existing wiki is per-page judgment with the owner (step 5); the
   only safe bulk operation is leaving pages unmarked (DM-only).
+- **Ingest mode.** Default: `derived` for pages the agent compiles
+  from sources, `literal` for anything a human wrote. Literal ingest
+  is spelling, grammar, and linkification — nothing else — so it is
+  the right mode whenever the source's wording is the point: a
+  player's backstory, a handout read at the table, the DM's own
+  prose. Worth choosing `literal` for a whole campaign when the owner
+  wants the wiki to be a faithful transcription rather than a written
+  work; expect a rougher, more repetitive read in exchange for
+  wording nobody has touched.
+- **Recap authorship.** Default: machine — the agent writes each
+  session recap from the transcript and marks it
+  `authorship: machine`. A DM who would rather write their own takes
+  the pen for that surface: the agent supplies the transcript, the
+  timeline, and the open threads, then leaves the prose alone under
+  `authorship: human`. Mixed tables are normal and need no setting;
+  the mark is per page, so it can change any week. Note the sale
+  consequence before defaulting past this one — machine-authored
+  recaps never clear the sale fence, so a campaign meant for sale
+  either takes the pen here or accepts rewriting the recaps later
+  (see the contribs pattern's packaging walkthrough).
 
 ## Verify
 

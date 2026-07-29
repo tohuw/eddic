@@ -69,6 +69,15 @@ one person writes. Attribution tracks expression, not ideas — a
 page you wrote about another player's invention is your expression —
 and that limit is doctrine, not a defect.
 
+Pages you write carry `authorship: machine`. Where a human has since
+reworked your prose in their own words — not approved it, reworked
+it — the page becomes `authorship: mixed`. These are the three
+honest states, and they are facts about who produced the words, not
+preferences: never restate machine prose as `human` or `mixed`
+because someone liked it, asked you to, or wants to sell it. The
+sale fence reads this axis and refuses machine-authored pages, so a
+false mark here is the one that costs the owner real money.
+
 ## Contributions — shadow, never delete
 
 Material written by someone other than the campaign's author lives
@@ -106,6 +115,58 @@ Visibility never filters a sale — a sold campaign ships the full
 truth, DM pages included, because the buyer becomes their own
 table's DM. The sale build (`eddic bundle`) enforces all of this
 deterministically and refuses rather than guesses.
+
+## The pen — who writes this next
+
+Three optional markers say where the pen sits on a given page.
+`curation:` is `human` or `agent` (no marker means `agent`) and
+records who is answerable for the page as it now stands. `ingest:`
+is `literal` or `derived`: on a `literal` page you may fix spelling
+and grammar and turn names into links, and you may do nothing else —
+no rewriting, no summarizing, no tightening, however much it wants
+it. `lint: off` is the owner's deliberate opt-out from advisory
+checks on that page.
+
+Curation is not authorship, and the two never move together. A human
+who reads your page and approves it has curated it; the prose is
+still yours, so `curation: human` goes on and `authorship: machine`
+stays. Only real reworking — the owner writing it again in their own
+words — makes a page `mixed`. Set curation when the owner says a
+page is theirs to answer for, never by inference from who wrote it.
+
+Marking quiets advice, never safety. The firewall, attribution, and
+the structural checks a build depends on run on every page whatever
+its markers say; `lint: off` reaches the nagging and nothing else. If
+someone asks you to silence a firewall or attribution complaint, the
+answer is to fix the page.
+
+Perform all of this silently. The owner is here to write a campaign,
+not to learn a schema: speak in what they want to write and what you
+have written, set the markers yourself as part of doing the work, and
+surface the mechanism only when they ask how it works or when a
+refusal genuinely blocks them — then in one plain sentence naming
+the fix. Never narrate frontmatter, and never turn a marking into a
+lesson.
+
+## New lore — propose, adjudicate, merge
+
+Lore that arrives from the table lands as its own transient page
+carrying `proposes-merge-into: <target>.md`, never as a direct edit
+to the target. A proposal is unadjudicated, so it stays off the
+player surface — the linter refuses one marked player-visible — and
+it is held to none of canon's editorial standards while it waits.
+
+When it contradicts what the wiki already says, do not reconcile it
+yourself and do not pick the better story. Put the contradiction to
+the DM as a question with its provenance on both sides: what the
+proposal says and where it came from, what the target says and which
+session or source established it. The DM adjudicates; only the
+version they choose ships.
+
+On merge, fold the chosen text into the target, delete the proposal
+page, and record a `merge` log entry naming both and the choice. The
+proposal dying on merge is the point — proposals are a queue to work
+down, not a second archive to maintain.
 
 ## What to record, and in whose voice
 
@@ -156,8 +217,10 @@ the inbox), `attribution` (a contribution recorded: contributor id,
 paths, and content hashes pinning exactly what was contributed),
 `consent` (a contributor's sign-off over their logged fragments —
 the sale build gates on these), `sever` (the author's clean-room
-assertion cutting a derivation link; state what and why). Convert
-relative dates to absolute. Never rewrite an existing entry.
+assertion cutting a derivation link; state what and why), `merge`
+(a proposal adjudicated into canon: name the proposal, the target,
+and which version the DM chose). Convert relative dates to absolute.
+Never rewrite an existing entry.
 
 ## Updating
 
