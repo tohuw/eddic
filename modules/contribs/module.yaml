@@ -1,10 +1,14 @@
 name: contribs
-version: 0.1.0
+version: 0.2.0
 summary: >
   The transaction arc's machinery: contributor overlays applied across
   every surface, hash-pinned attribution and consent in the operation
   log, derivation-graph rights computation, and the sale-build fence
-  (eddic bundle) that refuses anything uncleared, all-or-nothing.
+  (eddic bundle) that refuses anything uncleared, all-or-nothing —
+  machine-authored and unmarked pages included, since a sale is where
+  authorship must be answered honestly. Carries the packaging
+  walkthrough that works refusals with the owner page by page, and
+  delivery by private repository with buyers added as collaborators.
 touches:
   - wiki
   - lint

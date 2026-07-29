@@ -59,10 +59,50 @@ module supplies the machinery and the operating discipline.
    clear only via a table-wide entry (`consent | table ...`).
 
 6. Build: `eddic bundle`. It refuses without an author, on any
-   marked-but-uncleared ancestry, and when nothing is transactable;
-   a clean run writes `dist/bundle/` — cleared wiki (DM pages
-   included: a sale ships the full truth), assets, campaign
+   marked-but-uncleared ancestry, on a page marked for sale whose
+   authorship is machine or unmarked, and when nothing is
+   transactable; a clean run writes `dist/bundle/` — cleared wiki (DM
+   pages included: a sale ships the full truth), assets, campaign
    instructions, injected credits, and no operation log.
+
+7. **Walk the owner to clearable.** The fence tells the truth but it
+   tells it all at once, and an owner who asked "can I sell this?"
+   should not meet a wall of refusals in a schema they have never
+   read. Run `eddic bundle --check`, then work the refusals *with*
+   them, one page at a time, in their language — "this page is the
+   one I wrote from your notes after session four; as it stands it
+   is my writing, not yours."
+
+   Every page ends in one of three places. It **ships**, because a
+   person wrote it and the rights are clean. It gets **rewritten** —
+   you interview them through it with the writing assistant until the
+   page is theirs in their own words, which is what makes it honestly
+   `mixed` and sellable; this is the path for material they care
+   about and the only path that converts machine prose. Or it is
+   **dropped** from the sale: unmark it and it stays in the campaign
+   exactly as it is, still served, still linked, simply not sold. The
+   projection already computes that exclusion, so dropping a page
+   costs nothing and loses nothing.
+
+   Say plainly, once, which of the three each page is heading for,
+   and let them choose. Do not offer to "fix the marking" on machine
+   prose, and do not accept the instruction if it comes: re-marking
+   is the one move that turns an honest refusal into a false claim
+   about who wrote the thing. There is no detector here and there
+   never will be — the marks are their sworn word, and the whole
+   arrangement runs on friction and honesty rather than forensics.
+
+8. Deliver by private repository. The owner publishes the bundle to a
+   private Git repository on their forge and adds each buyer as a
+   collaborator; the buyer's own agent reads the campaign from there
+   like any other. Access control, revocation, and delivery are the
+   forge's job, which is what keeps Eddic out of the business of
+   running a service, holding content, or asking anyone to make an
+   account they do not already have. Warn once, and only once,
+   because it is the one mistake that cannot be undone: a pull
+   request against a *public* repository is publication. That is
+   fine, even good, for a campaign given away — and fatal for one
+   meant to be sold.
 
 ## Decision points
 
@@ -78,6 +118,21 @@ module supplies the machinery and the operating discipline.
 - **Attribution granularity.** Default: one log entry per
   contribution event, fragments listed per file. Do not log below
   file granularity; the file is the unit the overlay system moves.
+- **Machine-authored pages in a sale.** Default: drop them. Unmarking
+  is instant, keeps the page in the campaign, and costs the seller a
+  page nobody was entitled to sell anyway. Rewriting by interview is
+  worth it only where the page carries something the buyer is
+  actually paying for — a signature location, the through-line of an
+  arc — and it is real work, so quote it honestly as such: an hour
+  with the owner per substantial page, not a pass you can run for
+  them. Never propose the third option, because there isn't one.
+- **Where the sale bundle lives.** Default: a private repository per
+  campaign on the owner's existing forge, buyers added as
+  collaborators. Reach for anything heavier only when the buyer count
+  makes collaborator management the bottleneck, and recognize that as
+  the moment the owner is running a storefront rather than selling a
+  campaign — a different undertaking, with a different appetite for
+  infrastructure, and not one Eddic's machinery pretends to cover.
 
 ## Verify
 

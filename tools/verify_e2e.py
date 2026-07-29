@@ -17,7 +17,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 MODULES = ROOT / "modules"
 
-PLAYER = "---\nvisibility: player\ntransactability: transactable\n---\n\n"
+PLAYER = ("---\nvisibility: player\nauthorship: human\n"
+          "transactability: transactable\n---\n\n")
 
 
 def write(root, rel, text):
@@ -90,7 +91,7 @@ def main():
           "road, its gate argued over by two captains who agree on "
           "nothing except that the gate matters more than they do.\n")
     write(wiki, "vault.dm.md",
-          "---\ntransactability: transactable\n---\n\n"
+          "---\nauthorship: human\ntransactability: transactable\n---\n\n"
           "# The Vault\n\nDM-only truth about the keep's cellar: the "
           "captains guard a door neither has opened, and the page "
           "that says so never reaches a player surface at all.\n")

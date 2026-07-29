@@ -15,9 +15,19 @@ visibility never filters a sale; the buyer becomes their own table's
 DM. Refuses loudly, all-or-nothing, when: no author is declared; a
 page is marked transactable but its ancestry reaches an uncleared
 contributor; a clearance is stale (the contributor's file changed
-after sign-off — hashes pin what was consented to); or nothing is
+after sign-off — hashes pin what was consented to); a page is marked
+transactable but its authorship is machine or missing; or nothing is
 transactable at all. `local-only` (and unmarked — same thing) is
 silently excluded: that is the fence working, not an error.
+
+Machine prose is never transactable, however it is marked: pure
+machine output carries no protectable expression to sell, and a sale
+is the moment authorship has to be answered honestly, so an unmarked
+page is refused too rather than assumed. Both refusals name the same
+two ways out — rewrite the page with its writer until it is honestly
+`mixed`, or unmark it and keep it local. Nothing here inspects prose
+to guess who wrote it; the marks are the owner's sworn word, enforced
+by friction and honesty (DESIGN principle 11, "Who holds the pen").
 
 Rights status is computed, never judged: a page is clear iff nothing
 in its ancestry (its own authorship, its overlay's contributor, its
@@ -43,8 +53,13 @@ import sys
 from pathlib import Path
 
 NON_CONTENT = {"CLAUDE.md", "AGENTS.md", "README.md"}
-GENERIC = {"human", "agent", "machine", "transcript"}
+GENERIC = {"human", "mixed", "agent", "machine", "transcript"}
 SELLABLE = {"transactable", "transactable-with-attribution"}
+# Pure machine output carries no protectable expression, so it is never
+# transactable however it is marked. The way out is a rewrite that makes
+# the page honestly `mixed` — not a re-marking, and never a detector:
+# authorship is sworn by the people who set it (DESIGN principle 11).
+MACHINE_AUTHORED = {"machine", "agent"}
 ENTRY = re.compile(r"^## \[(\d{4}-\d{2}-\d{2})\] (\w+) \| (.+)$", re.M)
 FRAGMENT = re.compile(r"^- (\S+) sha256:([0-9a-f]{16})$", re.M)
 
@@ -268,6 +283,20 @@ def main(argv):
     for rel, e in sorted(pages.items()):
         t = (e["fm"].get("transactability") or "local-only").strip()
         if t not in SELLABLE:
+            continue
+        auth = (e["fm"].get("authorship") or "").strip()
+        if not auth:
+            refusals.append(
+                f"{rel}: marked {t} but authorship is unmarked — a sale "
+                f"asserts who wrote each page; mark authorship (a "
+                f"contributor id, human, mixed, or machine)")
+            continue
+        if auth in MACHINE_AUTHORED:
+            refusals.append(
+                f"{rel}: marked {t} but authorship is {auth} — machine "
+                f"prose carries no protectable expression to sell; rewrite "
+                f"it with its writer until it is honestly mixed, or unmark "
+                f"transactability and keep the page local")
             continue
         reason = taint(rel, pages, author, cleared, memo)
         if reason:
