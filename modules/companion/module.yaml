@@ -1,11 +1,15 @@
 name: companion
-version: 0.3.0
+version: 0.4.0
 summary: >
   At-the-table companions under the knowledge-parity conduct doctrine
   (possible and true, never better): player and DM companions on their
   retrieval tiers, and the backstory interviewer with its
   scribe/drafter authorship dial and collaborator facet (generative
-  asks answered as archive-first record, then labeled ideas-not-canon).
+  asks answered as archive-first record, then labeled ideas-not-canon),
+  and the writing assistant that generalizes the interviewer to
+  anyone with something unwritten — offering once per session, never
+  taking the pen, and separating craft help (free) from tactics
+  (never).
   Conduct doctrine verified for Claude by a 10-vector adversarial
   red-team (2026-07-19, all HELD); the interviewer's backstory
   extrapolation hardened to offer two–three divergent seeds rather

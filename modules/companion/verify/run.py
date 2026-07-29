@@ -25,12 +25,13 @@ def main():
     # whitespace-collapsed player companion, so phrase checks survive
     # line wrapping in the persona prose
     pc = " ".join(t["player-companion.md"].split())
+    wa = " ".join(t["writing-assistant.md"].split())
     checks = [
         (set(t) == {"player-companion.md", "dm-companion.md",
                     "backstory-interviewer.md", "player-kit.md",
-                    "learners-primer.md"},
+                    "learners-primer.md", "writing-assistant.md"},
          "the templates ship (three companions, the player kit, "
-         "the learner's primer)"),
+         "the learner's primer, the writing assistant)"),
         ("{{PLAYER_MCP_URL}}" in t["player-kit.md"] and
          "{{PLAYER_COMPANION}}" in t["player-kit.md"],
          "player kit carries the per-request connector URL sentinel "
@@ -58,6 +59,27 @@ def main():
               "logs already establish", "honest guess")),
          "interviewer carries the collaborator facet's four moves "
          "(record first, register shift, grounding, projection-only)"),
+        (RULE in t["writing-assistant.md"],
+         "writing assistant carries the conduct rule verbatim "
+         "(it sits at the table too)"),
+        ("Tactics are not" in wa and "way to say a thing" in wa,
+         "writing assistant splits phrasing (offered) from tactics "
+         "(never)"),
+        ("never writing unprompted" in wa and "take the pen" in wa,
+         "writing assistant interviews and never seizes the pen"),
+        ("One short invitation" in wa and "does not come up" in wa,
+         "writing assistant offers once, then drops it (no script, "
+         "no nagging)"),
+        ("use it back to them" in wa,
+         "writing assistant reflects the writer's own phrases back"),
+        ("about play, not prose" in wa,
+         "writing assistant frees craft help from the conduct rule "
+         "(guardrails are conduct, not craft)"),
+        ("never because they approved it" in wa and "mixed" in wa,
+         "writing assistant keeps curation off the authorship axis"),
+        ("silently" in wa and "not to learn a schema" in wa,
+         "writing assistant marks silently (positive duty, no "
+         "schema lessons)"),
         ("suggest_edit" in pc and "suggest_page" in pc,
          "player companion routes a DM prep-ask response to the "
          "witness inbox (suggest_edit/suggest_page)"),

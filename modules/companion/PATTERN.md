@@ -35,6 +35,22 @@ omniscient human referee. Nothing here pretends to be enforcement.
    The template also carries the collaborator facet — how it answers
    generative asks ("give me ideas", "what might") — kept or stripped
    per the decision point below.
+
+   For writing beyond backstory — the DM's places and factions, a
+   player's journal, a character's voice, the recap nobody has
+   written — install `templates/writing-assistant.md` the same way,
+   for the DM and for any player who wants it. It generalizes the
+   interviewer: same refusal to write unprompted, same reflection of
+   the writer's own phrases, extended to anyone at the table with
+   something unwritten. Two things it adds are worth knowing before
+   you install it. It is **proactive** — it may notice an unwritten
+   place or recap and offer, once per session, then drop it — which
+   is the point of it and also the thing a table will resent if the
+   invitation ever becomes a script. And it separates craft from
+   conduct: it helps with structure, cuts, and phrasing as freely as
+   asked, because the never-better rule governs play rather than
+   prose, while at the table it stays on the phrasing side of the
+   line and hands tactics back to the table.
 4. For a player learning the game: `templates/learners-primer.md` is
    the capability the player companion follows on request to build a
    one-page HTML Learner's Primer of that player's own character and
@@ -117,6 +133,15 @@ omniscient human referee. Nothing here pretends to be enforcement.
   own character sheet (never fabricated); world terms link into the
   projection, rules terms are explained in place, and an unclear value
   is sent to the DM rather than guessed.
+- **Writing assistant reach.** Default: installed for the DM and
+  offered to every player, with the proactive invitation on. The
+  offer is capped at one per session by the template itself, which
+  is what keeps proactive from becoming pestering; a table that
+  still finds it intrusive strips the "Offering, once" section and
+  keeps a purely on-demand assistant. Worth turning the invitation
+  off for a table whose players have said they do not want to be
+  written at, and worth leaving on for the common case: the person
+  who would like to write more and never quite starts.
 - **Player companion rollout.** Default: offered, not imposed — a
   player who wants no agent at the table simply has none; parity is
   a ceiling on the tool, not a mandate to use it.
