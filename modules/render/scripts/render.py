@@ -30,24 +30,43 @@ from pathlib import Path
 from markdown_it import MarkdownIt
 
 NON_CONTENT = {"CLAUDE.md", "AGENTS.md", "README.md"}
-LINK = re.compile(r"(\[[^\]]*\]\()([^)\s]+)(\))")
+# A substitution pattern, not the shared extraction one: three groups so
+# rewrite_links can put a link back together with its target swapped. Named
+# apart from the rostered LINK because they are different primitives that
+# would otherwise look interchangeable.
+LINK_SUB = re.compile(r"(\[[^\]]*\]\()([^)\s]+)(\))")
 HTAG = re.compile(r"<(h[1-6])>(.*?)</\1>", re.S)
 DEFAULT_TEMPLATE = Path(__file__).resolve().parent.parent / "templates" / "page.html"
 
-
+# --- BEGIN SHARED wikilib: split_frontmatter, slugify ---
 def split_frontmatter(text):
+    """(frontmatter dict, body) — flat `key: value` pairs only, top level
+    only, no YAML dependency. A page with no frontmatter yields ({}, text),
+    which is what makes every visibility judgment fail closed."""
     lines = text.splitlines()
     if len(lines) >= 3 and lines[0].strip() == "---":
         for i in range(1, len(lines)):
             if lines[i].strip() == "---":
-                return "\n".join(lines[i + 1:])
-    return text
+                fm = {}
+                for ln in lines[1:i]:
+                    if ":" in ln and not ln.startswith((" ", "\t")):
+                        k, _, v = ln.partition(":")
+                        fm[k.strip()] = v.strip()
+                return fm, "\n".join(lines[i + 1:])
+    return {}, text
 
 
 def slugify(heading):
+    """GitHub-style anchor slug, computed after inline HTML is stripped.
+
+    The tag strip is load-bearing: the renderer emits heading ids from this
+    same text, so a heading like `## The <em>Oath</em>` must slug to
+    `the-oath` and not `the-emoathem`. Without it the linter blesses anchors
+    the built page does not have and rejects the ones it does."""
     s = re.sub(r"<[^>]+>", "", heading).strip().lower()
     s = re.sub(r"[^\w\- ]", "", s)
     return s.replace(" ", "-")
+# --- END SHARED wikilib ---
 
 
 def rewrite_links(md_text):
@@ -59,7 +78,7 @@ def rewrite_links(md_text):
         if raw.endswith((".md", ".MD")):
             target = raw[:-3] + ".html" + (f"#{frag}" if frag else "")
         return m.group(1) + target + m.group(3)
-    return LINK.sub(sub, md_text)
+    return LINK_SUB.sub(sub, md_text)
 
 
 def add_heading_ids(html):
@@ -113,8 +132,8 @@ def main(argv):
             continue
         if p.name in NON_CONTENT or p.name == log_name:
             continue
-        body_md = split_frontmatter(p.read_text(encoding="utf-8",
-                                                errors="replace"))
+        _, body_md = split_frontmatter(p.read_text(encoding="utf-8",
+                                                       errors="replace"))
         m = re.search(r"^# (.+)$", body_md, re.M)
         title = m.group(1).strip() if m else rel.stem.replace("-", " ").title()
         html = add_heading_ids(md.render(rewrite_links(body_md)))

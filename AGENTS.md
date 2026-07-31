@@ -78,6 +78,12 @@ Repo conventions:
 - No symlinks, no bash-isms in module machinery. Everything deterministic
   must run on Windows and macOS via the `eddic` CLI (uv-run Python,
   PEP 723). See the installation principle in `wiki/design/principles.md`.
+- The wiki primitives that decide what a link means and what reaches
+  players are generated. They live in `tools/wikilib.py` and are stamped
+  into each script between `# --- BEGIN/END SHARED wikilib ---` markers
+  by `tools/sync_shared.py`. Edit the canonical file and restamp — never
+  hand-edit a stamped block, and never write a private copy of one of
+  those functions under another name. The floor fails on both.
 - Write docs in dense prose. No padding.
 - Keep module docs campaign-agnostic: no examples from any real
   campaign (including the one Eddic grew out of). Generalize to what

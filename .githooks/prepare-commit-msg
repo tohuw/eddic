@@ -1,0 +1,48 @@
+#!/bin/sh
+# Agent-provenance trailers. When an AI agent makes a commit, record which
+# model was active and which machine it ran from:
+#
+#   Model: <model id, or agent name if the model is unknowable>
+#   Host: <machine name>
+#
+# The README's "see the git history for which agents contributed" is only as
+# good as what the history records. Human commits (no agent detected in the
+# environment) are left untouched. Activated with the same one-time
+# `git config core.hooksPath .githooks` as the pre-push hook.
+
+MSG_FILE="$1"
+
+model=""
+agent=""
+
+if [ -n "$CLAUDECODE" ] || [ -n "$CLAUDE_CODE_SESSION_ID" ]; then
+    agent="claude-code"
+    # The session transcript's newest assistant entry carries the model that
+    # is active right now (correct even after a mid-session /model switch).
+    # No supported env var or hook payload exposes it, so read the session's
+    # own transcript; fall back to the bare agent name if the shape changes.
+    if [ -n "$CLAUDE_CODE_SESSION_ID" ]; then
+        transcript=$(ls "$HOME"/.claude/projects/*/"$CLAUDE_CODE_SESSION_ID".jsonl 2>/dev/null | head -1)
+        if [ -n "$transcript" ]; then
+            model=$(tail -c 200000 "$transcript" \
+                | grep -o '"model":"[^"]*"' | grep -v '<synthetic>' \
+                | tail -1 | cut -d'"' -f4)
+        fi
+    fi
+elif [ -n "$CODEX_SANDBOX" ] || [ -n "$CODEX_HOME" ] || [ -n "$CODEX_THREAD_ID" ]; then
+    agent="codex"
+    model="${CODEX_MODEL:-}"
+elif [ -n "$AI_AGENT" ]; then
+    agent="$AI_AGENT"
+fi
+
+# No agent detected: human commit, nothing to record.
+[ -n "$agent" ] || exit 0
+
+[ -n "$model" ] || model="$agent (model unrecorded)"
+host=$(scutil --get LocalHostName 2>/dev/null || hostname -s 2>/dev/null || hostname)
+
+git interpret-trailers --in-place --if-exists doNothing \
+    --trailer "Model: $model" \
+    --trailer "Host: $host" \
+    "$MSG_FILE"

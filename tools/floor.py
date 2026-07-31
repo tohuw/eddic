@@ -161,6 +161,18 @@ def main():
             except OSError:
                 pass
 
+    # The shared wiki primitives are copied into every consuming script (each
+    # verb vendors as one standalone file), so the floor proves no copy has
+    # drifted from tools/wikilib.py and that nobody has forked a rostered
+    # name into a private eighth implementation.
+    sync = subprocess.run(
+        [sys.executable, str(ROOT / "tools" / "sync_shared.py"), "--check"],
+        capture_output=True, text=True)
+    if sync.returncode != 0:
+        for line in (sync.stderr or sync.stdout).splitlines():
+            if line.strip():
+                bad(line.strip())
+
     for msg in problems:
         print(f"FLOOR: {msg}")
     count = sum(1 for p in MODULES.iterdir() if p.is_dir())

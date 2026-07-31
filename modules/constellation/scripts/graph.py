@@ -42,33 +42,25 @@ import sys
 from pathlib import Path
 
 NON_CONTENT = {"CLAUDE.md", "AGENTS.md", "README.md"}
+# --- BEGIN SHARED wikilib: link_consts, body_consts, split_frontmatter, visibility_of, slugify, strip_code, link_targets, page_ref ---
+# Every link form a wiki page can carry. Inline HTML and reference
+# definitions are here because a DM-only target must not be able to hide in
+# a form one tool parses and another does not — that was issue #22.
 LINK = re.compile(r"(?<!\!)\[[^\]]*\]\(([^)\s]+)\)")
-# Inline HTML anchor and Markdown reference-definition targets — the two
-# link forms the inline LINK regex misses. Mirrors eddic_lint.py so the
-# Constellation's edges stay exactly the links the linter validates.
 HREF = re.compile(r"""<a\b[^>]*?\shref\s*=\s*["']([^"'>\s]+)["']""", re.I)
 REFDEF = re.compile(r"""^\s{0,3}\[[^\]]+\]:\s+<?([^>\s]+)>?""")
+
+
+# Body shapes the scanners key on: headings become anchors, fences mark the
+# code the link scanners must not read.
 HEADING = re.compile(r"^(#{1,6})\s+(.*?)\s*$")
 FENCE = re.compile(r"^(```|~~~)")
 
-# --- resolver: mirrors modules/lint/scripts/eddic_lint.py -------------
-# The functions below are a verbatim-behaviour copy of eddic_lint.py's
-# Page parsing and link resolution. They are replicated (not imported)
-# because that file is vendored under a different module name in each
-# campaign (lint.py), so a clean cross-module import is not portable.
-# verify/run.py pins this resolver EQUAL to eddic_lint.py on a shared
-# case; if lint's resolution changes, that test fails until this
-# mirror is updated.
-
-
-def slugify(heading):
-    """GitHub-style anchor slug (mirrors eddic_lint.slugify)."""
-    s = heading.strip().lower()
-    s = re.sub(r"[^\w\- ]", "", s)
-    return s.replace(" ", "-")
-
 
 def split_frontmatter(text):
+    """(frontmatter dict, body) — flat `key: value` pairs only, top level
+    only, no YAML dependency. A page with no frontmatter yields ({}, text),
+    which is what makes every visibility judgment fail closed."""
     lines = text.splitlines()
     if len(lines) >= 3 and lines[0].strip() == "---":
         for i in range(1, len(lines)):
@@ -82,7 +74,37 @@ def split_frontmatter(text):
     return {}, text
 
 
+def visibility_of(fm):
+    """Effective visibility, fail-closed: anything that is not exactly
+    `player` is DM-only, including a page with no frontmatter at all.
+
+    An open merge proposal is DM-side however it marks itself. It is
+    unadjudicated lore the DM has not chosen yet, so it cannot ship to
+    players even when someone marks it player-visible; the lint reports that
+    contradiction, and this refuses to act on it. Every surface that decides
+    what players see reads this — the projection that writes their wiki, the
+    lint that judges a breach, the constellation that charts it — so that a
+    clean lint means a projection that will build."""
+    if (fm.get("proposes-merge-into") or "").strip():
+        return "dm"
+    return (fm.get("visibility") or "dm").strip()
+
+
+def slugify(heading):
+    """GitHub-style anchor slug, computed after inline HTML is stripped.
+
+    The tag strip is load-bearing: the renderer emits heading ids from this
+    same text, so a heading like `## The <em>Oath</em>` must slug to
+    `the-oath` and not `the-emoathem`. Without it the linter blesses anchors
+    the built page does not have and rejects the ones it does."""
+    s = re.sub(r"<[^>]+>", "", heading).strip().lower()
+    s = re.sub(r"[^\w\- ]", "", s)
+    return s.replace(" ", "-")
+
+
 def strip_code(body):
+    """Body with fenced blocks dropped and inline code spans blanked, so a
+    link-shaped string inside an example is not mistaken for a link."""
     out, fenced = [], False
     for line in body.splitlines():
         if FENCE.match(line):
@@ -94,9 +116,12 @@ def strip_code(body):
 
 
 def link_targets(body):
-    """Mirrors eddic_lint.link_targets: inline [text](url), reference
-    definitions [id]: target, and inline HTML <a href> — every link form
-    the resolver must see."""
+    """(line_no, target) for every link target in the body: inline
+    [text](url), reference definitions [id]: target (whose URL is what a
+    [text][id] use resolves to, so harvesting the definitions covers the
+    uses without a second pass), and inline HTML <a href>. All three forms
+    flow through the same resolution and the same firewall check, so a DM
+    target can hide in none of them."""
     out = []
     for i, line in enumerate(body.splitlines()):
         for m in LINK.finditer(line):
@@ -110,9 +135,9 @@ def link_targets(body):
 
 def page_ref(raw):
     """Map a link's path (its target with any #fragment removed, already
-    known to carry no URL scheme and not to be site-rooted) to the wiki
-    page it denotes, as (candidate_md, strict), or (None, False) when the
-    target names no page.
+    known to carry no URL scheme and not to be site-rooted) to the wiki page
+    it denotes, as (candidate_md, strict), or (None, False) when the target
+    names no page.
 
       foo/bar.md    -> ("foo/bar.md",    True)   a .md link — must resolve
       foo/bar.html  -> ("foo/bar.md",    False)  the page's rendered form
@@ -120,14 +145,14 @@ def page_ref(raw):
       foo/bar       -> ("foo/bar.md",    False)  a clean/extensionless URL
       foo/bar.dm    -> ("foo/bar.dm.md", False)  a .dm twin's clean URL
 
-    `strict` marks a direct .md link (for the graph both shapes yield an
-    edge only when the page exists, so the flag is unused here — it is kept
-    identical to lint/projection so the resolvers stay verbatim-equal). A
-    lenient form is judged only when its candidate .md page actually
-    exists, so real assets and non-page targets yield no edge. This is why
-    a .html or clean/extensionless cross-link becomes the same edge its .md
-    would — issue #22. Mirrors modules/lint/scripts/eddic_lint.py.page_ref;
-    verify/run.py pins them equal."""
+    `strict` is True only for a direct .md link, whose target must exist — a
+    miss is a broken link. Every other shape is lenient: it is judged only
+    when its candidate .md page actually exists, so a real asset
+    (foo/pic.webp -> foo/pic.webp.md, no such page) and any other non-page
+    target fall straight through, exactly as a non-.md link always did. That
+    is what catches the .html and clean-URL forms of a real page while
+    leaving assets and genuine non-page links alone: a DM page linked in any
+    of these forms is the same lie as linking its .md — issue #22."""
     seg = raw.rsplit("/", 1)[-1]
     if not seg:
         return None, False  # empty or directory-style target: not a page
@@ -139,10 +164,20 @@ def page_ref(raw):
     if low.endswith(".htm"):
         return raw[:-4] + ".md", False
     return raw + ".md", False
+# --- END SHARED wikilib ---
+
+
+# --- resolver ---------------------------------------------------------
+# The resolver above is stamped from tools/wikilib.py, not hand-mirrored:
+# the Constellation's edges are exactly the links the linter validates and
+# the projection enforces, because all three run the same generated code.
+# The copies exist because each verb is vendored into a campaign as one
+# standalone file; tools/sync_shared.py writes them and the floor fails the
+# push if any drifts.
 
 
 class Page:
-    """Mirrors eddic_lint.Page (the fields the graph needs)."""
+    """The fields the graph needs (a subset of eddic_lint.Page)."""
 
     def __init__(self, path, root):
         self.path = path
@@ -158,12 +193,7 @@ class Page:
         self.links = link_targets(self.body)
         lines = [ln.strip() for ln in self.body.splitlines() if ln.strip()]
         self.is_stub = bool(lines) and lines[-1] == "STUB"
-        # Mirrors project.py's visibility_of() / eddic_lint.py: an open
-        # merge proposal is DM-side however it is marked, so the player
-        # constellation never charts unadjudicated lore.
-        self.visibility = (
-            "dm" if (self.frontmatter.get("proposes-merge-into") or "").strip()
-            else (self.frontmatter.get("visibility") or "dm").strip())
+        self.visibility = visibility_of(self.frontmatter)
 
     def title(self):
         for line in self.body.splitlines():

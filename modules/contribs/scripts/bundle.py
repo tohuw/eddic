@@ -68,7 +68,11 @@ def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()[:16]
 
 
+# --- BEGIN SHARED wikilib: split_frontmatter ---
 def split_frontmatter(text):
+    """(frontmatter dict, body) — flat `key: value` pairs only, top level
+    only, no YAML dependency. A page with no frontmatter yields ({}, text),
+    which is what makes every visibility judgment fail closed."""
     lines = text.splitlines()
     if len(lines) >= 3 and lines[0].strip() == "---":
         for i in range(1, len(lines)):
@@ -80,6 +84,7 @@ def split_frontmatter(text):
                         fm[k.strip()] = v.strip()
                 return fm, "\n".join(lines[i + 1:])
     return {}, text
+# --- END SHARED wikilib ---
 
 
 def load_effective(src, contribs, log_name):

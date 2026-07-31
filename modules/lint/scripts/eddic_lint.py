@@ -67,23 +67,132 @@ LINT_OPTS = {"off"}
 # elsewhere. Everything not listed here is binding and never quiets.
 ADVISORY = {"stub-overgrown", "tiny-unstubbed", "orphan", "unreachable"}
 LOG_HEADER = re.compile(r"^## \[\d{4}-\d{2}-\d{2}\] (\S+) \| .+$")
-LINK = re.compile(r"(?<!\!)\[[^\]]*\]\(([^)\s]+)\)")
-# Inline HTML anchor and Markdown reference-definition targets. These
-# are the two link forms the inline LINK regex misses; both can name a
-# DM page just as an inline link can, so both must feed the firewall.
-HREF = re.compile(r"""<a\b[^>]*?\shref\s*=\s*["']([^"'>\s]+)["']""", re.I)
-REFDEF = re.compile(r"""^\s{0,3}\[[^\]]+\]:\s+<?([^>\s]+)>?""")
-HEADING = re.compile(r"^(#{1,6})\s+(.*?)\s*$")
-FENCE = re.compile(r"^(```|~~~)")
 STUB_WORD_LIMIT = 150
 TINY_WORD_LIMIT = 30
 
+# --- BEGIN SHARED wikilib: link_consts, body_consts, split_frontmatter, visibility_of, slugify, strip_code, link_targets, page_ref ---
+# Every link form a wiki page can carry. Inline HTML and reference
+# definitions are here because a DM-only target must not be able to hide in
+# a form one tool parses and another does not — that was issue #22.
+LINK = re.compile(r"(?<!\!)\[[^\]]*\]\(([^)\s]+)\)")
+HREF = re.compile(r"""<a\b[^>]*?\shref\s*=\s*["']([^"'>\s]+)["']""", re.I)
+REFDEF = re.compile(r"""^\s{0,3}\[[^\]]+\]:\s+<?([^>\s]+)>?""")
+
+
+# Body shapes the scanners key on: headings become anchors, fences mark the
+# code the link scanners must not read.
+HEADING = re.compile(r"^(#{1,6})\s+(.*?)\s*$")
+FENCE = re.compile(r"^(```|~~~)")
+
+
+def split_frontmatter(text):
+    """(frontmatter dict, body) — flat `key: value` pairs only, top level
+    only, no YAML dependency. A page with no frontmatter yields ({}, text),
+    which is what makes every visibility judgment fail closed."""
+    lines = text.splitlines()
+    if len(lines) >= 3 and lines[0].strip() == "---":
+        for i in range(1, len(lines)):
+            if lines[i].strip() == "---":
+                fm = {}
+                for ln in lines[1:i]:
+                    if ":" in ln and not ln.startswith((" ", "\t")):
+                        k, _, v = ln.partition(":")
+                        fm[k.strip()] = v.strip()
+                return fm, "\n".join(lines[i + 1:])
+    return {}, text
+
+
+def visibility_of(fm):
+    """Effective visibility, fail-closed: anything that is not exactly
+    `player` is DM-only, including a page with no frontmatter at all.
+
+    An open merge proposal is DM-side however it marks itself. It is
+    unadjudicated lore the DM has not chosen yet, so it cannot ship to
+    players even when someone marks it player-visible; the lint reports that
+    contradiction, and this refuses to act on it. Every surface that decides
+    what players see reads this — the projection that writes their wiki, the
+    lint that judges a breach, the constellation that charts it — so that a
+    clean lint means a projection that will build."""
+    if (fm.get("proposes-merge-into") or "").strip():
+        return "dm"
+    return (fm.get("visibility") or "dm").strip()
+
 
 def slugify(heading):
-    """GitHub-style anchor slug."""
-    s = heading.strip().lower()
+    """GitHub-style anchor slug, computed after inline HTML is stripped.
+
+    The tag strip is load-bearing: the renderer emits heading ids from this
+    same text, so a heading like `## The <em>Oath</em>` must slug to
+    `the-oath` and not `the-emoathem`. Without it the linter blesses anchors
+    the built page does not have and rejects the ones it does."""
+    s = re.sub(r"<[^>]+>", "", heading).strip().lower()
     s = re.sub(r"[^\w\- ]", "", s)
     return s.replace(" ", "-")
+
+
+def strip_code(body):
+    """Body with fenced blocks dropped and inline code spans blanked, so a
+    link-shaped string inside an example is not mistaken for a link."""
+    out, fenced = [], False
+    for line in body.splitlines():
+        if FENCE.match(line):
+            fenced = not fenced
+            continue
+        if not fenced:
+            out.append(re.sub(r"`[^`]*`", "", line))
+    return "\n".join(out)
+
+
+def link_targets(body):
+    """(line_no, target) for every link target in the body: inline
+    [text](url), reference definitions [id]: target (whose URL is what a
+    [text][id] use resolves to, so harvesting the definitions covers the
+    uses without a second pass), and inline HTML <a href>. All three forms
+    flow through the same resolution and the same firewall check, so a DM
+    target can hide in none of them."""
+    out = []
+    for i, line in enumerate(body.splitlines()):
+        for m in LINK.finditer(line):
+            out.append((i + 1, m.group(1)))
+        if (m := REFDEF.match(line)):
+            out.append((i + 1, m.group(1)))
+        for m in HREF.finditer(line):
+            out.append((i + 1, m.group(1)))
+    return out
+
+
+def page_ref(raw):
+    """Map a link's path (its target with any #fragment removed, already
+    known to carry no URL scheme and not to be site-rooted) to the wiki page
+    it denotes, as (candidate_md, strict), or (None, False) when the target
+    names no page.
+
+      foo/bar.md    -> ("foo/bar.md",    True)   a .md link — must resolve
+      foo/bar.html  -> ("foo/bar.md",    False)  the page's rendered form
+      foo/bar.htm   -> ("foo/bar.md",    False)
+      foo/bar       -> ("foo/bar.md",    False)  a clean/extensionless URL
+      foo/bar.dm    -> ("foo/bar.dm.md", False)  a .dm twin's clean URL
+
+    `strict` is True only for a direct .md link, whose target must exist — a
+    miss is a broken link. Every other shape is lenient: it is judged only
+    when its candidate .md page actually exists, so a real asset
+    (foo/pic.webp -> foo/pic.webp.md, no such page) and any other non-page
+    target fall straight through, exactly as a non-.md link always did. That
+    is what catches the .html and clean-URL forms of a real page while
+    leaving assets and genuine non-page links alone: a DM page linked in any
+    of these forms is the same lie as linking its .md — issue #22."""
+    seg = raw.rsplit("/", 1)[-1]
+    if not seg:
+        return None, False  # empty or directory-style target: not a page
+    low = seg.lower()
+    if low.endswith(".md"):
+        return raw, True
+    if low.endswith(".html"):
+        return raw[:-5] + ".md", False
+    if low.endswith(".htm"):
+        return raw[:-4] + ".md", False
+    return raw + ".md", False
+# --- END SHARED wikilib ---
 
 
 class Page:
@@ -119,86 +228,6 @@ class Page:
         # page is a proposal and not canon yet.
         self.quiet = bool(self.curation == "human" or self.lint_opt == "off"
                           or self.merge_into)
-
-
-def split_frontmatter(text):
-    lines = text.splitlines()
-    if len(lines) >= 3 and lines[0].strip() == "---":
-        for i in range(1, len(lines)):
-            if lines[i].strip() == "---":
-                fm = {}
-                for ln in lines[1:i]:
-                    if ":" in ln and not ln.startswith((" ", "\t")):
-                        k, _, v = ln.partition(":")
-                        fm[k.strip()] = v.strip()
-                return fm, "\n".join(lines[i + 1:])
-    return {}, text
-
-
-def strip_code(body):
-    out, fenced = [], False
-    for line in body.splitlines():
-        if FENCE.match(line):
-            fenced = not fenced
-            continue
-        if not fenced:
-            out.append(re.sub(r"`[^`]*`", "", line))
-    return "\n".join(out)
-
-
-def link_targets(body):
-    """(line_no, target) pairs for every link target in the body: inline
-    [text](url), reference definitions [id]: target (whose URL is what a
-    [text][id] use resolves to, so harvesting the definitions covers the
-    uses without a second pass), and inline HTML <a href>. All three
-    forms flow through the same resolution and firewall check, so a DM
-    target can hide in none of them."""
-    out = []
-    for i, line in enumerate(body.splitlines()):
-        for m in LINK.finditer(line):
-            out.append((i + 1, m.group(1)))
-        if (m := REFDEF.match(line)):
-            out.append((i + 1, m.group(1)))
-        for m in HREF.finditer(line):
-            out.append((i + 1, m.group(1)))
-    return out
-
-
-def page_ref(raw):
-    """Map a link's path (its target with any #fragment removed, already
-    known to carry no URL scheme and not to be site-rooted) to the wiki
-    page it denotes, as (candidate_md, strict), or (None, False) when the
-    target names no page.
-
-      foo/bar.md    -> ("foo/bar.md",    True)   a .md link — must resolve
-      foo/bar.html  -> ("foo/bar.md",    False)  the page's rendered form
-      foo/bar.htm   -> ("foo/bar.md",    False)
-      foo/bar       -> ("foo/bar.md",    False)  a clean/extensionless URL
-      foo/bar.dm    -> ("foo/bar.dm.md", False)  a .dm twin's clean URL
-
-    `strict` is True only for a direct .md link, whose target must exist —
-    a miss is a broken link, today's behavior. Every other shape is
-    lenient: it is judged only when its candidate .md page actually
-    exists, so a real asset (foo/pic.webp -> foo/pic.webp.md, no such
-    page) and any other non-page target fall straight through, exactly as
-    a non-.md link did before. That is what catches the .html and
-    clean-URL forms of a real page (their .md exists) while leaving assets
-    and genuine non-page links alone. A DM page linked in any of these
-    forms is therefore the same lie as linking its .md — issue #22. This
-    is a resolver primitive mirrored verbatim in modules/wiki/scripts/
-    project.py and modules/constellation/scripts/graph.py; the
-    constellation verify pins the three equal."""
-    seg = raw.rsplit("/", 1)[-1]
-    if not seg:
-        return None, False  # empty or directory-style target: not a page
-    low = seg.lower()
-    if low.endswith(".md"):
-        return raw, True
-    if low.endswith(".html"):
-        return raw[:-5] + ".md", False
-    if low.endswith(".htm"):
-        return raw[:-4] + ".md", False
-    return raw + ".md", False
 
 
 def lint(root, log_name, contribs=None):

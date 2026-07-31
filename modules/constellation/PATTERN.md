@@ -17,8 +17,10 @@ editor, it belongs in a different module.
 ## Preflight
 
 - cli, wiki, and lint patterns applied. The Constellation's edges are the same
-  links `eddic lint` validates; its resolver mirrors the linter's, and
-  the module's verify pins them equal.
+  links `eddic lint` validates. The two resolvers are not mirrored by
+  hand: the shared primitives are generated into both scripts from one
+  canonical source, the repo floor fails on a hand-edited or forked copy,
+  and the module's verify pins the behaviour those copies must have.
 - For a player Constellation: `eddic project` succeeds, so the projection dir
   exists. The renderer's default player input is the projection —
   never the master — so a DM page cannot leak into a player map by
@@ -116,8 +118,14 @@ Constellation simply reflects whatever the wiki says now.
   projection, contains no DM page and no DM-only edge (the planted
   breach cannot reach the player build); (c) determinism — the same
   input yields a byte-identical `constellation.html` across two runs; (d) the
-  resolver matches `eddic_lint.py` (orphan/unreachable sets agree and
-  the shared primitives are identical); and (e) the per-node backlinks
+  resolver matches `eddic_lint.py` — orphan/unreachable sets agree, the
+  shared primitives behave identically, `page_ref` resolves the `.md`,
+  rendered, clean-URL, twin, and asset forms the same way in lint,
+  projection, and graph, `visibility_of` returns the same verdict across
+  all three on an eight-case table (no frontmatter, a non-`player`
+  marker, an open merge proposal however it marks itself), and a heading
+  carrying inline HTML slugs to the anchor the built page emits; and
+  (e) the per-node backlinks
   data is the exact inversion of the edge set, is present in the markup,
   and — in player mode — references only player pages (the planted DM
   page cannot appear as anyone's backlink); and (f) the party mark —

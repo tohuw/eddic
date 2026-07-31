@@ -72,6 +72,23 @@ mechanical rot — a broken script reads fine:
 - A verify section exists and its checks execute.
 - No secrets or credentials committed.
 - No symlinks; no bash-required machinery.
+- Shared wiki primitives are stamped, not copied by hand. The
+  primitives that decide what a link means and what reaches players
+  (`split_frontmatter`, `visibility_of`, `slugify`, `strip_code`,
+  `link_targets`, `page_ref`, and the link/body regexes) live once in
+  `tools/wikilib.py` and are generated into each consuming script by
+  `tools/sync_shared.py`. They are duplicated because every verb
+  vendors into a campaign as one standalone file that runs by itself
+  under `uv run` — an import would mean a second vendored file, a
+  `sys.path` fixup, or a symlink. The floor runs
+  `sync_shared.py --check` and fails on two things: a stamped block
+  that differs from what `wikilib.py` would produce, and a rostered
+  name defined outside a stamped block. Edit the canonical file and
+  restamp; never hand-edit a generated block, and never fork a
+  primitive under a private name. Behaviour is pinned separately by
+  the constellation module's verify, which is what catches a rule
+  that is wrong in the canonical file and therefore wrong everywhere
+  at once.
 - Vendor claims are metadata-backed: if a PATTERN names a vendor
   (claude, chatgpt, codex, anthropic, openai), `module.yaml` carries a
   `compatibility:` entry for it — `role` (maintaining agent / answer

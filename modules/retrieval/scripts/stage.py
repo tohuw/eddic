@@ -166,24 +166,23 @@ def copy_block(inner, label):
             + "</button></div>")
 
 
+# --- BEGIN SHARED wikilib: split_frontmatter ---
 def split_frontmatter(text):
+    """(frontmatter dict, body) — flat `key: value` pairs only, top level
+    only, no YAML dependency. A page with no frontmatter yields ({}, text),
+    which is what makes every visibility judgment fail closed."""
     lines = text.splitlines()
     if len(lines) >= 3 and lines[0].strip() == "---":
         for i in range(1, len(lines)):
             if lines[i].strip() == "---":
-                return "\n".join(lines[i + 1:])
-    return text
-
-
-def frontmatter_field(text, key):
-    lines = text.splitlines()
-    if len(lines) >= 3 and lines[0].strip() == "---":
-        for i in range(1, len(lines)):
-            if lines[i].strip() == "---":
-                break
-            if lines[i].startswith(f"{key}:"):
-                return lines[i].partition(":")[2].strip()
-    return ""
+                fm = {}
+                for ln in lines[1:i]:
+                    if ":" in ln and not ln.startswith((" ", "\t")):
+                        k, _, v = ln.partition(":")
+                        fm[k.strip()] = v.strip()
+                return fm, "\n".join(lines[i + 1:])
+    return {}, text
+# --- END SHARED wikilib ---
 
 
 def _safe_href(url):
@@ -350,8 +349,9 @@ def stage_companion(out, site, comp_dir, shell_path):
 
 
 def page_entry(path, rel, pages):
-    body = split_frontmatter(path.read_text(encoding="utf-8",
-                                            errors="replace")).strip()
+    _, body = split_frontmatter(path.read_text(encoding="utf-8",
+                                               errors="replace"))
+    body = body.strip()
     m = re.search(r"^# (.+)$", body, re.M)
     title = (m.group(1).strip() if m
              else Path(rel).stem.replace("-", " ").title())
@@ -374,7 +374,8 @@ def corpus(root, log_name, site, contribs=None):
                 if p.name in NON_CONTENT or p.name == log_name:
                     continue
                 text = p.read_text(encoding="utf-8", errors="replace")
-                target = (frontmatter_field(text, "replaces")
+                fm, _ = split_frontmatter(text)
+                target = (fm.get("replaces")
                           or p.relative_to(cdir).as_posix())
                 page_entry(p, target, pages)
     return {"site": site, "pages": pages}

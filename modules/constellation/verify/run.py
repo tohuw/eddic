@@ -160,7 +160,11 @@ def main():
     check(results, lint_unreach == graph_unreach,
           f"resolver: unreachable sets agree "
           f"({lint_unreach} vs {graph_unreach})")
-    # shared primitives are identical
+    # The shared primitives are stamped from tools/wikilib.py, so the floor
+    # already proves the three copies are byte-identical. These checks are
+    # the behavioural half: they say what the primitives must *do*, so a
+    # change made properly (edit wikilib, restamp everywhere) still has to
+    # face the cases that made these rules necessary.
     prim_ok = (graph.slugify("The Oath!") == lint.slugify("The Oath!")
                and graph.strip_code("`x` a") == lint.strip_code("`x` a")
                and graph.split_frontmatter("---\nvisibility: player\n---\nB")
@@ -168,9 +172,8 @@ def main():
                and graph.link_targets("[a](b.md) [c](d.md)")
                == lint.link_targets("[a](b.md) [c](d.md)"))
     check(results, prim_ok, "resolver: shared primitives identical")
-    # page_ref (issue #22) is pinned equal across lint, projection, and the
-    # graph — the .md/.html/clean-URL/.dm-twin/asset cases must resolve
-    # identically, or the firewall the three enforce could diverge.
+    # page_ref (issue #22): the .md/.html/clean-URL/.dm-twin/asset cases must
+    # resolve identically, or the firewall the three enforce could diverge.
     pr_cases = ["places/x.md", "places/x.html", "places/x.htm", "places/x",
                 "places/x.dm", "pic.webp", "a/b/c", "", "#", "sub/"]
     page_ref_ok = all(
@@ -178,6 +181,40 @@ def main():
         for c in pr_cases)
     check(results, page_ref_ok,
           "resolver: page_ref identical across lint, projection, graph")
+
+    # visibility_of decides what reaches players, so a divergence here is a
+    # leak rather than a cosmetic bug. Fail-closed on absence, and an open
+    # merge proposal is DM-side however it marks itself.
+    vis_cases = [
+        ({}, "dm"),                                        # no frontmatter
+        ({"visibility": "player"}, "player"),
+        ({"visibility": "dm"}, "dm"),
+        ({"visibility": "Player"}, "Player"),              # exact match only
+        ({"visibility": " player "}, "player"),            # whitespace
+        ({"proposes-merge-into": "x.md"}, "dm"),           # proposal, unmarked
+        ({"visibility": "player",
+          "proposes-merge-into": "x.md"}, "dm"),           # proposal wins
+        ({"visibility": "player",
+          "proposes-merge-into": "  "}, "player"),         # blank marker
+    ]
+    vis_ok, vis_bad = True, []
+    for fm, want in vis_cases:
+        got = {m.__name__: m.visibility_of(fm)
+               for m in (lint, graph, project)}
+        if set(got.values()) != {want}:
+            vis_ok = False
+            vis_bad.append(f"{fm} -> {got}, wanted {want!r}")
+    check(results, vis_ok,
+          "firewall: visibility_of agrees across lint, projection, graph "
+          f"on {len(vis_cases)} cases{'; ' + '; '.join(vis_bad) if vis_bad else ''}")
+
+    # slugify runs after inline HTML is stripped, so the anchors the linter
+    # blesses are the ids the renderer actually emits. Before this was
+    # shared, lint said 'the-emoathem' where the built page said 'the-oath'.
+    check(results,
+          lint.slugify("The <em>Oath</em>") == "the-oath"
+          == graph.slugify("The <em>Oath</em>"),
+          "anchors: slugify strips inline HTML before slugging")
 
     # (b) player-mode Constellation built from the projection excludes DM pages.
     proj = tmp / "dist" / "player"

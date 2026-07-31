@@ -1,5 +1,5 @@
 name: contribs
-version: 0.2.0
+version: 0.2.1
 summary: >
   The transaction arc's machinery: contributor overlays applied across
   every surface, hash-pinned attribution and consent in the operation

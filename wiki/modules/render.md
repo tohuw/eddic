@@ -31,8 +31,17 @@ Every `page.md` becomes `page.html` at the mirrored position in the output
 tree. Relative links whose targets end in `.md` are rewritten to `.html`
 with any fragment preserved, so `[text](../index.md#section)` lands
 correctly on the built site; links carrying an explicit URL scheme (such
-as `https:` or `mailto:`) are left untouched. Each heading receives a
-slugified `id` so that fragment links resolve to the right anchor. The
+as `https:` or `mailto:`) are left untouched. The pattern doing that
+rewriting is named `LINK_SUB`, not `LINK`: it captures a link's opening,
+target, and closing paren so the target can be substituted in place, and
+is a different primitive from the single-group extractor the other tools
+share under the plainer name. Each heading receives a slugified `id` so
+that fragment links resolve to the right anchor; the slug is computed
+after inline HTML is stripped, so `## The <em>Oath</em>` renders as
+`id="the-oath"`. That rule is now the shared one — the renderer's
+implementation was the correct one and became canonical, ending a period
+in which the [lint](lint.md) rejected the anchor a built page carried and
+blessed one it did not. The
 first H1 in the source becomes the page title, falling back to a
 title-cased form of the filename when a page has no H1; on the
 root/eponymous page, whose title equals the site name, the title tag is

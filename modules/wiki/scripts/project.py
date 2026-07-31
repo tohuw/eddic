@@ -45,69 +45,19 @@ import sys
 from pathlib import Path
 
 NON_CONTENT = {"CLAUDE.md", "AGENTS.md", "README.md"}
+# --- BEGIN SHARED wikilib: link_consts, split_frontmatter, visibility_of, link_targets, page_ref ---
+# Every link form a wiki page can carry. Inline HTML and reference
+# definitions are here because a DM-only target must not be able to hide in
+# a form one tool parses and another does not — that was issue #22.
 LINK = re.compile(r"(?<!\!)\[[^\]]*\]\(([^)\s]+)\)")
-# Inline HTML anchor and Markdown reference-definition targets — the two
-# link forms the inline LINK regex misses. link_targets mirrors
-# eddic_lint.py so the firewall sees exactly the links the linter does:
-# a DM target can hide in an inline link, a reference definition, or an
-# <a href>, and every one trips the same refusal.
 HREF = re.compile(r"""<a\b[^>]*?\shref\s*=\s*["']([^"'>\s]+)["']""", re.I)
 REFDEF = re.compile(r"""^\s{0,3}\[[^\]]+\]:\s+<?([^>\s]+)>?""")
 
 
-def link_targets(body):
-    """(line_no, target) for every link target: inline [text](url),
-    reference definitions [id]: target (which carry the URL a [text][id]
-    use resolves to), and inline HTML <a href>. Mirrors
-    eddic_lint.link_targets so projection and lint cannot diverge."""
-    out = []
-    for i, line in enumerate(body.splitlines()):
-        for m in LINK.finditer(line):
-            out.append((i + 1, m.group(1)))
-        if (m := REFDEF.match(line)):
-            out.append((i + 1, m.group(1)))
-        for m in HREF.finditer(line):
-            out.append((i + 1, m.group(1)))
-    return out
-
-
-def page_ref(raw):
-    """Map a link's path (its target with any #fragment removed, already
-    known to carry no URL scheme and not to be site-rooted) to the wiki
-    page it denotes, as (candidate_md, strict), or (None, False) when the
-    target names no page.
-
-      foo/bar.md    -> ("foo/bar.md",    True)   a .md link — must resolve
-      foo/bar.html  -> ("foo/bar.md",    False)  the page's rendered form
-      foo/bar.htm   -> ("foo/bar.md",    False)
-      foo/bar       -> ("foo/bar.md",    False)  a clean/extensionless URL
-      foo/bar.dm    -> ("foo/bar.dm.md", False)  a .dm twin's clean URL
-
-    `strict` is True only for a direct .md link, whose target must exist —
-    a miss is a breach, today's behavior. Every other shape is lenient: it
-    is judged only when its candidate .md page actually exists, so a real
-    asset (foo/pic.webp -> foo/pic.webp.md, no such page) and any other
-    non-page target fall straight through, exactly as a non-.md link did
-    before. That is what catches the .html and clean-URL forms of a real
-    page (their .md exists) while leaving assets and genuine non-page
-    links alone: a DM page linked in any of these forms is the same lie as
-    linking its .md, so the projection refuses it too — issue #22. Mirrors
-    modules/lint/scripts/eddic_lint.py.page_ref verbatim (the constellation
-    verify pins the resolvers equal)."""
-    seg = raw.rsplit("/", 1)[-1]
-    if not seg:
-        return None, False  # empty or directory-style target: not a page
-    low = seg.lower()
-    if low.endswith(".md"):
-        return raw, True
-    if low.endswith(".html"):
-        return raw[:-5] + ".md", False
-    if low.endswith(".htm"):
-        return raw[:-4] + ".md", False
-    return raw + ".md", False
-
-
 def split_frontmatter(text):
+    """(frontmatter dict, body) — flat `key: value` pairs only, top level
+    only, no YAML dependency. A page with no frontmatter yields ({}, text),
+    which is what makes every visibility judgment fail closed."""
     lines = text.splitlines()
     if len(lines) >= 3 and lines[0].strip() == "---":
         for i in range(1, len(lines)):
@@ -122,15 +72,78 @@ def split_frontmatter(text):
 
 
 def visibility_of(fm):
-    """Effective visibility, fail-closed. An open merge proposal is
-    DM-side whatever it claims: it is unadjudicated lore the DM has not
-    chosen yet, so it cannot ship to players even marked player-visible.
-    The lint reports that contradiction; this refuses to act on it."""
+    """Effective visibility, fail-closed: anything that is not exactly
+    `player` is DM-only, including a page with no frontmatter at all.
+
+    An open merge proposal is DM-side however it marks itself. It is
+    unadjudicated lore the DM has not chosen yet, so it cannot ship to
+    players even when someone marks it player-visible; the lint reports that
+    contradiction, and this refuses to act on it. Every surface that decides
+    what players see reads this — the projection that writes their wiki, the
+    lint that judges a breach, the constellation that charts it — so that a
+    clean lint means a projection that will build."""
     if (fm.get("proposes-merge-into") or "").strip():
         return "dm"
     return (fm.get("visibility") or "dm").strip()
 
 
+def link_targets(body):
+    """(line_no, target) for every link target in the body: inline
+    [text](url), reference definitions [id]: target (whose URL is what a
+    [text][id] use resolves to, so harvesting the definitions covers the
+    uses without a second pass), and inline HTML <a href>. All three forms
+    flow through the same resolution and the same firewall check, so a DM
+    target can hide in none of them."""
+    out = []
+    for i, line in enumerate(body.splitlines()):
+        for m in LINK.finditer(line):
+            out.append((i + 1, m.group(1)))
+        if (m := REFDEF.match(line)):
+            out.append((i + 1, m.group(1)))
+        for m in HREF.finditer(line):
+            out.append((i + 1, m.group(1)))
+    return out
+
+
+def page_ref(raw):
+    """Map a link's path (its target with any #fragment removed, already
+    known to carry no URL scheme and not to be site-rooted) to the wiki page
+    it denotes, as (candidate_md, strict), or (None, False) when the target
+    names no page.
+
+      foo/bar.md    -> ("foo/bar.md",    True)   a .md link — must resolve
+      foo/bar.html  -> ("foo/bar.md",    False)  the page's rendered form
+      foo/bar.htm   -> ("foo/bar.md",    False)
+      foo/bar       -> ("foo/bar.md",    False)  a clean/extensionless URL
+      foo/bar.dm    -> ("foo/bar.dm.md", False)  a .dm twin's clean URL
+
+    `strict` is True only for a direct .md link, whose target must exist — a
+    miss is a broken link. Every other shape is lenient: it is judged only
+    when its candidate .md page actually exists, so a real asset
+    (foo/pic.webp -> foo/pic.webp.md, no such page) and any other non-page
+    target fall straight through, exactly as a non-.md link always did. That
+    is what catches the .html and clean-URL forms of a real page while
+    leaving assets and genuine non-page links alone: a DM page linked in any
+    of these forms is the same lie as linking its .md — issue #22."""
+    seg = raw.rsplit("/", 1)[-1]
+    if not seg:
+        return None, False  # empty or directory-style target: not a page
+    low = seg.lower()
+    if low.endswith(".md"):
+        return raw, True
+    if low.endswith(".html"):
+        return raw[:-5] + ".md", False
+    if low.endswith(".htm"):
+        return raw[:-4] + ".md", False
+    return raw + ".md", False
+# --- END SHARED wikilib ---
+
+
+# Inline HTML anchor and Markdown reference-definition targets — the two
+# link forms the inline LINK regex misses. link_targets mirrors
+# eddic_lint.py so the firewall sees exactly the links the linter does:
+# a DM target can hide in an inline link, a reference definition, or an
+# <a href>, and every one trips the same refusal.
 def load_overlays(contribs, log_name):
     """Map effective wiki path -> (contributor, file path). Conflicts
     are fatal to the caller; returned separately."""
