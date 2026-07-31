@@ -34,6 +34,14 @@ HREF = re.compile(r"""<a\b[^>]*?\shref\s*=\s*["']([^"'>\s]+)["']""", re.I)
 REFDEF = re.compile(r"""^\s{0,3}\[[^\]]+\]:\s+<?([^>\s]+)>?""")
 # <<<
 
+# >>> provenance_consts
+# A claim's citation back to the line that justifies it, written as an
+# HTML comment so it never renders and never reaches a player: the
+# projection strips it. `<!-- src: sessions/s4-transcript.md#t=1:14:22 -->`
+SRC_MARK = re.compile(
+    r"<!--\s*src:\s*([^\s#>]+)(?:#t=(\d+:\d{2}:\d{2}))?\s*-->")
+# <<<
+
 # >>> media_consts
 # Embedded media. The link regexes deliberately skip images (`(?<!\!)`),
 # because an image is not a page and must not be resolved like one — but

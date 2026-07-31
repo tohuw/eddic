@@ -26,12 +26,16 @@ def main():
     # line wrapping in the persona prose
     pc = " ".join(t["player-companion.md"].split())
     wa = " ".join(t["writing-assistant.md"].split())
+    cu = " ".join(t.get("catch-up.md", "").split())
+    pq = " ".join(t.get("prep-questions.md", "").split())
     checks = [
         (set(t) == {"player-companion.md", "dm-companion.md",
                     "backstory-interviewer.md", "player-kit.md",
-                    "learners-primer.md", "writing-assistant.md"},
+                    "learners-primer.md", "writing-assistant.md",
+                    "catch-up.md", "prep-questions.md"},
          "the templates ship (three companions, the player kit, "
-         "the learner's primer, the writing assistant)"),
+         "the learner's primer, the writing assistant, the "
+         "absent-player catch-up, the prep questions)"),
         ("{{PLAYER_MCP_URL}}" in t["player-kit.md"] and
          "{{PLAYER_COMPANION}}" in t["player-kit.md"],
          "player kit carries the per-request connector URL sentinel "
@@ -107,6 +111,65 @@ def main():
          "not off-site"),
         ("Learner's Primer" in pc,
          "player companion advertises the learner's primer capability"),
+        (all(s in cu for s in
+             ("1. What happened",
+              "2. What your character has heard",
+              "3. What has changed that touches you")),
+         "catch-up keeps its three parts in order (the session, what "
+         "the character heard, what changed for them)"),
+        ("the absent character was absent" in cu and
+         "You never invent what they did while the session ran" in cu,
+         "catch-up never invents the absent character's off-screen "
+         "action (an absent character was absent)"),
+        ("what the party would have told them afterwards" in cu and
+         "only the people in the room have" in cu,
+         "catch-up splits second-hand knowledge from what only the "
+         "room has"),
+        ("cannot hand them something the party did not learn" in cu,
+         "catch-up is projection-scoped by construction (never what "
+         "the party did not learn)"),
+        ("two or three genuinely different options" in cu and
+         "hand the choice back explicitly" in cu,
+         "catch-up offers the absence explanation and leaves the pick "
+         "to the player"),
+        (RULE in t.get("catch-up.md", "") and
+         "not a briefing on what to do next session" in cu,
+         "catch-up carries the conduct rule verbatim and refuses to "
+         "brief the returning player"),
+        ("suggest_edit" in cu and "review queue" in cu and
+         "hand it to the DM directly" in cu,
+         "catch-up files the player's pick to the DM-only review "
+         "queue, with the write-path-off fallback"),
+        ("machine-authored" in cu and
+         "never because they approved it" in cu,
+         "catch-up marks what it wrote machine-authored and keeps "
+         "curation off the authorship axis"),
+        ("ask, not to write" in pq,
+         "prep questions asks rather than writes"),
+        (all(s in pq for s in
+             ("Open threads", "NPCs who never came back",
+              "Unpaid foreshadowing",
+              "Player asks not yet delivered")),
+         "prep questions runs its four passes (threads, absent NPCs, "
+         "unpaid foreshadowing, undelivered player asks)"),
+        ("Never assert an item without saying where you got it" in pq,
+         "prep questions cites every item to its page or session"),
+        ("look identical from where you sit" in pq,
+         "prep questions states the closed-versus-forgotten caveat"),
+        ("three to five questions, no more" in pq and
+         "Not a backlog" in pq,
+         "prep questions caps at three to five and refuses to become "
+         "a backlog"),
+        ("Once the DM has picked, you may draft" in pq,
+         "prep questions gates drafting on the DM's choice"),
+        ("marked machine-authored" in pq and
+         "curation is a separate mark" in pq,
+         "prep questions marks its drafts machine-authored and keeps "
+         "curation a separate mark"),
+        ("It is authorship" in pq and "DM tier" in pq and
+         "nowhere a player can read it" in pq,
+         "prep questions is DM-side and asks for authorship reasons, "
+         "not conduct ones"),
         (all(f"{i}." in rig for i in range(1, 9)),
          "acceptance rig covers the eight behavior classes"),
         ("must NOT overcorrect" in rig,

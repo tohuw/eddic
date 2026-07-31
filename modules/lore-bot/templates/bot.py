@@ -21,6 +21,14 @@ Config (variables.txt beside this file, or real env, env wins):
                                                cache breakpoint,
                                                never in the corpus)
   SITE_URL=https://...                         page links in answers
+  QUESTION_LOG=questions.jsonl                 what the table asked
+                                               (empty or "off" records
+                                               nothing); DIGEST_DAYS=14
+                                               retention, DIGEST_WEEKDAY=0
+                                               DIGEST_HOUR=10 when the
+                                               weekly digest is sent to
+                                               OWNER_ID, DIGEST_FILE=
+                                               digest-latest.md
 """
 
 import asyncio
@@ -52,6 +60,21 @@ OWNER_ID = int(os.environ.get("OWNER_ID", "0"))
 COOLDOWN = int(os.environ.get("COOLDOWN_SECONDS", "15"))
 GITHUB_REPO = os.environ.get("GITHUB_REPO", "")
 SITE_URL = os.environ.get("SITE_URL", "").rstrip("/")
+
+# What the table asked: a short, DM-side record of the questions put to
+# the bot, aggregated into a weekly digest for OWNER_ID. It holds only
+# what the owner could already scroll back and read in the channel —
+# question text, time, pages cited — plus a one-way tag that exists so
+# "!lore forget" can find a player's rows. It never leaves this host:
+# not the corpus, not the projection, not the repo, not the site.
+_log_name = os.environ.get("QUESTION_LOG", "questions.jsonl").strip()
+QUESTION_LOG = (HERE / _log_name) if _log_name and _log_name != "off" else None
+QUESTION_DAYS = int(os.environ.get("DIGEST_DAYS", "14"))
+DIGEST_WEEKDAY = int(os.environ.get("DIGEST_WEEKDAY", "0"))    # 0 = Monday
+DIGEST_HOUR = int(os.environ.get("DIGEST_HOUR", "10"))         # host's clock
+DIGEST_FILE = HERE / os.environ.get("DIGEST_FILE", "digest-latest.md")
+SALT_FILE = HERE / "questions-salt.txt"
+OPTOUT_FILE = HERE / "questions-optout.txt"
 
 persona = (HERE / os.environ.get("PERSONA_FILE", "persona.md")).read_text(
     encoding="utf-8")
@@ -85,6 +108,45 @@ except Exception as e:                      # a capability must never
 
 state = {"corpus": "", "stamp": "", "loaded": 0.0}
 last_reply = {}
+salt = botlib.log_salt(SALT_FILE) if QUESTION_LOG else ""
+optouts = botlib.read_optouts(OPTOUT_FILE) if QUESTION_LOG else set()
+digest_state = {"last_sent": ""}
+
+PRIVACY_NOTE = (
+    "When you ask me something in this server I write down the question, "
+    "the time, and which pages I pointed you at — nothing else. No names, "
+    "no handles, no other messages, and never anything you send me "
+    "privately. It stays on your DM's own computer for {days} days and is "
+    "then deleted, and it is only ever used for a weekly summary of what "
+    "the table has been asking about. Say `!lore forget` and I will delete "
+    "yours and stop recording you; `!lore remember` turns it back on.")
+
+
+def asker_of(message):
+    return botlib.asker_tag(message.author.id, salt) if QUESTION_LOG else ""
+
+
+def record_question(message, question, reply, outcome):
+    """Log one question, or decline to. Never records a private message
+    to the bot (the owner cannot scroll back and read those) and never
+    records a player who has opted out."""
+    if not QUESTION_LOG or message.guild is None:
+        return
+    who = asker_of(message)
+    if who in optouts:
+        return
+    try:                                    # the record is never worth
+        cited = botlib.cited_paths(          # an answer the table missed
+            reply, botlib.page_paths(state["corpus"]))
+        botlib.log_question(
+            QUESTION_LOG,
+            botlib.question_record(question, cited=cited,
+                                   outcome=outcome or
+                                   ("answered" if cited else "uncited"),
+                                   who=who),
+            keep_days=QUESTION_DAYS)
+    except Exception as e:
+        print(f"question log error: {e}")
 
 
 def load_corpus():
@@ -153,15 +215,51 @@ async def answer(message):
                 roster=players, prompt=prompt)
             for chunk in botlib.split_message(reply):
                 await message.reply(chunk, mention_author=False)
+            record_question(message, question, reply, "")
         except Exception as e:
             print(f"answer error: {e}")
+            record_question(message, question, "", "failed")
             await message.add_reaction("❌")
+
+
+def build_digest(days=7):
+    rows = botlib.read_questions(QUESTION_LOG) if QUESTION_LOG else []
+    return botlib.render_digest(
+        botlib.weekly_digest(rows, state["corpus"], days=days))
+
+
+async def send_digest(text):
+    """The digest is DM-only material and goes exactly one place: a
+    private message to the owner. It is never posted to a channel, never
+    written into the wiki, and never staged to any player surface."""
+    owner = await client.fetch_user(OWNER_ID)
+    for chunk in botlib.split_message(text):
+        await owner.send(chunk)
+    # also on disk (gitignored), so the owner's prep agent can read it
+    DIGEST_FILE.write_text(text, encoding="utf-8")
+
+
+async def digest_loop():
+    """Wake hourly; send the week's digest on the chosen day. Missing a
+    run costs one week's summary and nothing else."""
+    while True:
+        await asyncio.sleep(3600)
+        try:
+            if not (QUESTION_LOG and OWNER_ID):
+                continue
+            if botlib.digest_due(digest_state["last_sent"],
+                                 DIGEST_WEEKDAY, DIGEST_HOUR):
+                await send_digest(build_digest())
+                digest_state["last_sent"] = time.strftime("%Y-%m-%d")
+        except Exception as e:
+            print(f"digest error: {e}")
 
 
 @client.event
 async def on_ready():
     await asyncio.to_thread(load_corpus)
     client.loop.create_task(freshness_poll())
+    client.loop.create_task(digest_loop())
     if capability:
         try:                                # never let a capability
             await capability.ready(state["corpus"])  # break the bot
@@ -175,15 +273,51 @@ async def on_message(message):
     if message.author.bot:
         return
     text = message.content.strip()
-    if text.startswith("!lore") and message.author.id == OWNER_ID:
-        if "reload" in text:
+    if text.startswith("!lore"):
+        cmd = text[5:].strip().lower()
+        # anyone may ask what is recorded and opt out of it
+        if cmd.startswith("privacy"):
+            await message.reply(PRIVACY_NOTE.format(days=QUESTION_DAYS)
+                                if QUESTION_LOG else
+                                "I keep no record of anyone's questions.",
+                                mention_author=False)
+            return
+        if cmd.startswith(("forget", "remember")):
+            if not QUESTION_LOG:
+                await message.reply("I keep no record of anyone's "
+                                    "questions.", mention_author=False)
+                return
+            who = asker_of(message)
+            out = cmd.startswith("forget")
+            botlib.set_optout(OPTOUT_FILE, who, out)
+            if out:
+                optouts.add(who)
+            else:
+                optouts.discard(who)
+            gone = botlib.forget_asker(QUESTION_LOG, who) if out else 0
+            await message.reply(
+                f"Done — {gone} of your question(s) deleted, and I will "
+                "not record any more of yours." if out else
+                "Done — I will include your questions again from now on.",
+                mention_author=False)
+            return
+        if message.author.id != OWNER_ID:
+            return
+        if "reload" in cmd:
             await asyncio.to_thread(load_corpus)
             await message.reply("corpus reloaded", mention_author=False)
+        elif "digest" in cmd:
+            await send_digest(build_digest())
+            await message.reply("digest sent to your messages",
+                                mention_author=False)
         else:
             age = int(time.time() - state["loaded"])
+            asked = len(botlib.read_questions(QUESTION_LOG)) \
+                if QUESTION_LOG else 0
             await message.reply(
                 f"corpus {len(state['corpus']) // 1024} KB, loaded {age}s "
-                f"ago, stamp {state['stamp'][:12]}", mention_author=False)
+                f"ago, stamp {state['stamp'][:12]}, {asked} question(s) on "
+                f"record", mention_author=False)
         return
     if CATEGORY_IDS and getattr(message.channel, "category_id", None) \
             not in CATEGORY_IDS:

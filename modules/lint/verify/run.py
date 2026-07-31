@@ -36,10 +36,12 @@ EXPECTED = Counter({
                              # however it marks itself — pinning the
                              # linter to the projection's verdict
     "log-malformed": 2,      # unknown type 'conjure'; freeform ## header
-    "orphan": 3,             # lost-shrine; contributed field-notes;
-                             # harbor-watch (no quiet marker, so it counts)
-    "unreachable": 3,        # lost-shrine; contributed field-notes;
-                             # harbor-watch
+    "orphan": 5,             # lost-shrine; contributed field-notes;
+                             # harbor-watch; the session recap and its
+                             # transcript (nothing in the catalog links
+                             # either, which is true of a real campaign
+                             # until the recap is woven in)
+    "unreachable": 5,        # the same five
     "tiny-unstubbed": 1,     # lost-shrine only — kestrel's overlay
                              # replaced the tiny vault page, proving
                              # the effective view took the overlay
@@ -57,6 +59,10 @@ EXPECTED = Counter({
     "merge-pending": 2,             # both rumor pages await adjudication
     "asset-breach": 1,              # harbor-watch points at a .dm asset
     "asset-missing": 1,             # sunken-city points at absent bell.webp
+    "source-missing": 1,            # session-1 sources a transcript that
+                                    # is not there
+    "source-anchor-missing": 1,     # and cites a timestamp the real
+                                    # transcript does not contain
 })
 
 # The advisory tier, quieted where the pen is held elsewhere. Each of the

@@ -47,7 +47,14 @@ import sys
 from pathlib import Path
 
 NON_CONTENT = {"CLAUDE.md", "AGENTS.md", "README.md"}
-# --- BEGIN SHARED wikilib: link_consts, media_consts, split_frontmatter, visibility_of, link_targets, media_targets, page_ref ---
+# --- BEGIN SHARED wikilib: provenance_consts, link_consts, media_consts, split_frontmatter, visibility_of, link_targets, media_targets, page_ref ---
+# A claim's citation back to the line that justifies it, written as an
+# HTML comment so it never renders and never reaches a player: the
+# projection strips it. `<!-- src: sessions/s4-transcript.md#t=1:14:22 -->`
+SRC_MARK = re.compile(
+    r"<!--\s*src:\s*([^\s#>]+)(?:#t=(\d+:\d{2}:\d{2}))?\s*-->")
+
+
 # Every link form a wiki page can carry. Inline HTML and reference
 # definitions are here because a DM-only target must not be able to hide in
 # a form one tool parses and another does not — that was issue #22.
@@ -303,6 +310,12 @@ def main(argv):
         # verbatim into player hands, so none of it ships.
         _, body = split_frontmatter(
             pages[rel][1].read_text(encoding="utf-8", errors="replace"))
+        # Source markers are DM-side too. They cite session transcripts by
+        # name and timestamp, which is exactly the material players must
+        # not have — and an HTML comment survives rendering into
+        # view-source, so stripping has to happen here rather than being
+        # left to the fact that it does not display.
+        body = SRC_MARK.sub("", body)
         dest.write_text(body.lstrip("\n"), encoding="utf-8")
     # Assets ship by reachability, not by folder. Every other secrecy
     # decision here is fail-closed; shipping all of assets/ and trusting a

@@ -8,6 +8,7 @@ import os
 import py_compile
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 TEMPLATES = Path(__file__).resolve().parent.parent / "templates"
@@ -91,6 +92,145 @@ def main():
     checks.append((botlib.page_title(
         corpus, "campaigns/c/sessions/session-1.md")
         == "Session 1 — Arrival", "page_title reads the H1"))
+
+    # --- what the table asked: the question log and the weekly digest ---
+    day = 86400
+    base = 1800000000                      # fixed epoch; no wall-clock deps
+    lore = ("=== places/sunken-city.md ===\n# The Sunken City\n\n"
+            "The Warden keeps the drowned gate.\n\n"
+            "=== characters/warden.md ===\n# The Warden\n\n"
+            "keeper of the gate")
+
+    checks.append((botlib.utc_stamp(base) < botlib.utc_stamp(base + 1)
+                   and botlib.utc_stamp(base).endswith("Z")
+                   and len(botlib.utc_stamp(base)) == 20,
+                   "stamps are fixed-width UTC and sort as strings"))
+
+    terms = botlib.salient_terms("What about the Reavers and their oath?")
+    checks.append((terms == ["reaver", "oath"],
+                   "salient terms: filler dropped, plurals clustered"))
+    checks.append((botlib.salient_terms("who is it") == [],
+                   "short and common words carry no signal"))
+    vocab = botlib.corpus_vocabulary(lore)
+    checks.append(("sunken" in vocab and "warden" in vocab
+                   and "oath" not in vocab,
+                   "corpus vocabulary spans page paths and bodies"))
+
+    known = botlib.page_paths(lore)
+    checks.append((botlib.cited_paths(
+        "See [The Warden](https://x.test/characters/warden).", known)
+        == ["characters/warden.md"], "citations by link are counted"))
+    checks.append((botlib.cited_paths(
+        "The archive's page on the Sunken City says so.", known)
+        == ["places/sunken-city.md"], "citations by page name are counted"))
+    checks.append((botlib.cited_paths("The archive doesn't say.", known)
+                   == [], "an uncited answer counts as uncited"))
+
+    # the one identifier is one-way and salt-bound
+    salt_file = tmp / "questions-salt.txt"
+    salt = botlib.log_salt(salt_file)
+    checks.append((botlib.log_salt(salt_file) == salt,
+                   "the tag salt is created once and reused"))
+    tag_a = botlib.asker_tag(4815162342, salt)
+    tag_b = botlib.asker_tag(1234567890, salt)
+    checks.append((tag_a != tag_b
+                   and tag_a == botlib.asker_tag(4815162342, salt)
+                   and tag_a != botlib.asker_tag(4815162342, "other-salt")
+                   and "4815162342" not in tag_a,
+                   "asker tags are stable, distinct, salt-bound, one-way"))
+
+    log = tmp / "questions.jsonl"
+    for age_days, q, cited, who in [
+            (20, "who was the first Warden?", ["characters/warden.md"], tag_a),
+            (9, "what is the Warden's oath?", [], tag_a),
+            (9, "where do the reavers camp?", [], tag_b),
+            (3, "who is the Warden?", ["characters/warden.md"], tag_a),
+            (2, "what is the Warden's oath?", [], tag_b),
+            (1, "is the oath binding on the reavers?", [], tag_b)]:
+        when = base - age_days * day
+        botlib.log_question(
+            log, botlib.question_record(
+                q, cited=cited, outcome="answered" if cited else "uncited",
+                who=who, when=when),
+            keep_days=14, when=base)
+    rows = botlib.read_questions(log)
+    checks.append((len(rows) == 5 and all("first Warden" not in r["q"]
+                                          for r in rows),
+                   "retention drops rows past the keep window on write"))
+    raw = log.read_text(encoding="utf-8")
+    checks.append(("4815162342" not in raw and "1234567890" not in raw,
+                   "no account id is ever written to the log"))
+    checks.append((set(rows[0]) == {"at", "q", "cited", "outcome", "who"},
+                   "a row holds only time, question, pages, outcome, tag"))
+
+    d = botlib.weekly_digest(rows, lore, when=base, days=7)
+    checks.append((d["asked"] == 3 and d["prior_asked"] == 2,
+                   "the digest windows this week against last week"))
+    checks.append(([t["term"] for t in d["themes"]] == ["oath", "warden"]
+                   and d["themes"][0]["count"] == 2
+                   and d["themes"][0]["examples"][0].startswith("what is"),
+                   "recurring themes are counted, not guessed"))
+    gaps = {g["term"] for g in d["gaps"]}
+    checks.append(("oath" in gaps and "reaver" in gaps
+                   and "warden" not in gaps,
+                   "the gap list names subjects the wiki has no page for"))
+    checks.append((len(d["poor"]) == 2
+                   and all("oath" in p["q"] or "reaver" in p["q"]
+                           for p in d["poor"]),
+                   "questions answered badly or not at all are listed"))
+    checks.append(([p["path"] for p in d["pages"]]
+                   == ["characters/warden.md"],
+                   "pages the table actually reached are ranked"))
+    checks.append((d["new_topics"] == [],
+                   "nothing counts as new when last week asked it too"))
+    fresh = botlib.weekly_digest(
+        [botlib.question_record("what do the reavers want?", who=tag_a,
+                                outcome="uncited", when=base - day),
+         botlib.question_record("who leads the reavers?", who=tag_b,
+                                outcome="uncited", when=base - 2 * day),
+         botlib.question_record("who is the Warden?", who=tag_a,
+                                cited=["characters/warden.md"],
+                                when=base - 10 * day)],
+        lore, when=base, days=7)
+    checks.append(([t["term"] for t in fresh["new_topics"]] == ["reaver"],
+                   "newly popular means popular now and absent before"))
+
+    text = botlib.render_digest(d)
+    checks.append(("oath" in text and "asked this week" in text
+                   and tag_a not in text and tag_b not in text,
+                   "the rendered digest shows subjects, never who asked"))
+    checks.append(("Nobody asked" in botlib.render_digest(
+        botlib.weekly_digest([], lore, when=base)),
+        "a quiet week renders as a quiet week"))
+
+    # forget me: the rows go, and the tag joins the never-record list
+    optout = tmp / "questions-optout.txt"
+    gone = botlib.forget_asker(log, tag_b)
+    left = botlib.read_questions(log)
+    checks.append((gone == 3 and all(r["who"] != tag_b for r in left)
+                   and any(r["who"] == tag_a for r in left),
+                   "forget me erases one player's rows and no one else's"))
+    checks.append((botlib.set_optout(optout, tag_b) is True
+                   and botlib.read_optouts(optout) == {tag_b}
+                   and botlib.set_optout(optout, tag_b) is False,
+                   "the never-record list holds tags, and adding is idempotent"))
+    checks.append((botlib.set_optout(optout, tag_b, False) is True
+                   and botlib.read_optouts(optout) == set(),
+                   "opting back in is one step and leaves no name behind"))
+
+    monday = base - (time.localtime(base).tm_wday * day)
+    hour = time.localtime(monday).tm_hour
+    checks.append((botlib.digest_due("", 0, hour, when=monday)
+                   and not botlib.digest_due(
+                       time.strftime("%Y-%m-%d", time.localtime(monday)),
+                       0, hour, when=monday),
+                   "the digest is owed once on its day, not twice"))
+    checks.append((not botlib.digest_due("", (time.localtime(monday).tm_wday
+                                              + 1) % 7, hour, when=monday),
+                   "no digest on any other day"))
+    checks.append((not botlib.digest_due("", 0, 23, when=monday)
+                   if hour < 23 else True,
+                   "no digest before its hour"))
 
     # bot.py and providers compile (deps not required to parse)
     for src in [TEMPLATES / "bot.py",

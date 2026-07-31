@@ -70,7 +70,14 @@ LOG_HEADER = re.compile(r"^## \[\d{4}-\d{2}-\d{2}\] (\S+) \| .+$")
 STUB_WORD_LIMIT = 150
 TINY_WORD_LIMIT = 30
 
-# --- BEGIN SHARED wikilib: link_consts, media_consts, body_consts, split_frontmatter, visibility_of, slugify, strip_code, link_targets, media_targets, page_ref ---
+# --- BEGIN SHARED wikilib: provenance_consts, link_consts, media_consts, body_consts, split_frontmatter, visibility_of, slugify, strip_code, link_targets, media_targets, page_ref ---
+# A claim's citation back to the line that justifies it, written as an
+# HTML comment so it never renders and never reaches a player: the
+# projection strips it. `<!-- src: sessions/s4-transcript.md#t=1:14:22 -->`
+SRC_MARK = re.compile(
+    r"<!--\s*src:\s*([^\s#>]+)(?:#t=(\d+:\d{2}:\d{2}))?\s*-->")
+
+
 # Every link form a wiki page can carry. Inline HTML and reference
 # definitions are here because a DM-only target must not be able to hide in
 # a form one tool parses and another does not — that was issue #22.
@@ -463,6 +470,42 @@ def lint(root, log_name, contribs=None):
                     f"asset; the projection refuses to ship it, so this "
                     f"link is a leak on the page and a hole on the site",
                     line)
+
+    # Provenance. A page derived from a session names its sources, and a
+    # claim may cite the line that justifies it. Both are checked because
+    # an unresolvable citation is worse than none: it looks like evidence
+    # and is not, and the whole point of "automatic is the point" being
+    # safe is that a wrong fact can be traced back to what produced it.
+    for rel in sorted(pages):
+        page = pages[rel]
+        cited = [(s.strip(), None, None)
+                 for s in (page.frontmatter.get("sources") or "").split(",")
+                 if s.strip()]
+        for i, line in enumerate(page.body.splitlines()):
+            for m in SRC_MARK.finditer(line):
+                cited.append((m.group(1), m.group(2), i + 1))
+        for src, anchor, line in cited:
+            target = ((root / rel).parent / src).resolve()
+            try:
+                src_rel = target.relative_to(root.resolve()).as_posix()
+            except ValueError:
+                src_rel = None
+            path = (root / src_rel) if src_rel else (root / src)
+            if not path.is_file():
+                # sources: is written wiki-relative; a marker beside the
+                # claim may be page-relative. Accept either before failing.
+                alt = root / src
+                if not alt.is_file():
+                    add("source-missing", "error", rel,
+                        f"{src}: names no file in the campaign", line)
+                    continue
+                path = alt
+            if anchor:
+                body = path.read_text(encoding="utf-8", errors="replace")
+                if f"[{anchor}]" not in body:
+                    add("source-anchor-missing", "warning", rel,
+                        f"{src}#t={anchor}: that timestamp is not in the "
+                        f"transcript", line)
 
     # The pen axis: markers valid, proposals answerable and off the
     # player surface. Binding — a page cannot use these markers to

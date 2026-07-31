@@ -1,0 +1,49 @@
+name: ingest
+version: 0.1.0
+summary: >
+  The session-to-canon step: transcript in, recap and page updates out,
+  with every non-obvious claim citable back to the transcript line that
+  produced it. Deterministic around the prose — a whisper glossary built
+  from the campaign's own page titles and known mishearings, the citable
+  anchor index, recap scaffolding with honest pen-axis frontmatter, and
+  off-the-record redaction that runs before anything reads the
+  transcript — while the writing itself stays the agent's, guided by a
+  standing brief. Provenance is what makes shipping a recap without
+  human review safe: a wrong fact can be traced to what produced it
+  instead of becoming canon by inertia.
+fragility: durable
+walk_away: >
+  Nothing stops. Recaps are ordinary wiki pages and citations are HTML
+  comments, so a campaign that loses this module keeps every page it
+  already wrote and goes back to writing them by hand.
+touches:
+  - wiki
+  - lint
+  - transcriber
+depends:
+  - cli
+  - wiki
+cost_posture:
+  free: >
+    Stdlib Python over files the campaign already has. The transcript
+    was produced locally by the transcriber; the glossary is read off
+    the wiki. No account, no service, no key.
+  paid: >
+    None of its own. The authoring step spends whatever the DM's agent
+    costs, which is the same spend the wiki pattern already assumes.
+compatibility:
+  claude:
+    status: documented
+    date: 2026-07-30
+    note: >
+      The authoring brief is written for any capable agent; nothing in
+      it is Claude-specific. Citation discipline is unverified against
+      a long real transcript — the deterministic half is covered by
+      verify, the prose half is not, and cannot be.
+  chatgpt:
+    status: documented
+    date: 2026-07-30
+    note: >
+      Same brief, same caveat. A four-hour transcript may exceed a
+      client's context; the pattern's answer is that ingest runs on the
+      DM's own agent where the window is the DM's to choose.

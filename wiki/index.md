@@ -43,7 +43,7 @@ deterministic floor, the capability seam that keeps instructions
 agent-agnostic, the firewall and projection model that govern visibility in
 split wikis, and the release-and-versioning discipline.
 
-[Design principles](design/principles.md) states the eleven invariants that
+[Design principles](design/principles.md) states the twelve invariants that
 act as tiebreakers when a design question stalls, ordered by frequency of use
 so an earlier principle outranks a later one in conflict. Every module and
 concept traces back to these.

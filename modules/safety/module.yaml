@@ -1,0 +1,42 @@
+name: safety
+version: 0.1.0
+summary: >
+  The table's content-safety record as a first-class campaign object:
+  lines (never in the game) and veils (off screen, may exist) collected
+  once at session zero and revisable at any time, kept as a DM-only
+  master whose player-facing page is a deterministic render — so an
+  entry can be shared with the table while the person who asked for it
+  is never attributable on any player surface. Entries carry a share
+  axis (table / dm-only) beside the contributor id, and the id lives
+  only in the .dm master, which cannot project by construction. Ships
+  the in-session signal set for an online table, where saying it aloud
+  is the hard part: speak it, type it in the channel, react to the
+  pinned signal post, or message the DM privately, all with the same
+  no-questions rewind. Ships the session-zero collection ask and its
+  revisit cadence. And it binds the agents: a stamped block for the
+  campaign's own instructions makes the record mandatory reading for
+  the DM companion, the writing assistant, and the recap author —
+  never author a line into canon, never propose one as an idea, render
+  veiled material as aftermath only. eddic safety check is the
+  deterministic half: schema validation, render-equality against the
+  master (a hand-edited player page fails), and an attribution sweep
+  proving no contributor id from the record reaches the projection or
+  any other player-facing surface.
+fragility: durable
+walk_away: >
+  Nothing. The record is plaintext markdown in the wiki and the table
+  keeps following it; only the render, the leak sweep, and the schema
+  check go away, and the DM maintains the shared page by hand.
+touches:
+  - wiki
+  - companion
+  - convene
+depends:
+  - cli
+  - wiki
+cost_posture:
+  free: >
+    Entirely local: two markdown pages in the campaign wiki and one
+    stdlib script. No hosting, no service, no spend.
+  paid: none
+  heuristic: n/a

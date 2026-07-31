@@ -1,5 +1,5 @@
 name: companion
-version: 0.5.0
+version: 0.6.0
 summary: >
   At-the-table companions under the knowledge-parity conduct doctrine
   (possible and true, never better): player and DM companions on their
@@ -33,6 +33,23 @@ summary: >
   rules explained in place), under the same possible-and-true, never-
   better rule — it teaches the option landscape and never optimizes the
   build.
+  Two further facets cover the two events the toolkit otherwise misses.
+  The absent-player catch-up is player-side: after a missed session it
+  builds, from the recap and that player's character page alone, what
+  happened, what their character heard second-hand versus what only the
+  people in the room have, and what moved on the threads that are
+  theirs — projection-scoped so it can never hand out what the party did
+  not learn, never inventing what the absent character did, and offering
+  two or three options for explaining the absence with the pick left to
+  the player and filed to the DM's review queue. Prep questions is
+  DM-side: it reads the campaign for open threads, NPCs introduced and
+  never returned, unpaid foreshadowing, and player asks not yet
+  delivered, cites each to its page, states that a closed thread and a
+  forgotten one look alike from the record, and ends in three to five
+  questions answerable in a sentence rather than in drafted prose. It
+  asks for authorship reasons rather than conduct ones, and drafts only
+  after the DM chooses, marking what it drafts machine-authored with
+  curation kept a separate mark.
 fragility: vendor-bound
 walk_away: >
   The table asks its questions in whatever chat product it still has;

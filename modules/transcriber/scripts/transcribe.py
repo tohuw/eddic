@@ -6,6 +6,7 @@
 Usage:
     uv run transcribe.py <audio-file-or-dir> --out <sources/session-N.md>
         [--model PATH] [--whisper whisper-cli] [--session "Session 3"]
+        [--prompt "Names in this recording: ..." | --prompt-file FILE]
     uv run transcribe.py --from-json <dir-of-whisper-json> --out ... \
         [--session ...]
 
@@ -40,7 +41,7 @@ def speaker_from_name(stem):
     return re.sub(r"^\d+[-_]", "", stem) or stem
 
 
-def run_whisper(audio, whisper, model, workdir):
+def run_whisper(audio, whisper, model, workdir, prompt=None):
     out_base = workdir / audio.stem
     cmd = [whisper, "-f", str(audio), "-oj", "-of", str(out_base)]
     # Per-speaker tracks (a Craig export) are mostly silence for any one
@@ -51,6 +52,12 @@ def run_whisper(audio, whisper, model, workdir):
     # fallback (-nf, the fallback is what hallucinates), and stricter
     # entropy/logprob fail thresholds so low-confidence silence is dropped.
     cmd += ["-mc", "0", "-nf", "-et", "2.8", "-lpt", "-1.0"]
+    # The campaign's own invented names, seeded as an initial prompt.
+    # Proper nouns are where recognition fails hardest and where the
+    # campaign already knows every answer: `eddic ingest --glossary`
+    # builds this string from page titles and recorded mishearings.
+    if prompt:
+        cmd += ["--prompt", prompt]
     if model:
         cmd += ["-m", str(model)]
     proc = subprocess.run(cmd, capture_output=True, text=True, shell=False)
@@ -135,6 +142,10 @@ def main(argv):
         origin = src.name
         whisper = opts.get("--whisper", "whisper-cli")
         model = opts.get("--model")
+        prompt = opts.get("--prompt")
+        if not prompt and opts.get("--prompt-file"):
+            prompt = Path(opts["--prompt-file"]).read_text(
+                encoding="utf-8").strip()
         workdir = out.parent / f".{out.stem}-whisper"
         workdir.mkdir(parents=True, exist_ok=True)
         if src.is_dir():
@@ -144,12 +155,12 @@ def main(argv):
                 print(f"no audio tracks in {src}", file=sys.stderr)
                 return 2
             for t in tracks:
-                j = run_whisper(t, whisper, model, workdir)
+                j = run_whisper(t, whisper, model, workdir, prompt)
                 if not j:
                     return 1
                 segments += segments_from_json(j, speaker_from_name(t.stem))
         else:
-            j = run_whisper(src, whisper, model, workdir)
+            j = run_whisper(src, whisper, model, workdir, prompt)
             if not j:
                 return 1
             segments += segments_from_json(j, "")

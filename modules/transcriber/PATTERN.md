@@ -20,25 +20,44 @@ the transcript body.
 
 ## Procedure
 
-1. Transcribe:
+1. Seed the recognizer with the campaign's own names first. Invented
+   proper nouns are where recognition fails hardest, and the campaign
+   already knows every one of them:
+
+       uv run <campaign>/.eddic/eddic.py ingest --glossary
+
+   That prints a short prompt built from the wiki's page titles and
+   every correction previously recorded under "Known mishearings", so
+   accuracy improves each session instead of the same name being
+   mangled forever. Pass it as `--prompt` below. (The glossary verb
+   ships with the ingest module; without it, write the prompt by hand
+   from the names the session will use — it is the same idea, done
+   worse.)
+
+2. Transcribe:
 
        uv run modules/transcriber/scripts/transcribe.py <audio-or-dir> \
            --out <campaign>/sources/session-N_transcript.md \
-           --session "Session N" [--model <path>] [--whisper <bin>]
+           --session "Session N" [--model <path>] [--whisper <bin>] \
+           [--prompt "<glossary output>" | --prompt-file <file>]
 
    A directory input transcribes each track and merges by timestamp;
    long silences break paragraphs; consecutive same-speaker segments
    coalesce.
 
-2. Skim the result for systematic mishearings (proper nouns fare
+3. Skim the result for systematic mishearings (proper nouns fare
    worst: "suntan" for Sunton) and record them in the transcript's
    "Known mishearings" section — never edit the body; the transcript
-   is a source, and corrections are annotations on it.
+   is a source, and corrections are annotations on it. That section is
+   read back by `ingest --glossary`, so a correction recorded once
+   stops the same mishearing recurring.
 
-3. Log an `ingest` entry when the transcript is compiled into the
-   wiki (that compilation is the wiki pattern's job, not this one's).
+4. Compiling the transcript into the wiki is the **ingest** module's
+   job — recap, page updates, and the citations that make a claim
+   traceable to the line that produced it. Log its `ingest` entry
+   there, not here.
 
-4. The whisper working directory (`.<name>-whisper/` beside the
+5. The whisper working directory (`.<name>-whisper/` beside the
    output) holds the raw per-track JSON; keep or delete at the
    owner's preference.
 

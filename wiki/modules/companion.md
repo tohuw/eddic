@@ -146,6 +146,88 @@ prose is machine-authored, and a drafted page the writer later
 reworks in their own words becomes mixed — because they reworked it,
 never because they approved it.
 
+## The absent-player catch-up
+
+Someone misses a session. It is the most common event in a running
+campaign and the one nothing in the toolkit addressed, because the
+recap that exists is written for the table that was there. The catch-up
+is a player-side facet built from two files only — the session's recap
+page and that player's character page — and it comes in three parts:
+what happened, what their character has heard about it, and what has
+changed that touches them specifically.
+
+The middle part is the one that makes it a catch-up rather than a
+recap. It splits the session honestly into what the party would have
+told them afterwards — the outcome, the bargain, the new destination,
+whatever they need in order to show up and act — and what only the
+people in the room have: the exact words of a private conversation, a
+look between two characters, the feel of a place they never stood in.
+Second-hand knowledge is allowed to be second-hand, and where the
+record shows someone kept something back from the party, the absent
+character does not learn it either. The third part reads their
+character page for the thread with their name on it, the NPC who is
+theirs, the promise they were carrying, and says whether the session
+moved any of it — including the honest answer that nothing this week
+ran through their thread.
+
+It is player-side because that is where the guarantee costs nothing.
+Reading the player tier, the facet cannot hand anyone something the
+party did not learn, so a catch-up is safe to send without a spoiler
+review; the property is
+[projection](../concepts/projection-and-visibility.md) doing its usual
+work rather than a promise the persona makes. Two limits are not dials.
+It never invents what the absent character did while the session ran —
+an absent character was absent, and off-screen action written for them
+is a choice taken away from the person who was not there to make it.
+And it never briefs the returning player on what to do next, under the
+same never-better rule as every other companion surface: they come back
+with the facts and their own reaction, not a plan a machine made while
+they were out. Where the fiction does need to explain the absence, the
+facet offers two or three genuinely different options — including the
+cheapest, that the character was present and quiet — and hands the
+choice back. A chosen explanation is filed by the same private
+[retrieval](retrieval.md) witness path the prep-ask response uses, into
+the DM's review queue and nowhere else, marked machine-authored and
+becoming mixed only if the player reworks it.
+
+## Prep questions
+
+Prep is the DM's largest real cost and the toolkit did not touch it.
+This facet does, without writing the campaign: it reads what the
+campaign already knows and returns questions. Four passes, in
+decreasing order of how often they pay — open threads the table started
+and never closed; NPCs who appeared once, mattered, and never came
+back; foreshadowing the narration promised and never paid; and player
+asks not yet delivered, which is the highest-value pass and the easiest
+to lose. Every item is one line with the page or session it came from,
+so the DM can check it in seconds, and the pass states its own limit
+out loud: a thread the DM closed off-screen, a foreshadow they decided
+to drop, and a genuinely forgotten hook look identical from the record.
+Any item may be answered "that one's done" and comes off the list.
+
+It ends in three to five questions, each answerable in a sentence —
+"three threads are open; which do you want to pull?" — and never in a
+backlog. Twenty open items is not prep help but a new chore, so the cap
+lives in the template rather than in the assistant's tact, and what was
+cut is named rather than hidden. "None of these" is a real answer: the
+session the DM already has in mind beats the session the record
+suggests.
+
+It is DM-side, and has to be. Half of what makes a thread dangle lives
+in DM-only material, so a player-tier pass would be confidently
+half-blind; its output names secrets and belongs on the private side of
+[the firewall](../concepts/the-firewall.md). The reason it asks rather
+than writes is not the conduct rule, which governs live play — it is
+[authorship](../design/principles.md#who-holds-the-pen). The direction
+of a campaign is the DM's to choose, and a page of drafted plot is that
+choice made for them by something that has read the wiki and never sat
+at the table. Asking is not writing, which is why this hits the biggest
+real cost without crossing the pen seam. Once the DM has chosen, it may
+draft what they chose and stop there; the draft is marked
+machine-authored, with curation left the separate mark it is, and a DM
+who would rather write it themselves is handed to the writing assistant
+instead.
+
 ## The player kit
 
 The templates onboard the DM and interested players who read the
@@ -177,7 +259,8 @@ companion conduct it points at is the verified doctrine above.
 
 The deterministic floor is `verify/run.py`: it checks that the
 templates ship — the three companions, the player kit, the learner's
-primer, and the writing assistant — that both companions
+primer, the writing assistant, the catch-up, and the prep questions —
+that both companions
 carry the conduct rule
 verbatim, that every template is parameterized on the campaign, that
 the player template closes the puzzle loophole and keeps the option
@@ -192,7 +275,17 @@ invisible to the table, never canon, with the write-path-off fallback to
 the DM), that the writing assistant carries the conduct rule verbatim
 while freeing craft help from it, interviews rather than seizing the
 pen, offers once and then drops it, reflects the writer's own phrases
-back, and keeps curation off the authorship axis, and that the
+back, and keeps curation off the authorship axis, that the catch-up
+keeps its three parts in order, refuses to invent the absent
+character's off-screen action, splits second-hand knowledge from what
+only the room has, offers rather than settles the absence, carries the
+conduct rule verbatim while refusing to brief the returning player, and
+files the player's pick to the DM-only review queue with the
+write-path-off fallback, that the prep questions run their four passes,
+cite every item, state the closed-versus-forgotten caveat, cap at three
+to five questions rather than a backlog, gate drafting on the DM's
+choice, and mark drafts machine-authored with curation kept separate,
+and that the
 acceptance rig covers all eight
 behavior classes and tests against overcorrection rather than mere
 compliance.

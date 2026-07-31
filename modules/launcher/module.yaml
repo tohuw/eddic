@@ -1,5 +1,5 @@
 name: launcher
-version: 0.4.0
+version: 0.4.1
 # 0.4.0: the macOS supervisor gains a Restart menu item (Cmd-R). The child
 # launch is factored into a single startService() used both at launch and on
 # restart; a `restarting` flag lets the child's terminationHandler branch —
@@ -14,6 +14,17 @@ version: 0.4.0
 # bundle_identifier collapses runs of non-alphanumerics to '-' instead of
 # stripping them, so near-duplicate names (Lore Bot / Lore-Bot / LoreBot)
 # get distinct TCC identities instead of colliding.
+deprecated: >
+  2026-07-30. Do not apply to new campaigns. Its headline justification —
+  pinning macOS microphone permission so the recorder keeps its TCC grant
+  — was never real: the recorder takes audio from the Discord voice
+  gateway and opens no microphone, and nothing in this module's templates
+  requests one. What is left is a window with a Restart button, bought for
+  592 lines and a requirement that a DM install Xcode command line tools,
+  which principle 3 exists to forbid. A `.command` file or `eddic run`
+  delivers most of it at no cost. Existing installs keep working and the
+  module still verifies; it is simply no longer recommended, and it will
+  be removed if nothing surfaces that needs it.
 summary: >
   Packages a campaign's local service (the recorder bot, or a
   locally-run lore bot) as a native double-clickable launcher: a

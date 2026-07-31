@@ -1,5 +1,16 @@
 # Pattern: native launcher
 
+> **Deprecated 2026-07-30. Do not apply to new campaigns.** The reason
+> this module existed was to pin macOS microphone permission so the
+> recorder kept its TCC grant across restarts — and that reason was never
+> real: the recorder receives audio over the Discord voice gateway and
+> opens no microphone, as nothing in these templates requests one. What
+> remains is a window with a Restart button, costing 592 lines and a
+> requirement that a DM install Xcode command line tools, which principle
+> 3 exists to forbid. Point new campaigns at `eddic run` behind a
+> `.command` file. Existing installs keep working; the module still
+> verifies and is documented below unchanged.
+
 Turns a campaign's local service — the recorder bot, or a locally-run
 lore bot — into something the owner double-clicks, not something they
 open a terminal to type `uv run` into. The launcher is a thin native
