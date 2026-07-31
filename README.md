@@ -50,6 +50,8 @@ working stuff. Nothing here teaches an agent what it already knows.
   campaign architecture.
 - `modules/CONTRACT.md` — what a module is, its anatomy, and the bar it
   must clear.
+- `CONTRIBUTING.md` — the two commands (`dev_setup`, then `gate`) and
+  what a maintainer does with your PR.
 - `wiki/roadmap.md` — the module queue and deferred decisions with their
   triggers.
 

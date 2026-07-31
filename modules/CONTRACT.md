@@ -54,13 +54,25 @@ recommendation names its free fallback. Every module must be satisfiable
 inside the baseline build unless its manifest says otherwise and its
 pattern says why.
 
-## The deterministic floor (enforced on pre-push)
+## The deterministic floor
 
-Enforced by a local git pre-push hook (`.githooks/pre-push`, activated
-per clone with `git config core.hooksPath .githooks`): every push is
-gated without spending metered CI minutes. The full Linux + macOS +
-Windows runner matrix is a manual `ci` workflow dispatch, run when
-portability-sensitive machinery changes.
+The floor is one command, `uv run tools/gate.py`, and it has three
+callers so that it can only ever mean one thing: the pre-push hook runs
+it, so your own push is gated; a maintainer runs it on a contributed
+branch, which is when a contribution is actually gated; and the manual
+`ci` workflow runs it on Linux, macOS, and Windows when portability is
+in question. There is no automatic CI, deliberately — the floor is
+cheap, local, and cross-platform by construction, and metered minutes on
+every push buy nothing the hook does not.
+
+Be precise about what that guarantees, because the honest version is
+narrower than "CI gates contributions". Git will not let a repository
+activate its own hooks, so a fresh clone is ungated until somebody runs
+`uv run tools/dev_setup.py` — one command, and the first thing a
+contributor should do. A contributor who skips it can push anything.
+What actually stops a bad module landing is the maintainer running the
+same gate before merge. The floor's value is that this takes one
+command and no reading, not that it happens by itself.
 
 Small and mechanical, because semantic review is bad at catching
 mechanical rot — a broken script reads fine:

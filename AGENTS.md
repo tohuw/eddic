@@ -61,9 +61,12 @@ Rules that bind you while applying patterns:
 
 ## You are developing Eddic itself
 
-Read `wiki/design/principles.md` (principles — they are tiebreakers, not decoration) and
-`modules/CONTRACT.md` (the module contract, including the deterministic
-CI floor and the semantic rubric) before changing anything.
+Run `uv run tools/dev_setup.py` once so this clone gates its own
+pushes, then read `wiki/design/principles.md` (principles — they are
+tiebreakers, not decoration) and `modules/CONTRACT.md` (the module
+contract, including the floor and the semantic rubric) before changing
+anything. `uv run tools/gate.py` is the gate: floor, module verifiers,
+end-to-end. There is no automatic CI, on purpose.
 
 Repo conventions:
 

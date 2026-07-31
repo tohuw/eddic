@@ -1,23 +1,20 @@
 name: ci
 
-# Manual-only: the deterministic floor runs locally on pre-push
-# (.githooks/pre-push) so no metered Actions minutes are spent on every
-# push/PR. Trigger this by hand when you want the full cross-OS
-# (Linux + macOS + Windows) matrix — e.g. before a release or after
-# touching anything portability-sensitive.
+# Manual-only, on purpose. The gate runs locally on pre-push
+# (.githooks/pre-push -> tools/gate.py), so no metered Actions minutes
+# are spent on every push or PR. Trigger this by hand when you want the
+# one thing a local run cannot give: the same gate on all three
+# operating systems — before a release, or after touching anything
+# portability-sensitive.
+#
+# It runs `tools/gate.py`, the same command the hook and a maintainer
+# run, so this workflow can never check something different from what a
+# contributor was told to check.
 on:
   workflow_dispatch:
 
 jobs:
-  floor:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Contract floor
-        run: python3 tools/floor.py
-
-  verify:
-    needs: floor
+  gate:
     strategy:
       fail-fast: false
       matrix:
@@ -26,7 +23,5 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
-      - name: Module verifies
-        run: uv run tools/verify_all.py
-      - name: End-to-end composition
-        run: uv run tools/verify_e2e.py
+      - name: Gate
+        run: uv run tools/gate.py
