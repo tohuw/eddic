@@ -55,6 +55,8 @@ EXPECTED = Counter({
     "merge-proposal-visible": 1,    # rumor-of-the-warden claims player
     "merge-target-missing": 1,      # rumor-of-the-vault -> no-such-page
     "merge-pending": 2,             # both rumor pages await adjudication
+    "asset-breach": 1,              # harbor-watch points at a .dm asset
+    "asset-missing": 1,             # sunken-city points at absent bell.webp
 })
 
 # The advisory tier, quieted where the pen is held elsewhere. Each of the

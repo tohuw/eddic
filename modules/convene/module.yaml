@@ -33,6 +33,10 @@ summary: >
   count-only tally on the prep record for /session status, and the
   player's words handed back in the same private thread if the write
   fails. Nothing about a response ever touches a channel.
+fragility: vendor-bound
+walk_away: >
+  Scheduling falls back to Discord's own events and someone posting the
+  recap link; no wiki content depends on it.
 touches:
   - lore-bot
   - retrieval

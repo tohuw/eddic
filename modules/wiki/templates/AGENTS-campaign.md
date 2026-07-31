@@ -74,9 +74,10 @@ reworked your prose in their own words — not approved it, reworked
 it — the page becomes `authorship: mixed`. These are the three
 honest states, and they are facts about who produced the words, not
 preferences: never restate machine prose as `human` or `mixed`
-because someone liked it, asked you to, or wants to sell it. The
-sale fence reads this axis and refuses machine-authored pages, so a
-false mark here is the one that costs the owner real money.
+because someone liked it, asked you to, or wants to sell it. A sale
+does not require it — machine-written pages sell fine, and the
+bundle simply discloses which ones they are — so there is nothing to
+be gained by the lie and a buyer to mislead by it.
 
 ## Contributions — shadow, never delete
 

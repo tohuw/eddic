@@ -5,6 +5,10 @@ summary: >
   pipeline: strict lint, firewall projection, render, then wrangler.
   Any stage failing refuses the deploy. Only the player site ever
   deploys from here.
+fragility: vendor-bound
+walk_away: >
+  The site stops deploying; dist/site still builds locally and is plain
+  static HTML any host or a local browser can serve.
 touches:
   - .eddic/lib/publish.py
 depends:

@@ -1,5 +1,5 @@
 name: lint
-version: 0.5.1
+version: 0.6.0
 summary: >
   Wiki health check: deterministic reporter for broken links and anchors,
   site-rooted (absolute) links, missing titles, stub drift, orphaned/
@@ -13,6 +13,11 @@ summary: >
   schema validator that realize the model-triage seam for what regex
   cannot see (firewall-in-prose leaks, tonal drift, contradictions,
   dangling references, naming drift, overgrown stubs).
+fragility: durable
+walk_away: >
+  Nothing external can take it: stdlib regex over markdown in the repo,
+  so the firewall and structural checks keep running unchanged even
+  unmaintained.
 touches:
   - wiki
 depends: []

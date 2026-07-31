@@ -20,6 +20,9 @@ as `dist/` is gitignored. Upgrades are re-stamps: running the stamp
 script again at a newer version refreshes the dispatcher and re-records
 the cli module in the manifest, but never overwrites an existing
 `config.json` and never touches another module's manifest entry. The
+stamp records the version it reads from the cli module's own
+`module.yaml`, so what the manifest claims is what was actually applied.
+The
 runtime is uv-run Python with PEP 723 inline script headers; uv
 bootstraps Python itself as a single-binary install, so the only
 preflight requirement is uv or any Python 3.9 or newer on PATH, plus a
@@ -43,7 +46,7 @@ a loved layout.
 
 ## Built-in verbs
 
-Three verbs ship in the dispatcher itself. `doctor` runs preflight
+Four verbs ship in the dispatcher itself. `doctor` runs preflight
 checks — Python at least 3.9, `config.json` and `manifest.json` present,
 the configured wiki directory existing, every verb a manifest entry
 records actually vendored in `lib/`, and git available (non-fatal, since
@@ -60,6 +63,33 @@ and its launch command is built purely from the config entry —
 `uv run` with `--python` and each `--with` dependency pin — so exactly
 one copy runs during a session. See [recorder](recorder.md) for a
 service that this verb launches.
+
+## Upgrade: making the manifest load-bearing
+
+A manifest nothing reads is a manifest that drifts. `upgrade
+<eddic_checkout>` diffs every recorded module against that checkout's
+`modules/*/module.yaml` and gives each one a verdict: up to date,
+upgradable with the version delta, renamed, or recorded but no longer
+present. The renamed case is resolved from the checkout side — a module
+that took over another's job declares `renamed_from:` in its
+`module.yaml`, so a campaign that recorded the old name is told "atlas
+is now constellation" rather than left with an unknown module. It also
+catches drift in the other direction, cheaply: any vendored
+`.eddic/lib/<verb>.py` that no manifest entry claims is reported,
+attributed to the checkout module whose `touches:` names it. The
+checkout path is an argument by default, which keeps the committed
+campaign portable; `"eddic_checkout"` in `config.json` or `EDDIC_HOME`
+in the environment serve a single-machine campaign with an unattended
+routine.
+
+The verb reports and never mutates the campaign. Re-applying a pattern
+means reading the campaign, asking at the pattern's decision points and
+writing files a script cannot reason about — an agent's work, not a
+script's — so the output is a list of `PATTERN.md` files to work
+through and the `manifest record` line to run afterwards. It exits
+non-zero when anything needs attention, which is what lets a
+[routine](routines.md) run it unattended and surface an aging campaign
+without anyone thinking to look.
 
 ## Dispatch and vendored verbs
 

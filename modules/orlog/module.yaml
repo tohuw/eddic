@@ -6,6 +6,10 @@ summary: >
   fork, merging stays the owner's act) and the query cookbook for
   answering time questions from the timeline instead of inventing
   date syntax in prose.
+fragility: durable
+walk_away: >
+  The timeline stops being queryable as data; every date and event
+  remains written in the wiki pages it was reconciled from.
 touches:
   - wiki
 depends:

@@ -36,11 +36,17 @@ def main():
           "[index](index.md), [warden](characters/warden.md), "
           "[warden dm](characters/warden.dm.md)\n")
     write(src, "characters/warden.md", PLAYER_FM + "# The Warden\n\n"
-          "Keeper of the gate, sworn to the [realm](../index.md).\n")
+          "Keeper of the gate, sworn to the [realm](../index.md).\n"
+          "![the map](../assets/map.txt)\n")
     write(src, "characters/warden.dm.md", "# The Warden — full truth\n\n"
-          "Secretly the last Reaver. Player twin: [warden](warden.md).\n")
+          "Secretly the last Reaver. Player twin: [warden](warden.md).\n"
+          "![sketch](../assets/dm-only-sketch.txt)\n")
     write(src, "assets/map.txt", "safe player map\n")
     write(src, "assets/lair.dm.txt", "secret lair map\n")
+    # Referenced by nobody: the folder is not the ticket, reachability is.
+    write(src, "assets/unreferenced-map.txt", "a map nobody links\n")
+    # Referenced only by a DM page — still must not ship.
+    write(src, "assets/dm-only-sketch.txt", "sketch on a DM page\n")
 
     proc = run(src, out)
     checks = [
@@ -51,6 +57,10 @@ def main():
         (not (out / "index.dm.md").exists(), "DM catalog withheld"),
         ((out / "assets/map.txt").exists(), "safe asset projected"),
         (not (out / "assets/lair.dm.txt").exists(), ".dm asset withheld"),
+        (not (out / "assets/unreferenced-map.txt").exists(),
+         "asset no projected page references is withheld"),
+        (not (out / "assets/dm-only-sketch.txt").exists(),
+         "asset referenced only by a DM page is withheld"),
     ]
 
     # Plant a breach: player page linking the DM twin.

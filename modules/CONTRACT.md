@@ -72,6 +72,13 @@ mechanical rot — a broken script reads fine:
 - A verify section exists and its checks execute.
 - No secrets or credentials committed.
 - No symlinks; no bash-required machinery.
+- Every module declares its durability: `fragility:` from the closed
+  set (`durable` / `vendor-bound` / `experimental`) and a `walk_away:`
+  line saying what a campaign loses if the module stops working.
+  Roughly half of Eddic is plaintext and stdlib and outlives any
+  vendor; the other half is a bet on Discord, Cloudflare, Apple, or a
+  model provider still behaving next year. Users cannot see which is
+  which unless every module says so.
 - Shared wiki primitives are stamped, not copied by hand. The
   primitives that decide what a link means and what reaches players
   (`split_frontmatter`, `visibility_of`, `slugify`, `strip_code`,

@@ -7,6 +7,11 @@ summary: >
   (.eddic/assets.json). Two thin git hooks over a Python worker make it
   hands-off: pre-commit refreshes the inventory, pre-push rclone-syncs the
   blob dirs and warns-and-continues so a text push never blocks.
+fragility: vendor-bound
+walk_away: >
+  Blobs stop syncing to object storage; the tracked inventory and every
+  text file are untouched and the audio still sits on the DM's own
+  disk.
 touches:
   - .githooks/
   - .eddic/assets.json

@@ -70,13 +70,21 @@ LOG_HEADER = re.compile(r"^## \[\d{4}-\d{2}-\d{2}\] (\S+) \| .+$")
 STUB_WORD_LIMIT = 150
 TINY_WORD_LIMIT = 30
 
-# --- BEGIN SHARED wikilib: link_consts, body_consts, split_frontmatter, visibility_of, slugify, strip_code, link_targets, page_ref ---
+# --- BEGIN SHARED wikilib: link_consts, media_consts, body_consts, split_frontmatter, visibility_of, slugify, strip_code, link_targets, media_targets, page_ref ---
 # Every link form a wiki page can carry. Inline HTML and reference
 # definitions are here because a DM-only target must not be able to hide in
 # a form one tool parses and another does not — that was issue #22.
 LINK = re.compile(r"(?<!\!)\[[^\]]*\]\(([^)\s]+)\)")
 HREF = re.compile(r"""<a\b[^>]*?\shref\s*=\s*["']([^"'>\s]+)["']""", re.I)
 REFDEF = re.compile(r"""^\s{0,3}\[[^\]]+\]:\s+<?([^>\s]+)>?""")
+
+
+# Embedded media. The link regexes deliberately skip images (`(?<!\!)`),
+# because an image is not a page and must not be resolved like one — but
+# something has to see them, or a map dropped in assets/ ships to the player
+# site on nothing but a filename convention.
+IMAGE = re.compile(r"!\[[^\]]*\]\(([^)\s]+)\)")
+IMG_SRC = re.compile(r"""<img\b[^>]*?\ssrc\s*=\s*["']([^"'>\s]+)["']""", re.I)
 
 
 # Body shapes the scanners key on: headings become anchors, fences mark the
@@ -157,6 +165,20 @@ def link_targets(body):
         if (m := REFDEF.match(line)):
             out.append((i + 1, m.group(1)))
         for m in HREF.finditer(line):
+            out.append((i + 1, m.group(1)))
+    return out
+
+
+def media_targets(body):
+    """Every embedded-media target in the body: `![alt](path)` and
+    <img src>. Paired with link_targets, this is the full set of things a
+    page points at, which is what lets the projection ship exactly the
+    assets players can reach instead of everything in the folder."""
+    out = []
+    for i, line in enumerate(body.splitlines()):
+        for m in IMAGE.finditer(line):
+            out.append((i + 1, m.group(1)))
+        for m in IMG_SRC.finditer(line):
             out.append((i + 1, m.group(1)))
     return out
 
@@ -393,6 +415,54 @@ def lint(root, log_name, contribs=None):
         if d and d not in pages:
             add("derived-from-missing", "error", rel,
                 f"derived-from: {d} names no page in the effective wiki")
+
+    # Assets. The projection ships an asset only when a projected page
+    # points at it, so what a player page points at is exactly what
+    # reaches the public site — which makes a reference to a DM-marked
+    # asset a leak, and a reference to a missing one a broken image
+    # nobody would otherwise see until it was live.
+    for rel in sorted(pages):
+        page = pages[rel]
+        if page.visibility != "player":
+            continue
+        for line, target in link_targets(page.body) + media_targets(page.body):
+            if re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*:", target):
+                continue
+            raw = target.partition("#")[0]
+            if not raw or raw.startswith("/"):
+                continue
+            dest = ((root / rel).parent / raw).resolve()
+            try:
+                dest_rel = dest.relative_to(root.resolve()).as_posix()
+            except ValueError:
+                continue
+            if dest_rel in pages:
+                continue                      # a page: judged elsewhere
+            # A target whose page candidate names a real page (the .html
+            # or clean-URL form of one) is a page reference; the firewall
+            # and broken-link checks own it.
+            page_md, strict = page_ref(raw)
+            if strict:
+                continue          # a direct .md link: broken-link owns it
+            if page_md is not None:
+                cand = ((root / rel).parent / page_md).resolve()
+                try:
+                    if cand.relative_to(root.resolve()).as_posix() in pages:
+                        continue
+                except ValueError:
+                    pass
+            if not (root / dest_rel).is_file():
+                if "." in raw.rsplit("/", 1)[-1]:
+                    add("asset-missing", "warning", rel,
+                        f"{target}: player page points at a file that is "
+                        f"not in the wiki", line)
+                continue
+            if ".dm" in dest_rel:
+                add("asset-breach", "error", rel,
+                    f"{target}: player-visible page points at a DM-marked "
+                    f"asset; the projection refuses to ship it, so this "
+                    f"link is a leak on the page and a hole on the site",
+                    line)
 
     # The pen axis: markers valid, proposals answerable and off the
     # player surface. Binding — a page cannot use these markers to

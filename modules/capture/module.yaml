@@ -1,10 +1,25 @@
 name: capture
-version: 0.1.0
+version: 0.1.1
+# 0.1.1: docs-only honesty pass. The pattern now states what capture is
+# upstream of (the recap step hands the whole verbatim transcript to a model
+# provider, so consent to record is not consent to that), marks the recorder
+# bot experimental with the DAVE key-rotation failure named — permanent,
+# silent, unmitigated — and requires a parallel Craig recording as the safety
+# net. Raw audio retention gains a real default (delete 30 days after the
+# session's wiki ingest, transcripts kept), how to change it, and the honest
+# note that nothing enforces it. Staging behaviour unchanged.
 summary: >
   Session audio into the campaign by the table's choice of route —
-  free Craig (default), the Eddic recorder bot (experimental), or
-  premium Craig with its own transcripts — with deterministic staging
-  into the transcriber's layout and a no-folder-navigation handoff.
+  free Craig (default), the Eddic recorder bot (experimental, and only
+  alongside a parallel Craig recording), or premium Craig with its own
+  transcripts — with deterministic staging into the transcriber's
+  layout, a stated raw-audio retention default, and a
+  no-folder-navigation handoff.
+fragility: vendor-bound
+walk_away: >
+  The table records by whatever route still works and hands the file to
+  the transcriber; only the guided staging and the route comparison are
+  lost.
 touches:
   - transcriber
 depends:

@@ -28,9 +28,11 @@ The firewall is checked before a single byte is written, and a breach
 refuses the whole projection (all-or-nothing): a player-visible page
 that links a non-player page — or links a page that does not exist —
 cannot ship, because in the players' hands that link is either a leak
-or a lie. Assets: files under `assets/` project wholesale by
-convention (never put spoiler assets there); any path containing
-`.dm` never projects.
+or a lie. Assets ship by reachability: a file projects when a page
+that projects points at it, and not otherwise, so a map dropped in
+`assets/` and linked from nowhere — or linked only from a DM page —
+stays home. Any path containing `.dm` never projects regardless, and
+a player page pointing at one is a breach the lint names.
 
 Exit codes: 0 projected, 1 refused (breaches listed), 2 usage error.
 No agent judgment is involved anywhere in this file; that is the
@@ -45,13 +47,21 @@ import sys
 from pathlib import Path
 
 NON_CONTENT = {"CLAUDE.md", "AGENTS.md", "README.md"}
-# --- BEGIN SHARED wikilib: link_consts, split_frontmatter, visibility_of, link_targets, page_ref ---
+# --- BEGIN SHARED wikilib: link_consts, media_consts, split_frontmatter, visibility_of, link_targets, media_targets, page_ref ---
 # Every link form a wiki page can carry. Inline HTML and reference
 # definitions are here because a DM-only target must not be able to hide in
 # a form one tool parses and another does not — that was issue #22.
 LINK = re.compile(r"(?<!\!)\[[^\]]*\]\(([^)\s]+)\)")
 HREF = re.compile(r"""<a\b[^>]*?\shref\s*=\s*["']([^"'>\s]+)["']""", re.I)
 REFDEF = re.compile(r"""^\s{0,3}\[[^\]]+\]:\s+<?([^>\s]+)>?""")
+
+
+# Embedded media. The link regexes deliberately skip images (`(?<!\!)`),
+# because an image is not a page and must not be resolved like one — but
+# something has to see them, or a map dropped in assets/ ships to the player
+# site on nothing but a filename convention.
+IMAGE = re.compile(r"!\[[^\]]*\]\(([^)\s]+)\)")
+IMG_SRC = re.compile(r"""<img\b[^>]*?\ssrc\s*=\s*["']([^"'>\s]+)["']""", re.I)
 
 
 def split_frontmatter(text):
@@ -101,6 +111,20 @@ def link_targets(body):
         if (m := REFDEF.match(line)):
             out.append((i + 1, m.group(1)))
         for m in HREF.finditer(line):
+            out.append((i + 1, m.group(1)))
+    return out
+
+
+def media_targets(body):
+    """Every embedded-media target in the body: `![alt](path)` and
+    <img src>. Paired with link_targets, this is the full set of things a
+    page points at, which is what lets the projection ship exactly the
+    assets players can reach instead of everything in the folder."""
+    out = []
+    for i, line in enumerate(body.splitlines()):
+        for m in IMAGE.finditer(line):
+            out.append((i + 1, m.group(1)))
+        for m in IMG_SRC.finditer(line):
             out.append((i + 1, m.group(1)))
     return out
 
@@ -280,17 +304,46 @@ def main(argv):
         _, body = split_frontmatter(
             pages[rel][1].read_text(encoding="utf-8", errors="replace"))
         dest.write_text(body.lstrip("\n"), encoding="utf-8")
-    assets = src / "assets"
-    if assets.is_dir():
-        for p in sorted(assets.rglob("*")):
-            if p.is_file() and ".dm" not in p.relative_to(src).as_posix():
-                dest = out / p.relative_to(src)
-                dest.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copyfile(p, dest)
+    # Assets ship by reachability, not by folder. Every other secrecy
+    # decision here is fail-closed; shipping all of assets/ and trusting a
+    # filename convention was the one that was not, and it published to a
+    # public URL. An asset reaches players only when a projected page
+    # points at it. The `.dm` exclusion stays as the second line: a
+    # reference to a DM-marked asset is a breach the lint names, and this
+    # refuses to copy it either way.
+    wanted = set()
+    for rel in sorted(player):
+        _, path = pages[rel]
+        _, body = split_frontmatter(path.read_text(encoding="utf-8",
+                                                   errors="replace"))
+        for _line, target in link_targets(body) + media_targets(body):
+            if re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*:", target):
+                continue
+            raw = target.partition("#")[0]
+            if not raw or raw.startswith("/"):
+                continue
+            dest = ((src / rel).parent / raw).resolve()
+            try:
+                dest_rel = dest.relative_to(src.resolve()).as_posix()
+            except ValueError:
+                continue
+            if dest_rel in pages or not (src / dest_rel).is_file():
+                continue          # a page, or nothing at all
+            wanted.add(dest_rel)
+
+    assets = 0
+    for rel_asset in sorted(wanted):
+        if ".dm" in rel_asset:
+            continue
+        p = src / rel_asset
+        dest = out / rel_asset
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(p, dest)
+        assets += 1
 
     skipped = len(pages) - len(player)
-    print(f"projected {len(player)} player page(s) to {out} "
-          f"({skipped} DM-only page(s) withheld)")
+    print(f"projected {len(player)} player page(s) and {assets} asset(s) "
+          f"to {out} ({skipped} DM-only page(s) withheld)")
     return 0
 
 

@@ -16,6 +16,10 @@ Built-in verbs:
     manifest show       print the applied-patterns manifest
     manifest check      validate manifest shape and vendored libs
     manifest record --module M --version V [--params JSON]
+    upgrade [<checkout>]  diff the manifest against an Eddic checkout and
+                        report what to re-apply; reports only, never
+                        mutates the campaign. Exits 1 if anything needs
+                        attention, so a routine can run it.
     run [<service>]     launch a local service (a session-time process
                         like the recorder bot) with its pinned runtime;
                         no name lists the services. Foreground: Ctrl-C
@@ -28,6 +32,7 @@ argv, and EDDIC_CONFIG/EDDIC_ROOT set in the environment.
 
 import json
 import os
+import re
 import subprocess
 import sys
 from datetime import date
@@ -143,6 +148,150 @@ def manifest(args):
     return 2
 
 
+UPGRADE_USAGE = ("usage: upgrade [<eddic_checkout>] — or set "
+                 "\"eddic_checkout\" in config.json, or EDDIC_HOME in the "
+                 "environment")
+
+
+def yaml_scalar(text, key):
+    """A top-level scalar from a module.yaml. Deliberately naive: the
+    vendored CLI is stdlib-only, module.yaml is ours, and the fields
+    read here (name, version, renamed_from) are always flat."""
+    m = re.search(r"^%s:[ \t]*(\S.*?)\s*$" % key, text, re.M)
+    return m.group(1).strip() if m else None
+
+
+def yaml_names(text, key):
+    """A key's values whether written inline (`key: a` or `key: a, b`)
+    or as a block list of `- name` lines."""
+    inline = yaml_scalar(text, key)
+    if inline:
+        return [v.strip() for v in inline.strip("[]").split(",") if v.strip()]
+    block = re.search(r"^%s:[ \t]*$\n((?:[ \t]*-[^\n]*\n?)+)" % key, text, re.M)
+    return ([ln.strip().lstrip("-").strip() for ln in
+             block.group(1).splitlines() if ln.strip()] if block else [])
+
+
+def version_key(text):
+    """Comparable key for a SemVer-ish version string; missing or
+    non-numeric parts sort as 0, so 0.4 < 0.4.1 < 0.5."""
+    nums = [int(n) for n in re.findall(r"\d+", text or "")][:3]
+    return tuple(nums + [0] * (3 - len(nums)))
+
+
+def checkout_modules(root):
+    """Read <checkout>/modules/*/module.yaml. Returns None when the
+    path is not an Eddic checkout."""
+    mdir = Path(root) / "modules"
+    if not mdir.is_dir():
+        return None
+    mods = {}
+    for yml in sorted(mdir.glob("*/module.yaml")):
+        text = yml.read_text(encoding="utf-8", errors="replace")
+        name = yaml_scalar(text, "name") or yml.parent.name
+        mods[name] = {
+            "version": yaml_scalar(text, "version") or "",
+            "renamed_from": yaml_names(text, "renamed_from"),
+            # verbs a module declares it touches, e.g. .eddic/lib/graph.py
+            "verbs": sorted(set(re.findall(r"lib/([\w-]+)\.py", text))),
+        }
+    return mods
+
+
+def upgrade(args):
+    """Diff the applied-patterns manifest against an Eddic checkout.
+
+    Reports only. Applying a pattern is an agent's job — it reads the
+    campaign, asks at decision points, and writes files a script cannot
+    reason about — so this verb never mutates the campaign; it names the
+    patterns to re-apply and the manifest line to record afterwards."""
+    cfg = load(CONFIG) or {}
+    where = (args[0] if args and not args[0].startswith("-")
+             else cfg.get("eddic_checkout") or os.environ.get("EDDIC_HOME"))
+    if not where:
+        print(UPGRADE_USAGE, file=sys.stderr)
+        return 2
+    repo = Path(where).expanduser()
+    mods = checkout_modules(repo)
+    if mods is None:
+        print(f"upgrade: no modules/ directory under {repo} — point this "
+              f"at an Eddic checkout", file=sys.stderr)
+        return 2
+
+    recorded = (load(MANIFEST) or {}).get("modules", {})
+    renames = {old: new for new, e in mods.items() for old in e["renamed_from"]}
+    lines, notes, attention = [], [], 0
+    actions = {}                       # module -> version, insertion-ordered
+
+    for name in sorted(recorded):
+        have = str(recorded[name].get("version") or "")
+        if name in mods:
+            want = mods[name]["version"]
+            if not have:
+                lines.append(f"  attention   {name}: no version recorded "
+                             f"(checkout has {want})")
+                actions[name] = want
+                attention += 1
+            elif version_key(have) < version_key(want):
+                lines.append(f"  upgradable  {name}: {have} -> {want}")
+                actions[name] = want
+                attention += 1
+            elif version_key(have) > version_key(want):
+                lines.append(f"  ahead       {name}: {have} recorded, the "
+                             f"checkout has {want} — update the checkout")
+                attention += 1
+            else:
+                lines.append(f"  ok          {name}: {have}")
+        elif name in renames:
+            new = renames[name]
+            lines.append(f"  renamed     {name} is now {new}: {have} "
+                         f"recorded as {name}, checkout has {new} "
+                         f"{mods[new]['version']}")
+            actions[new] = mods[new]["version"]
+            notes.append(f"  delete the stale '{name}' entry from "
+                         f".eddic/manifest.json once {new} is recorded")
+            attention += 1
+        else:
+            lines.append(f"  gone        {name}: {have} recorded, no such "
+                         f"module in the checkout (renamed without a "
+                         f"renamed_from, or retired)")
+            attention += 1
+
+    # Installed but unrecorded, cheaply: a vendored lib verb that no
+    # manifest entry claims. Attribution is a hint from the checkout.
+    claimed = {v for e in recorded.values() for v in e.get("verbs", [])}
+    owner = {}
+    for name, e in mods.items():
+        for verb in e["verbs"] + [name]:
+            owner.setdefault(verb, name)
+    for verb in sorted(lib_verbs()):
+        if verb in claimed:
+            continue
+        src = owner.get(verb)
+        lines.append(f"  unrecorded  lib/{verb}.py is vendored but no "
+                     f"manifest entry claims it"
+                     + (f" (looks like {src})" if src else ""))
+        if src and src not in recorded:
+            actions[src] = mods[src]["version"]
+        attention += 1
+
+    print(f"upgrade: {len(recorded)} recorded module(s) against {repo}")
+    for line in lines:
+        print(line)
+    if actions:
+        print("\nre-apply these patterns (an agent's job, not this "
+              "script's) — read each, apply it here, then record it:")
+        for name, ver in actions.items():
+            print(f"  {Path(repo) / 'modules' / name / 'PATTERN.md'}")
+            print(f"    uv run .eddic/eddic.py manifest record "
+                  f"--module {name} --version {ver}")
+    for note in notes:
+        print(note)
+    print("upgrade: ok" if not attention
+          else f"upgrade: {attention} need attention")
+    return 1 if attention else 0
+
+
 def service_command(spec):
     """Build the uv-run argv for a service spec. Pure: no exec, so it
     is unit-testable. A service is a local process with pinned deps —
@@ -189,7 +338,7 @@ def run(args):
 
 def main(argv):
     if not argv:
-        verbs = ["doctor", "manifest", "run"] + list(lib_verbs())
+        verbs = ["doctor", "manifest", "upgrade", "run"] + list(lib_verbs())
         print(__doc__.strip())
         print(f"\navailable verbs here: {', '.join(verbs)}")
         return 0
@@ -198,6 +347,8 @@ def main(argv):
         return doctor()
     if verb == "manifest":
         return manifest(rest)
+    if verb == "upgrade":
+        return upgrade(rest)
     if verb == "run":
         return run(rest)
     script = lib_verbs().get(verb)

@@ -27,6 +27,10 @@ summary: >
   code/config change or clearing a stuck bot) without quitting, while
   quitting it (Cmd-Q or closing the window) terminates the whole process
   group, no orphans.
+fragility: vendor-bound
+walk_away: >
+  The service starts from a terminal with `eddic run <service>`, which
+  the launcher only ever wrapped.
 touches:
   - recorder
   - lore-bot

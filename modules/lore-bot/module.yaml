@@ -6,6 +6,11 @@ summary: >
   self-refreshing by polling its source per the freshness contract.
   Players get "what the hell is a Celeste" answered where they
   already are.
+fragility: vendor-bound
+walk_away: >
+  The table loses in-Discord answers and reads the wiki (or asks a
+  companion) instead; canon is unaffected, since the bot only ever read
+  the projection.
 touches:
   - bot/
 depends:

@@ -46,7 +46,11 @@ on — and the schema you (the agent) maintain across sessions.
    lint flags these as `absolute-link`; they resolve on no Eddic
    surface. Check migrated HTML for internal absolute references
    too. Site chrome (stylesheets, templates) stays behind: the
-   render module brings its own.
+   render module brings its own. Assets ship by reachability rather
+   than by folder: a file projects only when a projected page points
+   at it, so a map dropped in `assets/` and linked from nowhere — or
+   linked only from a DM page — stays home, and a player page
+   pointing at a `.dm` asset is an `asset-breach` the lint names.
 
 5. **Adoption only.** Walk the existing pages and mark visibility.
    Fail closed: mark `visibility: player` only on pages whose entire

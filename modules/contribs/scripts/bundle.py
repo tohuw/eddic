@@ -16,18 +16,22 @@ DM. Refuses loudly, all-or-nothing, when: no author is declared; a
 page is marked transactable but its ancestry reaches an uncleared
 contributor; a clearance is stale (the contributor's file changed
 after sign-off — hashes pin what was consented to); a page is marked
-transactable but its authorship is machine or missing; or nothing is
-transactable at all. `local-only` (and unmarked — same thing) is
+transactable but names no author at all; or nothing is transactable
+at all. `local-only` (and unmarked — same thing) is
 silently excluded: that is the fence working, not an error.
 
-Machine prose is never transactable, however it is marked: pure
-machine output carries no protectable expression to sell, and a sale
-is the moment authorship has to be answered honestly, so an unmarked
-page is refused too rather than assumed. Both refusals name the same
-two ways out — rewrite the page with its writer until it is honestly
-`mixed`, or unmark it and keep it local. Nothing here inspects prose
-to guess who wrote it; the marks are the owner's sworn word, enforced
-by friction and honesty (DESIGN principle 11, "Who holds the pen").
+Machine prose sells; it just carries no copyright. Unprotectable is
+not unsellable — public-domain compilations change hands every day —
+and a campaign wiki is a compilation whose selection and arrangement
+are the seller's own work. So the fence discloses rather than
+refuses: every bundle ships `AUTHORSHIP.md` naming who wrote each
+page and what share is machine-written, and saying plainly that the
+machine pages are the buyer's to use without permission. What is
+still refused is a page that asserts a sale while naming no author at
+all, because a sale is the moment authorship has to be answered
+rather than assumed. Nothing here inspects prose to guess who wrote
+it; the marks are the owner's sworn word, enforced by friction and
+honesty (DESIGN principle 11, "Who holds the pen").
 
 Rights status is computed, never judged: a page is clear iff nothing
 in its ancestry (its own authorship, its overlay's contributor, its
@@ -191,6 +195,45 @@ def taint(rel, pages, author, cleared, memo):
     return memo[rel]
 
 
+def authorship_manifest(included, machine):
+    """The disclosure that ships with every sale.
+
+    Machine prose is not refused a sale — unprotectable is not unsellable,
+    and a campaign wiki is a compilation whose selection and arrangement
+    are the seller's own. What a buyer is owed is the truth about what
+    they are getting: which pages a person wrote, which a machine did, and
+    that the machine ones carry no copyright for anyone. Disclosure does
+    the work refusal was doing, without the false claim that machine text
+    cannot change hands, and without pricing an honest seller out of their
+    own campaign."""
+    share = round(100 * len(machine) / len(included)) if included else 0
+    lines = [
+        "# Authorship",
+        "",
+        f"This campaign ships {len(included)} page(s). About {share}% of "
+        "them were written by a machine.",
+        "",
+        "Machine-written pages carry no copyright — not for the seller, "
+        "not for anyone. They are yours to use, change, and republish "
+        "without permission. Pages written or substantially reworked by a "
+        "person are their expression and are licensed to you with the "
+        "campaign, as is the selection and arrangement of the whole.",
+        "",
+        "Every mark below is the seller's own assertion. Nothing inspected "
+        "the prose to guess who wrote it.",
+        "",
+        "## Per page",
+        "",
+    ]
+    for rel in sorted(included):
+        auth = (included[rel]["fm"].get("authorship") or "").strip()
+        label = {"machine": "machine", "agent": "machine",
+                 "mixed": "person, reworking machine prose",
+                 "human": "a person", "transcript": "the table, in session"}
+        lines.append(f"- {rel}: {label.get(auth, auth)}")
+    return "\n".join(lines) + "\n"
+
+
 def main(argv):
     opts = dict(zip(argv, argv[1:]))
     flags = {a for a in argv if a.startswith("--")}
@@ -296,13 +339,6 @@ def main(argv):
                 f"asserts who wrote each page; mark authorship (a "
                 f"contributor id, human, mixed, or machine)")
             continue
-        if auth in MACHINE_AUTHORED:
-            refusals.append(
-                f"{rel}: marked {t} but authorship is {auth} — machine "
-                f"prose carries no protectable expression to sell; rewrite "
-                f"it with its writer until it is honestly mixed, or unmark "
-                f"transactability and keep the page local")
-            continue
         reason = taint(rel, pages, author, cleared, memo)
         if reason:
             refusals.append(f"{rel}: marked {t} but ancestry reaches "
@@ -346,9 +382,17 @@ def main(argv):
             "# Required attribution\n\nThis campaign includes material "
             "used under attribution-bearing licenses:\n\n"
             + "\n".join(credits) + "\n", encoding="utf-8")
+
+    machine = sorted(rel for rel, e in included.items()
+                     if (e["fm"].get("authorship") or "").strip()
+                     in MACHINE_AUTHORED)
+    (out / "AUTHORSHIP.md").write_text(authorship_manifest(included, machine),
+                                       encoding="utf-8")
+    share = round(100 * len(machine) / len(included)) if included else 0
     print(f"bundled {len(included)} page(s) to {out} "
           f"(author: {author}; "
-          f"{len(credits)} attribution credit(s) injected)")
+          f"{len(credits)} attribution credit(s) injected; "
+          f"{share}% machine-authored, disclosed in AUTHORSHIP.md)")
     return 0
 
 

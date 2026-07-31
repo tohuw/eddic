@@ -6,6 +6,10 @@ summary: >
   speaker-labeled sources/ transcript. The free path that replaces
   paid transcript services — take the free audio, transcribe it
   yourself.
+fragility: durable
+walk_away: >
+  Nothing external: whisper.cpp and a model file, both local and
+  offline, and sessions already transcribed stay in sources/.
 touches:
   - sources/
 depends: []

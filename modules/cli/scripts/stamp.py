@@ -20,13 +20,29 @@ never overwrites an existing config.json or other modules' manifest
 entries."""
 
 import json
+import re
 import shutil
 import sys
 from datetime import date
 from pathlib import Path
 
-VERSION = "0.3.0"
-TEMPLATE = Path(__file__).resolve().parent.parent / "templates" / "eddic.py"
+HERE = Path(__file__).resolve().parent.parent
+TEMPLATE = HERE / "templates" / "eddic.py"
+
+
+def module_version():
+    """The cli module's own version, read from module.yaml rather than
+    duplicated here — a literal drifts, and the manifest entry this
+    writes is exactly what `eddic upgrade` diffs against the checkout."""
+    try:
+        text = (HERE / "module.yaml").read_text(encoding="utf-8")
+    except OSError:
+        return "0.0.0"
+    m = re.search(r"^version:[ \t]*(\S+)", text, re.M)
+    return m.group(1) if m else "0.0.0"
+
+
+VERSION = module_version()
 DEFAULTS = {"wiki_dir": "wiki", "projection_dir": "dist/player",
             "site_dir": "dist/site", "log": "log.md",
             "contribs_dir": "contribs"}

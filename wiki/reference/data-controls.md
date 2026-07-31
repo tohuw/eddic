@@ -8,6 +8,21 @@ authorship-and-rights frame lives in the [design principles](../design/principle
 
 ## What actually leaves the campaign
 
+- **The full session transcript.** This is the largest content disclosure in
+  the system and the one easiest to forget, because the step that makes it is
+  the step that feels like authoring. Transcription itself is local and leaks
+  nothing; the recap step that follows sends everything. To write a session
+  recap and the pages derived from it (the [wiki module](../modules/wiki.md)
+  owns that step), an agent reads the session's **entire verbatim
+  transcript** — so the whole transcript goes to whichever model provider
+  that agent runs on, Claude or ChatGPT. Everything means everything the
+  recording caught: table talk between scenes, health and work chat, asides
+  that were never about the game, and speaker labels that are Discord display
+  names. Nothing filters it beforehand, because separating the story from the
+  banter is precisely the task being handed over. Consent to be recorded is
+  not consent to this — the [recorder's](../modules/recorder.md) consent post
+  now discloses both, and the DM owes the table the sentence in person
+  besides.
 - **Answer clients** (Claude, ChatGPT) see whatever tier their token
   unlocks, question by question. The player tier never contains DM material
   by construction — that guarantee is the
@@ -15,9 +30,22 @@ authorship-and-rights frame lives in the [design principles](../design/principle
   setting's.
 - **Resident bots** send the corpus to their model provider's API on every
   uncached question. The always-on [lore bot](../modules/lore-bot.md) is the
-  worked instance.
+  worked instance, and it sends more than the question: `bot.py`'s answer path
+  pulls the channel's **last 15 messages** as context on every mention,
+  including messages from members who never addressed the bot and may not have
+  registered that it was listening. Ambient channel chatter is therefore a
+  standing disclosure, not an occasional one.
 - **The roster** (real names) rides only in a resident bot's request, behind
   the cached region, and never enters wikis, repos, or corpora.
+
+Retention is the other half of the question and is thinner than the
+disclosure list suggests. The cloud recorder plan carries a 60-day lifecycle
+rule; the local path has a documented default in the capture pattern and no
+mechanism enforcing it, so the sweep is an owner's step rather than a
+guarantee. Transcripts, once written, are campaign source and are kept.
+Removing a passage after a recap has run removes it from the campaign's copies
+only — no request reaches into a provider's systems to unsend what was already
+sent, which is the argument for cutting early rather than apologising late.
 
 ## Anthropic (profile dated 2026-07)
 

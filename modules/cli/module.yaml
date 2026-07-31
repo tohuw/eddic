@@ -1,10 +1,24 @@
 name: cli
-version: 0.4.1
+version: 0.5.0
 summary: >
   Stamps the vendored eddic CLI into a campaign: the dispatcher
   (.eddic/eddic.py), campaign config, the applied-patterns manifest,
   and the lib/ directory other modules vendor their verbs into. The
   contractual locus for all deterministic campaign workflows.
+  0.5.0 adds the `upgrade` verb, which makes the manifest load-bearing:
+  it diffs every recorded module against an Eddic checkout's
+  module.yaml versions and reports up to date / upgradable / renamed
+  (via a module's renamed_from key) / recorded-but-gone, plus vendored
+  lib verbs no manifest entry claims. It reports and never mutates —
+  re-applying a pattern is an agent's job — and exits non-zero when
+  anything needs attention so a routine can run it. The stamp script
+  now reads its recorded version from module.yaml instead of a literal
+  that had already drifted a minor version behind.
+fragility: durable
+walk_away: >
+  Nothing: the dispatcher is one stdlib Python file the campaign owns a
+  pinned copy of, and unmaintained it keeps dispatching verbs exactly
+  as stamped.
 touches:
   - .eddic/
 depends: []

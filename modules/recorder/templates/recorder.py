@@ -406,6 +406,16 @@ def consent_text(names, ping=""):
             f"removing your react stops your capture from that moment. "
             f"(Voices audible through someone else's open mic can still "
             f"be heard on their track, as in any recording.)\n"
+            f"**Where it goes:** the recording is turned into a written "
+            f"transcript, and that transcript is then read in full by an AI "
+            f"service — a company outside this table — so it can write the "
+            f"session recap and the wiki pages. Everything the recording "
+            f"catches goes with it, including talk between scenes that was "
+            f"never about the game. Reacting says yes to both of those, not "
+            f"just to the microphone.\n"
+            f"Want something kept out? Say so — recording can be stopped, "
+            f"and a passage can be cut. Cut it before the recap is written "
+            f"and it never leaves the table at all.\n"
             f"Privacy posture: {PRIVACY_URL}\n"
             f"Recording: **{roster}**")
 
@@ -758,8 +768,15 @@ def setup(bot):
             f"who react with {EMOJI} are captured** — per-speaker "
             f"tracks, stored with the campaign, for the table's own "
             f"transcripts. `/record-stop` closes and stages the "
-            f"tracks. Consent to record is never consent to anything "
-            f"else. Privacy posture: {PRIVACY_URL}", ephemeral=True)
+            f"tracks.\n**The recording becomes a written transcript, and "
+            f"an AI service outside this table reads the whole transcript "
+            f"to write the recap and wiki pages** — reacting says yes to "
+            f"that too, not just to the microphone. Want to go off the "
+            f"record, or have something cut? Ask; recording can be "
+            f"stopped, and a passage cut before the recap is written never "
+            f"leaves the table. Consent to record is never consent to "
+            f"anything else, and never consent to sell. "
+            f"Privacy posture: {PRIVACY_URL}", ephemeral=True)
 
     @bot.slash_command(
         name="record-consent-role",

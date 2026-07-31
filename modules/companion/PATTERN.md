@@ -133,6 +133,20 @@ omniscient human referee. Nothing here pretends to be enforcement.
   own character sheet (never fabricated); world terms link into the
   projection, rules terms are explained in place, and an unclear value
   is sent to the DM rather than guessed.
+- **Tactical help.** Default: the never-better rule stays on for
+  shared in-session surfaces, and off for a player asking about their
+  own character outside a scene — the learner's primer included. The
+  split is deliberate: what the rule protects is *other people's*
+  game, so it binds where a ranked answer spends the table's spotlight
+  and relaxes where a player is only working out how their own
+  character functions. A table that wants full tactical help turns the
+  rule off and says so out loud; a table that wants it absolute leaves
+  it on everywhere. Say plainly which you have set, because a player
+  who does not know the rule is on will read a refusal as the
+  assistant being broken and go ask a chatbot with no such rule —
+  which is the outcome the setting exists to make a choice rather than
+  an accident. Secrets are not on this dial at all: those are held by
+  tier isolation, and no setting reaches them.
 - **Writing assistant reach.** Default: installed for the DM and
   offered to every player, with the proactive invitation on. The
   offer is capped at one per session by the template itself, which

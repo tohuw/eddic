@@ -59,38 +59,35 @@ module supplies the machinery and the operating discipline.
    clear only via a table-wide entry (`consent | table ...`).
 
 6. Build: `eddic bundle`. It refuses without an author, on any
-   marked-but-uncleared ancestry, on a page marked for sale whose
-   authorship is machine or unmarked, and when nothing is
-   transactable; a clean run writes `dist/bundle/` — cleared wiki (DM
-   pages included: a sale ships the full truth), assets, campaign
-   instructions, injected credits, and no operation log.
+   marked-but-uncleared ancestry, on a page marked for sale that names
+   no author at all, and when nothing is transactable; a clean run
+   writes `dist/bundle/` — cleared wiki (DM pages included: a sale
+   ships the full truth), assets, campaign instructions, injected
+   credits, an `AUTHORSHIP.md` disclosure, and no operation log.
 
 7. **Walk the owner to clearable.** The fence tells the truth but it
    tells it all at once, and an owner who asked "can I sell this?"
    should not meet a wall of refusals in a schema they have never
    read. Run `eddic bundle --check`, then work the refusals *with*
-   them, one page at a time, in their language — "this page is the
-   one I wrote from your notes after session four; as it stands it
-   is my writing, not yours."
+   them, one page at a time, in their language.
 
-   Every page ends in one of three places. It **ships**, because a
-   person wrote it and the rights are clean. It gets **rewritten** —
-   you interview them through it with the writing assistant until the
-   page is theirs in their own words, which is what makes it honestly
-   `mixed` and sellable; this is the path for material they care
-   about and the only path that converts machine prose. Or it is
-   **dropped** from the sale: unmark it and it stays in the campaign
-   exactly as it is, still served, still linked, simply not sold. The
-   projection already computes that exclusion, so dropping a page
-   costs nothing and loses nothing.
+   Most pages need nothing: a machine-written page sells like any
+   other, and `AUTHORSHIP.md` says so on the buyer's behalf. What
+   needs a decision is a page nobody has claimed — say who wrote it,
+   or drop it from the sale, in which case it stays in the campaign
+   exactly as it is, still served and still linked, simply not sold.
+   The projection already computes that exclusion, so dropping costs
+   nothing.
 
-   Say plainly, once, which of the three each page is heading for,
-   and let them choose. Do not offer to "fix the marking" on machine
-   prose, and do not accept the instruction if it comes: re-marking
-   is the one move that turns an honest refusal into a false claim
-   about who wrote the thing. There is no detector here and there
-   never will be — the marks are their sworn word, and the whole
-   arrangement runs on friction and honesty rather than forensics.
+   Two things to raise once, without arguing them. Machine-written
+   pages carry no copyright for anyone, so a buyer may reuse them
+   freely and a seller cannot stop them — if that matters to the
+   owner, the answer is to rewrite the pages they care about with
+   their own writer (the writing assistant does this by interview),
+   which makes them honestly `mixed`, not to re-mark them. And a
+   re-marking is never on the table: it is the one move that turns an
+   honest disclosure into a false claim about who wrote the thing.
+   Decline it if it is asked for.
 
 8. Deliver by private repository. The owner publishes the bundle to a
    private Git repository on their forge and adds each buyer as a
@@ -118,14 +115,14 @@ module supplies the machinery and the operating discipline.
 - **Attribution granularity.** Default: one log entry per
   contribution event, fragments listed per file. Do not log below
   file granularity; the file is the unit the overlay system moves.
-- **Machine-authored pages in a sale.** Default: drop them. Unmarking
-  is instant, keeps the page in the campaign, and costs the seller a
-  page nobody was entitled to sell anyway. Rewriting by interview is
-  worth it only where the page carries something the buyer is
+- **Machine-authored pages in a sale.** Default: ship them and let the
+  disclosure do its work. They are most of a campaign built this way,
+  they are lawful to sell, and hiding the fact would be the only
+  dishonest move available. Rewriting by interview is worth proposing
+  only where the owner wants exclusivity over a page a buyer is
   actually paying for — a signature location, the through-line of an
-  arc — and it is real work, so quote it honestly as such: an hour
-  with the owner per substantial page, not a pass you can run for
-  them. Never propose the third option, because there isn't one.
+  arc — and it is real work, so quote it honestly: an hour with the
+  owner per substantial page, not a pass you can run for them.
 - **Where the sale bundle lives.** Default: a private repository per
   campaign on the owner's existing forge, buyers added as
   collaborators. Reach for anything heavier only when the buyer count

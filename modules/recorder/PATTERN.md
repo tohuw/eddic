@@ -9,14 +9,25 @@ the voice channel's text chat, and **a member's microphone is
 captured only after they react to it** — enforced inside the audio
 sink, where unconsented packets are dropped before any file exists.
 
-Plain status, for you and the owner: Discord's DAVE E2EE broke voice
-receive across the Python ecosystem in March 2026. This module works
-anyway — `templates/dave_recv.py` combines the davey DAVE library
-with import-time patches to py-cord 2.8.0's receive path (approach
-shared with py-cord's in-progress fix PR), and a live capture plus
-transcription proved it end to end on 2026-07-18. The patches target
-py-cord 2.8.0 exactly; when upstream lands voice receive, they
-retire. Pin the versions as written below.
+Plain status, for you and the owner: **this module is experimental and
+must not be a table's only recording.** Discord's DAVE E2EE broke voice
+receive across the Python ecosystem in March 2026.
+`templates/dave_recv.py` gets it working again — the davey DAVE library
+plus import-time patches to py-cord 2.8.0's receive path (approach
+shared with py-cord's in-progress fix PR) — and a live capture plus
+transcription proved it end to end on 2026-07-18. That is a proof that
+it *can* work, not a promise that it will. The known failure: Discord
+rotates the call's encryption keys mid-session (an MLS epoch change),
+the receive session does not re-derive keys across the rotation, and
+every packet after it fails to decrypt. It is **permanent for that
+recording, and silent** — the bot stays connected, the tracks keep
+being written, and what lands is unusable audio nobody notices until
+transcription. There is no in-tree mitigation. Four hours of the
+table's one weekly night is what that costs, so run a Craig recording
+in parallel every session and treat this bot's output as the one you
+prefer, not the one you rely on. The patches target py-cord 2.8.0
+exactly; when upstream lands voice receive, they retire. Pin the
+versions as written below.
 
 ## Preflight
 
@@ -42,6 +53,15 @@ retire. Pin the versions as written below.
   guilds. If the bot is "authorized" but absent, this is why;
   re-invite with `scope=bot%20applications.commands`.
 - uv on the DM's machine; the bot runs at session time only.
+- The owner has told the table, in their own words, what recording
+  leads to: sessions are recorded, recordings become written
+  transcripts, and an AI service outside the table reads each
+  transcript in full to write the recap and the wiki pages. The consent
+  post states all three, but a post is a notice and the table deserves
+  the sentence from a person, before the first session rather than
+  mid-scene. Consent to a microphone is not consent to a model
+  provider; if the owner is not prepared to say the second part, do not
+  apply this pattern.
 
 ## Procedure
 
@@ -52,7 +72,7 @@ retire. Pin the versions as written below.
    `RECORD_DIR`, `PRIVACY_URL`, `WIKI_LOG` — defaults suit the
    standard layout; control-surface env is a decision point below).
    Record:
-   `eddic.py manifest record --module recorder --version 0.2.0`.
+   `eddic.py manifest record --module recorder --version 0.6.0`.
 
 2. Wire a minimal `bot.py` beside them (a py-cord `discord.Bot`
    that imports `recorder` and calls `recorder.setup(bot)` — you
@@ -79,7 +99,10 @@ retire. Pin the versions as written below.
    audible chime, sets a visible recording status on the channel
    (opt out per-session with the `channel_status` option), and posts
    the consent message as a **public** channel post (announcement,
-   privacy-posture link, live roster of who is being recorded) — the
+   privacy-posture link, live roster of who is being recorded, and —
+   since 0.6.0 — a plain statement that the recording becomes a
+   transcript which an AI service outside the table reads in full, so a
+   react is understood to cover both) — the
    ephemeral slash reply is only a private ack with a jump link, never
    the consent surface itself, and if the public post cannot be sent
    the bot disconnects instead of recording. Reacts open each member's
@@ -132,6 +155,18 @@ retire. Pin the versions as written below.
   during banter, no standing state. Alternative: remember acks
   across sessions with a visible opt-out, for tables that find the
   ritual noisy. Never silent capture.
+- **Off-the-record requests.** Default: **stop, then restart** —
+  `/record-stop` when someone asks, `/record-start` when the table
+  resumes, which costs a fresh consent post and splits the session into
+  two staged folders the transcriber handles fine. There is no
+  `/record-pause` today (see the stated gap below); the alternative
+  people reach for — leaving it running and promising to cut the bit
+  later — is worse, because it depends on the owner's memory and on
+  the passage being cut before the recap step ships the whole
+  transcript off to a model provider. Honour the request on the spot
+  and without asking why; a table that has to argue for it stops
+  asking, and then the tooling has quietly bought silence rather than
+  consent.
 - **Consent-post ping.** Default: off. The public consent post is the
   surface everyone opts in on, but a member has to notice it. Set the role
   from Discord with `/record-consent-role @Role` (Manage-Server-gated; run
@@ -215,3 +250,62 @@ retire. Pin the versions as written below.
 - Live, once per setup: the two-member test in step 4 — consented
   audio present and transcribable, non-consenting member absent
   from every track.
+
+## Stated gap: going off the record
+
+**Not implemented.** `/record-pause` does not exist. This section
+documents the need and the intended shape so the gap is a decision
+someone can pick up, not an omission a table discovers at the worst
+moment.
+
+**Why it is needed.** Consent is currently all-or-nothing for the
+duration of a session: a player is in, or they un-react and are out for
+the rest of the night. Real tables need the middle. Someone takes a
+call, someone says something about a diagnosis or a job, someone wants
+five minutes of out-of-character talk that is nobody's archive. The
+existing answer — stop and restart — works and is the documented
+default, but it costs a consent post, a channel notification, and a
+visible interruption every time, which is exactly the friction that
+teaches people not to ask. The alternative people fall into, recording
+through it and cutting later, is the one this pattern must not permit
+to look reasonable, because the recap step ships the entire transcript
+to a model provider and there is no unsending it.
+
+**Intended behaviour.** `/record-pause` suspends writing for the whole
+session, not per-speaker: every consented mic stops landing in the
+files, the bot announces the pause in the channel it is recording,
+the `(RECORDING)` nickname badge drops (the visible state must never
+say recording while paused), and the channel status follows. Anyone at
+the table may run it, not only Manage Server — a pause is a safety
+control, and gating it behind an admin is the same mistake as gating a
+brake. `/record-resume` restarts writing into the *same* session and
+staged folder, announces resumption, and restores the badge; the
+consent set carries across untouched, since nobody withdrew consent by
+pausing. A resume that never comes is fine: `/record-stop` and the
+empty-channel auto-stop both close a paused session normally. Paused
+packets are dropped and counted, and the stop report says how long the
+session spent paused, so the transcript's gaps are explained rather
+than mysterious.
+
+**The seam, if someone builds it.** It is clean. Every packet already
+passes one gate — the `uid not in self.consented` check inside
+`ConsentSink.write`, which drops and counts rather than raising — so a
+session-level `paused` flag consulted at that same point is the entire
+audio-path change, with a `paused` counter alongside the existing
+`unconsented` and `unattributed` ones. Start/stop already live in a
+shared session core that both the slash commands and the loopback
+control surface call, returning plain result dicts; a `pause_session` /
+`resume_session` pair beside them inherits that discipline, so a Stream
+Deck button and a slash command cannot diverge. The consent post is
+re-rendered from session state on every change already (that is how the
+live roster updates), and the nickname badge and channel status are
+both computed from "is anything capturing," so all three surfaces
+follow a flag rather than needing their own logic. The verify story is
+the existing one extended: a pure test that a paused sink drops and
+counts consented packets, and that resume writes into the same
+open WAV handles rather than new files.
+
+**Do not ship it untested.** The audio path is where this module's one
+real guarantee lives. A pause that silently fails to pause is worse
+than no pause at all, because the table would have been told they were
+safe.

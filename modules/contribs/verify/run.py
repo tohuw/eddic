@@ -56,7 +56,7 @@ def main():
           "transactability: transactable\n"
           "derived-from: keep.md\n---\n\n"
           "# The Keep, Revised\n\nThe author's improvement.\n")
-    # The two pen-axis refusals, each planted with a different remedy.
+    # A machine-authored page: it sells, and the disclosure names it.
     write(wiki, "recap-s1.md",
           "---\nvisibility: player\nauthorship: machine\n"
           "transactability: transactable\n---\n\n"
@@ -88,19 +88,12 @@ def main():
                    "taint propagates through derived-from"))
     checks.append(("table" in p.stderr,
                    "transcript page needs full-table consent"))
-    checks.append(("recap-s1.md" in p.stderr and "machine" in p.stderr,
-                   "machine-authored page refuses a sale"))
     checks.append(("gazetteer.md" in p.stderr and "unmarked" in p.stderr,
                    "unmarked authorship refuses a sale"))
     checks.append((not out.exists(), "refusal wrote nothing"))
 
-    # Both remedies the refusals name: rewrite the machine page with its
-    # writer until it is honestly mixed, or unmark the sale and keep the
-    # page local. Neither is a re-marking of machine prose as human.
-    write(wiki, "recap-s1.md",
-          "---\nvisibility: player\nauthorship: mixed\n"
-          "transactability: transactable\n---\n\n"
-          "# Session One, Recapped\n\nReworked in the DM's own words.\n")
+    # The remedy the refusal names: say who wrote it, or drop the sale
+    # and keep the page local. Never a re-marking of machine prose.
     write(wiki, "gazetteer.md",
           "---\nvisibility: player\n---\n\n"
           "# Gazetteer\n\nSellable, but nobody says who wrote it.\n")
@@ -131,7 +124,7 @@ def main():
         (not (out / "wiki/houserules.md").exists(),
          "local-only excluded silently"),
         ((out / "wiki/recap-s1.md").exists(),
-         "rewritten-to-mixed page ships (the interview remedy)"),
+         "machine-authored page ships — unprotectable is not unsellable"),
         (not (out / "wiki/gazetteer.md").exists(),
          "unmarked page dropped from the sale, kept in the campaign"),
         ((out / "wiki/sessions/s1.md").exists(),
@@ -142,6 +135,18 @@ def main():
          "attribution credit injected"),
         ((out / "AGENTS.md").exists(), "campaign instructions ship"),
         (not (out / "wiki/log.md").exists(), "operation log stays home"),
+    ]
+    manifest = ((out / "AUTHORSHIP.md").read_text(encoding="utf-8")
+                if (out / "AUTHORSHIP.md").exists() else "")
+    checks += [
+        (bool(manifest), "every bundle ships an authorship disclosure"),
+        ("recap-s1.md: machine" in manifest,
+         "disclosure names the machine-authored page as machine"),
+        ("no copyright" in manifest,
+         "disclosure tells the buyer machine pages carry no copyright"),
+        ("index.md: a person" in manifest,
+         "disclosure names human-authored pages as a person's"),
+        ("%" in manifest, "disclosure carries a headline machine share"),
     ]
 
     c = run(*base, "--check")

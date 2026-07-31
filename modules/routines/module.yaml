@@ -8,6 +8,10 @@ summary: >
   freshness loop, and the token-bounded semantic-review routine that
   runs the lint module's model pass and files its findings into the
   DM's review inbox.
+fragility: vendor-bound
+walk_away: >
+  Maintenance stops happening on a schedule and happens when someone
+  runs it; every routine is idempotent and safe to miss by contract.
 touches:
   - publish
   - retrieval

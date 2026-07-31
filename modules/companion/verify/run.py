@@ -92,8 +92,13 @@ def main():
         ("witness write path" in pc and "to the DM directly" in pc,
          "private prep-ask response falls back to the DM when the "
          "write path is off"),
-        (t.get("learners-primer.md", "").find("never optimizes the build") >= 0,
-         "primer extends never-better to the build (never optimizes)"),
+        ("you do not rank or rebuild their character"
+         in " ".join(t.get("learners-primer.md", "").split()).lower(),
+         "primer still refuses to rank or rebuild the character"),
+        ("tends to work" in t.get("learners-primer.md", "")
+         or "tend to work" in t.get("learners-primer.md", ""),
+         "primer may say which options tend to work (never-better "
+         "relaxes for a player's own character, off-scene)"),
         ("Never fabricate a value" in t.get("learners-primer.md", ""),
          "primer forbids fabricating a number (the sheet is the source)"),
         (all(s in t.get("learners-primer.md", "") for s in

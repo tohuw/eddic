@@ -1,5 +1,6 @@
 name: constellation
 version: 0.3.2
+renamed_from: atlas
 summary: >
   Renders campaign wiki's cross-link graph as one self-contained,
   firewall-safe, interactive map: nodes are pages (sized by degree,
@@ -15,6 +16,10 @@ summary: >
   layout makes same tree yield byte-identical constellation.html. player
   Constellation built projection only, so its closure guarantees no DM
   page or DM-only edge appear — including in backlinks party mark.
+fragility: durable
+walk_away: >
+  The map stops regenerating; the wiki it drew is untouched and every
+  page stays reachable through its own links.
 touches:
   - dist/site/constellation.html
   - .eddic/lib/graph.py

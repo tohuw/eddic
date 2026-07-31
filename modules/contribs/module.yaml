@@ -1,5 +1,5 @@
 name: contribs
-version: 0.2.1
+version: 0.3.0
 summary: >
   The transaction arc's machinery: contributor overlays applied across
   every surface, hash-pinned attribution and consent in the operation
@@ -9,6 +9,11 @@ summary: >
   authorship must be answered honestly. Carries the packaging
   walkthrough that works refusals with the owner page by page, and
   delivery by private repository with buyers added as collaborators.
+fragility: durable
+walk_away: >
+  Overlays, consent records and rights metadata stay readable in the
+  files; only the sale-build fence stops running, and it refuses rather
+  than ships when unsure.
 touches:
   - wiki
   - lint

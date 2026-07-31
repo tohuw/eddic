@@ -13,6 +13,10 @@ summary: >
   the four control keys (start, stop, status, help), bindable to Stream
   Deck's System-Open action, plus an experimental .streamDeckProfile.
   Everything but real Stream Deck hardware is testable.
+fragility: vendor-bound
+walk_away: >
+  The DM types the slash command in the channel they are already
+  sitting in.
 touches:
   - recorder
 depends:

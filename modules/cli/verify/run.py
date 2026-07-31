@@ -162,6 +162,78 @@ def main():
             print(gproc.stdout, gproc.stderr, sep="\n")
             return 1
 
+        # upgrade: diff the manifest against a synthetic checkout that
+        # holds one current module, one newer, one renamed, and one the
+        # manifest records but the checkout no longer has.
+        fake = tmp / "eddic-checkout" / "modules"
+        for mname, body in (
+                ("lint", "name: lint\nversion: 0.1.0\n"),
+                ("wiki", "name: wiki\nversion: 0.4.1\n"
+                         "touches:\n  - .eddic/lib/project.py\n"),
+                ("constellation", "name: constellation\nversion: 0.3.2\n"
+                                  "renamed_from: atlas\n")):
+            (fake / mname).mkdir(parents=True, exist_ok=True)
+            (fake / mname / "module.yaml").write_text(body, encoding="utf-8")
+        for mod, ver in (("wiki", "0.3.0"), ("atlas", "0.1.0"),
+                         ("gonemod", "0.2.0")):
+            run([cli, "manifest", "record", "--module", mod,
+                 "--version", ver], 0, f"record {mod} {ver}")
+        # a vendored verb no manifest entry claims (the drift the audit
+        # found: modules visibly installed, absent from the manifest)
+        shutil.copyfile(LINT, camp / ".eddic" / "lib" / "project.py")
+        up = run([cli, "upgrade", str(fake.parent)], 1,
+                 "upgrade exits 1 when something needs attention")
+        out = up.stdout
+        checks = [
+            ("ok          lint: 0.1.0" in out, "reports lint up to date"),
+            ("upgradable  wiki: 0.3.0 -> 0.4.1" in out,
+             "reports the version delta for an upgradable module"),
+            ("renamed     atlas is now constellation" in out,
+             "resolves a renamed module through renamed_from"),
+            ("gone        gonemod" in out,
+             "flags a recorded module the checkout no longer has"),
+            ("unrecorded  lib/project.py" in out and "looks like wiki" in out,
+             "flags a vendored verb no manifest entry claims"),
+            ("modules" in out and "constellation" in out
+             and "PATTERN.md" in out,
+             "names the patterns an agent should re-apply"),
+            (json.loads((camp / ".eddic" / "manifest.json").read_text())
+             ["modules"]["wiki"]["version"] == "0.3.0",
+             "upgrade reports without mutating the campaign"),
+        ]
+        for ok_c, label in checks:
+            print(("ok  " if ok_c else "FAIL"), f"upgrade: {label}")
+            if not ok_c:
+                print(out)
+                return 1
+
+        # clean campaign, clean exit: same checkout, manifest aligned
+        for mod, ver in (("wiki", "0.4.1"), ("constellation", "0.3.2")):
+            run([cli, "manifest", "record", "--module", mod, "--version", ver,
+                 "--verbs", "project" if mod == "wiki" else "graph"],
+                0, f"align {mod}")
+        man = json.loads((camp / ".eddic" / "manifest.json").read_text())
+        for stale in ("atlas", "gonemod", "cli"):
+            man["modules"].pop(stale, None)
+        (camp / ".eddic" / "manifest.json").write_text(
+            json.dumps(man, indent=2) + "\n", encoding="utf-8")
+        shutil.copyfile(LINT, camp / ".eddic" / "lib" / "graph.py")
+        run([cli, "upgrade", str(fake.parent)], 0,
+            "upgrade exits 0 when the manifest matches the checkout")
+
+        # a path that is not an Eddic checkout is a usage error, not a
+        # traceback; so is having nowhere to look at all.
+        run([cli, "upgrade", str(tmp)], 2, "upgrade rejects a non-checkout")
+        noenv = {k: v for k, v in os.environ.items() if k != "EDDIC_HOME"}
+        nproc = subprocess.run([sys.executable, str(cli), "upgrade"],
+                               capture_output=True, text=True, env=noenv)
+        ok_usage = nproc.returncode == 2 and "usage: upgrade" in nproc.stderr
+        print(("ok  " if ok_usage else "FAIL"),
+              "upgrade with no checkout given prints usage")
+        if not ok_usage:
+            print(nproc.stdout, nproc.stderr, sep="\n")
+            return 1
+
         print("verify ok: cli module")
         return 0
     finally:

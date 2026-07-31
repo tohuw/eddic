@@ -62,6 +62,23 @@ newer version against the manifest.
    `dist/` (or equivalent) to `.gitignore`. `.eddic/` itself is
    committed — the campaign carries its tooling.
 
+5. Whenever you return to a campaign with an Eddic checkout to hand,
+   start by diffing the manifest against it —
+
+       uv run <campaign>/.eddic/eddic.py upgrade <eddic_checkout>
+
+   It reports each recorded module as up to date, upgradable (with the
+   version delta), renamed (resolved through the checkout module's
+   `renamed_from:`), or recorded-but-gone, and flags vendored
+   `lib/<verb>.py` files no manifest entry claims. It never touches the
+   campaign: it prints the `PATTERN.md` files to re-apply and the
+   `manifest record` line to run afterwards, because applying a pattern
+   is your job — you read the campaign, ask at its decision points, and
+   write files a script cannot reason about. Exit 1 means something
+   needs attention, so a routine can run it unattended. Work the list,
+   then re-run until it exits 0; delete a stale entry (the renamed
+   case) from `manifest.json` by hand once its successor is recorded.
+
 ## Decision points
 
 - **Site name.** Default: the campaign directory's name, titleized.
@@ -71,6 +88,11 @@ newer version against the manifest.
   `dist/player` for the projection, `dist/site` for rendered HTML,
   `log.md` inside the wiki. Deviate only for an existing campaign
   whose layout is already loved.
+- **Where the Eddic checkout lives.** Default: pass its path to
+  `upgrade` as an argument each time; nothing is stored, so the
+  committed campaign stays portable. Set `"eddic_checkout"` in
+  `config.json` (or `EDDIC_HOME` in the environment) only for a
+  single-machine campaign where an unattended routine runs the verb.
 - **Runtime.** Default: uv (`uv run .eddic/eddic.py …`). Bare
   `python3` works everywhere the stdlib-only verbs are concerned;
   verbs with declared dependencies need uv.
@@ -80,6 +102,10 @@ newer version against the manifest.
 - `uv run modules/cli/verify/run.py` — stamps a throwaway campaign,
   runs doctor, records and checks a manifest entry, vendors the lint
   verb, and lints a planted wiki through the dispatcher, asserting
-  exit codes at each step.
+  exit codes at each step. It also drives `upgrade` against a synthetic
+  checkout holding a current, an upgradable, a renamed and a vanished
+  module, asserting each verdict, the unclaimed-verb flag, exit 1 then
+  exit 0, and that the manifest is unchanged by the report.
 - In the real campaign: `eddic.py doctor` exits 0; `eddic.py manifest
-  show` lists cli; `.eddic/` is committed.
+  show` lists cli; `eddic.py upgrade <checkout>` exits 0 once you have
+  worked its list; `.eddic/` is committed.

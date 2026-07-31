@@ -15,6 +15,11 @@ summary: >
   tier file suggestions into a review inbox — never canon, never a
   player-visible surface — for the owner to promote out of band via
   the `suggestions` verb; the two review tools are DM-tier only.
+fragility: vendor-bound
+walk_away: >
+  Phone and agent access to the campaign stops; wiki, projection and
+  site sources are all still in the repo, and a new surface can be
+  pointed at the same projection.
 touches:
   - worker/
   - .eddic/lib/stage.py

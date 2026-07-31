@@ -15,6 +15,9 @@ Checks every modules/<name>/ against CONTRACT.md's floor:
     this matches what CI would ever actually commit)
   - vendor names in PATTERN.md are backed by compatibility metadata
     in module.yaml (status/date; verified additionally needs evidence)
+  - every module declares its durability: fragility: from the closed
+    set (durable / vendor-bound / experimental) and a walk_away: line
+    saying what happens to a campaign if the module stops working
 
 Exit 0 clean, 1 violations (listed)."""
 
@@ -26,8 +29,13 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 MODULES = ROOT / "modules"
-YAML_KEYS = ("name:", "version:", "summary:", "touches:", "depends:",
-             "cost_posture:")
+YAML_KEYS = ("name:", "version:", "summary:", "fragility:", "walk_away:",
+             "touches:", "depends:", "cost_posture:")
+# The durability axis: what a module's survival depends on. durable =
+# plaintext and stdlib, outlives any vendor; vendor-bound = dies when a
+# named third party moves; experimental = expected to break, and the
+# pattern must say what to do instead.
+FRAGILITIES = ("durable", "vendor-bound", "experimental")
 PARTS = ("## Preflight", "## Procedure", "## Decision points", "## Verify")
 SECRET_PATTERNS = re.compile(
     r"sk-ant-[A-Za-z0-9-]{10,}|ghp_[A-Za-z0-9]{20,}|gho_[A-Za-z0-9]{20,}"
@@ -65,6 +73,23 @@ def compat_entries(yaml_text):
     return entries
 
 
+def walk_away(yaml_text):
+    """The walk_away: value, inline or as a folded (>) block. Empty
+    string when the key is absent or declares nothing."""
+    m = re.search(r"^walk_away:[ \t]*(.*)$", yaml_text, re.M)
+    if not m:
+        return ""
+    if m.group(1).strip() not in ("", ">", "|"):
+        return m.group(1).strip()
+    rest = yaml_text[m.end():].splitlines()
+    body = []
+    for ln in rest:
+        if ln.strip() and not ln.startswith(" "):
+            break
+        body.append(ln.strip())
+    return " ".join(b for b in body if b)
+
+
 def scan_targets(root):
     """Files to scan for secrets: git-tracked only, so a local .env or
     a .wrangler/ cache never trips a false 'committed secret' the way a
@@ -100,6 +125,14 @@ def main():
             m = re.search(r"^name:\s*(\S+)", text, re.M)
             if m and m.group(1) != name:
                 bad(f"{name}: module.yaml name '{m.group(1)}' != dir name")
+            f = re.search(r"^fragility:\s*(\S+)", text, re.M)
+            if re.search(r"^fragility:", text, re.M) and (
+                    not f or f.group(1) not in FRAGILITIES):
+                bad(f"{name}: fragility '{f.group(1) if f else ''}' not one "
+                    f"of {FRAGILITIES}")
+            if re.search(r"^walk_away:", text, re.M) and not walk_away(text):
+                bad(f"{name}: walk_away: declares no text (say what happens "
+                    f"to a campaign if this module stops working)")
 
         pattern = mod / "PATTERN.md"
         if not pattern.is_file():
@@ -233,6 +266,18 @@ def selftest():
     expect(FILE_REF.findall("verify/run.py, scripts/stamp.py")
            == ["verify/run.py", "scripts/stamp.py"],
            "FILE_REF handles a trailing comma and multiple refs")
+
+    # The durability axis: walk_away reads inline and folded, and an
+    # empty declaration must not pass as text.
+    expect(walk_away("walk_away: the site stops deploying\ntouches:\n")
+           == "the site stops deploying", "walk_away reads an inline value")
+    expect(walk_away("walk_away: >\n  the site stops\n  deploying\ntouches:\n")
+           == "the site stops deploying", "walk_away folds a > block")
+    expect(walk_away("walk_away: >\ntouches:\n") == "",
+           "walk_away with an empty block declares nothing")
+    expect(walk_away("summary: x\n") == "", "walk_away absent is empty")
+    expect(set(FRAGILITIES) == {"durable", "vendor-bound", "experimental"},
+           "the fragility vocabulary is closed at three values")
 
     print("floor selftest: " + ("ok" if not failures else "FAILED"))
     return 1 if failures else 0

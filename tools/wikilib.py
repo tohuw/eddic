@@ -34,6 +34,30 @@ HREF = re.compile(r"""<a\b[^>]*?\shref\s*=\s*["']([^"'>\s]+)["']""", re.I)
 REFDEF = re.compile(r"""^\s{0,3}\[[^\]]+\]:\s+<?([^>\s]+)>?""")
 # <<<
 
+# >>> media_consts
+# Embedded media. The link regexes deliberately skip images (`(?<!\!)`),
+# because an image is not a page and must not be resolved like one — but
+# something has to see them, or a map dropped in assets/ ships to the player
+# site on nothing but a filename convention.
+IMAGE = re.compile(r"!\[[^\]]*\]\(([^)\s]+)\)")
+IMG_SRC = re.compile(r"""<img\b[^>]*?\ssrc\s*=\s*["']([^"'>\s]+)["']""", re.I)
+# <<<
+
+# >>> media_targets
+def media_targets(body):
+    """Every embedded-media target in the body: `![alt](path)` and
+    <img src>. Paired with link_targets, this is the full set of things a
+    page points at, which is what lets the projection ship exactly the
+    assets players can reach instead of everything in the folder."""
+    out = []
+    for i, line in enumerate(body.splitlines()):
+        for m in IMAGE.finditer(line):
+            out.append((i + 1, m.group(1)))
+        for m in IMG_SRC.finditer(line):
+            out.append((i + 1, m.group(1)))
+    return out
+# <<<
+
 # >>> body_consts
 # Body shapes the scanners key on: headings become anchors, fences mark the
 # code the link scanners must not read.

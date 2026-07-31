@@ -5,6 +5,10 @@ summary: >
   HTML mirror out, relative .md links rewritten to .html, heading
   slug ids, one self-contained template (inlined CSS, light/dark,
   noindex). Exactly a wiki renderer and nothing more.
+fragility: durable
+walk_away: >
+  The HTML mirror stops rebuilding; the wiki is markdown and stays
+  readable and editable with no renderer at all.
 touches:
   - dist/site
   - .eddic/lib/build.py

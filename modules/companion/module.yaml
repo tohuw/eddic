@@ -1,5 +1,5 @@
 name: companion
-version: 0.4.0
+version: 0.5.0
 summary: >
   At-the-table companions under the knowledge-parity conduct doctrine
   (possible and true, never better): player and DM companions on their
@@ -33,6 +33,11 @@ summary: >
   rules explained in place), under the same possible-and-true, never-
   better rule — it teaches the option landscape and never optimizes the
   build.
+fragility: vendor-bound
+walk_away: >
+  The table asks its questions in whatever chat product it still has;
+  wiki, projection and firewall are unchanged, and only the
+  conduct-shaped persona and one-URL handoff go with it.
 touches:
   - retrieval
 depends:

@@ -6,6 +6,11 @@ summary: >
   deterministic REST verb — drift reported lint-style, creation
   additive-only, removal always a human act. Curated third-party
   bots ride guided invite flows, not the spec.
+fragility: vendor-bound
+walk_away: >
+  The server keeps the channels and roles it already has — the spec
+  only ever reconciled and reported over a server humans can edit by
+  hand.
 touches:
   - lore-bot
 depends:

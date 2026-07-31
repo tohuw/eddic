@@ -1,5 +1,17 @@
 name: recorder
-version: 0.5.1
+version: 0.6.0
+# 0.6.0: honesty pass. The public consent post and `/record-help` now
+# disclose the second hop, in plain language: the recording becomes a written
+# transcript and an AI service outside the table reads that transcript in
+# full to write the recap and wiki pages, so a react covers both and not just
+# the microphone. Both also tell the table it can ask to go off the record or
+# have a passage cut, and that cutting before the recap is written keeps it
+# off a provider entirely. The module is demoted to experimental: the DAVE
+# MLS epoch rotation kills a recording permanently and silently mid-session
+# with no in-tree mitigation, so the pattern now requires a parallel Craig
+# recording. `/record-pause` is documented as a stated gap (need, intended
+# behaviour, and the seam) and is deliberately not implemented. Consent
+# mechanics, the audio path, and the control surface are unchanged.
 # 0.5.1: fix-only. Concurrent starts for one guild are now single-flight
 # (a per-guild reservation held across the connect/consent awaits) so two
 # near-simultaneous starts can't both connect and orphan a voice link; the
@@ -18,14 +30,23 @@ version: 0.5.1
 # record-help is open. Behaviour is otherwise unchanged. Discord re-syncs
 # the command set on the bot's next start.
 summary: >
-  The campaign's own session-recording Discord bot: react-gated
+  The campaign's own session-recording Discord bot, EXPERIMENTAL: run a
+  Craig recording in parallel, because a DAVE key rotation kills a
+  recording permanently and silently mid-session. React-gated
   per-microphone consent enforced in the audio sink, per-speaker
   tracks staged straight into the transcriber's layout on the DM's
   machine, and DAVE (E2EE) voice receive made to work via davey plus
-  import-time patches to py-cord 2.8.0 — live-proven end to end. The
-  consent post is always a public channel message (never the ephemeral
-  slash reply), and start/stop/status are also reachable through a
-  loopback-only control surface that the streamdeck module drives.
+  import-time patches to py-cord 2.8.0 — proved end to end once, live.
+  The consent post is always a public channel message (never the
+  ephemeral slash reply) and discloses both hops: the microphone, and
+  the AI service that later reads the whole transcript. Start/stop/status
+  are also reachable through a loopback-only control surface that the
+  streamdeck module drives.
+fragility: experimental
+walk_away: >
+  The table records with Craig or any other recorder and stages the
+  file by hand; this module buys only the absence of a third party in
+  the audio path.
 touches:
   - capture
   - transcriber
