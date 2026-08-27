@@ -60,6 +60,28 @@ they reach the packet. The pattern's first procedure step is telling the
 table what is collected and from where — the [recorder](recorder.md)
 module set that standard for audio, and text is not owed less.
 
+## Where it runs
+
+The recommended shape is in the [lore bot](lore-bot.md)'s own process, as
+a capability on the same seam [convene](convene.md) uses: vendor
+`harvest.py` and `harvest_capability.py` beside `bot.py`, name
+`harvest_capability` in `CAPABILITIES`, and it wakes once a night. The
+reason is that everything the harvest needs is already in that process —
+the token with the Message Content intent, the corpus in memory, the
+question log on the same disk, and a model provider with the corpus
+prompt-cached. A standalone service would duplicate all four and, on a
+host with per-service disks, could not read the question log at all.
+
+That makes it a fourth rung on the [routines](routines.md) runner chain:
+inside a process the campaign already runs. Campaigns without a deployed
+lore bot use the scheduled contract instead, which is what
+`routine-harvest.md` specifies.
+
+On an ephemeral host the question log, the harvest state, the salt and
+the opt-out list all belong on a mounted volume. A lost salt rotates
+every asker tag; a lost opt-out list un-opts-out everyone who asked not
+to be recorded. Neither failure announces itself.
+
 ## Verify
 
 `uv run modules/harvest/verify/run.py` runs offline against a fake

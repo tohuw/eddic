@@ -103,6 +103,37 @@ it, because it is the claim the table is owed.
    they belong in the transcript's mishearings table and in
    `ingest --glossary`, where they stop the same mistake recurring.
 
+## Running it nightly
+
+Two shapes, and the second is usually right.
+
+**As a scheduled job** — the routines module's preference chain, whose
+harvest routine contract states the composed verbs and their order. Correct when the campaign
+has no always-on process, and the only shape available to a campaign
+whose lore bot is not deployed.
+
+**In the lore bot's own process** — vendor `harvest.py` and
+`harvest_capability.py` beside `bot.py` and add `harvest_capability` to
+`CAPABILITIES`. This is the recommended shape wherever the lore bot runs,
+because the four things the harvest needs are already there: the Discord
+token *with the Message Content intent*, the wiki corpus in memory, the
+question log on the same disk, and a model provider with the corpus
+prompt-cached. A separate service needs its own copy of all four, and on
+a host that gives each service its own disk it cannot read the question
+log at all — which costs the gap index, the best of the three products.
+
+It is a fourth rung on the runner chain the routines module describes,
+and an honest one: *inside a process the campaign already runs*. It
+introduces no new service, no new secret, and no new schedule to forget.
+
+**On an ephemeral host** (Railway, Fly, most PaaS) mount a volume and put
+three things on it: the question log, the harvest state, and — because
+they follow the log — the salt and the opt-out list. A wiped salt
+silently rotates every asker tag; a wiped opt-out list silently
+un-opts-out everyone who asked not to be recorded. Both are quiet
+breaches of what the table was told, which is exactly the class of
+failure this module exists to avoid.
+
 ## Decision points
 
 - **Which channels.** Default: **the channels where the table talks
@@ -122,6 +153,11 @@ it, because it is the claim the table is owed.
   harvested with the following day's chatter and the routine never
   competes with a live session. A quiet table can run weekly; the pull
   is idempotent and a missed run just widens the window.
+- **Where it runs.** Default: **in the lore bot's process**, if the
+  campaign has one. Otherwise a scheduled job on the routines chain. The
+  when-it's-worth-it heuristic: the in-process shape wins on every axis
+  except one — it ties the harvest's uptime to the bot's, so a campaign
+  that treats the bot as disposable should schedule instead.
 - **Page cap.** Default: **20 pages (2,000 messages) per channel per
   run**, which no table exceeds in a day. A first run against a busy
   server with old channels will hit it, say so, and pick up the rest on

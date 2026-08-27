@@ -32,6 +32,7 @@ Config (variables.txt beside this file, or real env, env wins):
 """
 
 import asyncio
+import importlib
 import os
 import time
 from pathlib import Path
@@ -73,8 +74,15 @@ QUESTION_DAYS = int(os.environ.get("DIGEST_DAYS", "14"))
 DIGEST_WEEKDAY = int(os.environ.get("DIGEST_WEEKDAY", "0"))    # 0 = Monday
 DIGEST_HOUR = int(os.environ.get("DIGEST_HOUR", "10"))         # host's clock
 DIGEST_FILE = HERE / os.environ.get("DIGEST_FILE", "digest-latest.md")
-SALT_FILE = HERE / "questions-salt.txt"
-OPTOUT_FILE = HERE / "questions-optout.txt"
+# The salt and the opt-out list live wherever the log lives. On a host
+# with an ephemeral disk that must be a mounted volume: a lost salt
+# silently rotates every asker tag (so "!lore forget" stops finding a
+# player's rows) and a lost opt-out list silently un-opts-out everyone
+# who asked not to be recorded. Both are quiet failures of a promise,
+# which is why they follow the log rather than the code.
+_log_dir = QUESTION_LOG.parent if QUESTION_LOG else HERE
+SALT_FILE = _log_dir / "questions-salt.txt"
+OPTOUT_FILE = _log_dir / "questions-optout.txt"
 
 persona = (HERE / os.environ.get("PERSONA_FILE", "persona.md")).read_text(
     encoding="utf-8")
@@ -94,17 +102,49 @@ intents = discord.Intents.default()
 intents.message_content = True          # enable in the dev portal too,
 client = discord.Client(intents=intents)  # or the bot is online but deaf
 
-# optional capabilities extend the same always-on bot; the convene
-# module vendors convene.py beside this file (session lifecycle:
-# native scheduled events, quorum, recap announce)
-try:
-    import convene as _convene
-    capability = _convene.setup(client)
-except ImportError:
-    capability = None
-except Exception as e:                      # a capability must never
-    print(f"convene setup failed, continuing without it: {e}")
-    capability = None
+# Optional capabilities extend the same always-on bot; each module
+# vendors its file beside this one and CAPABILITIES names which to load,
+# in order (convene: session lifecycle; harvest: nightly mining of the
+# table's chatter). A capability that is absent is skipped in silence —
+# not every campaign adopts every module — and one that fails to load is
+# reported and skipped, because a capability must never take the bot's
+# own Q&A down with it.
+# What a capability may reuse: the model seam the bot already holds, so
+# a capability that needs a completion does not stand up a second client
+# or a second API key. The corpus arrives through the lifecycle hooks.
+client.eddic_llm = llm
+client.eddic_model = MODEL
+client.eddic_max_tokens = MAX_TOKENS
+
+capabilities = []
+for _name in [c.strip() for c
+              in os.environ.get("CAPABILITIES", "convene").split(",")
+              if c.strip()]:
+    try:
+        _mod = importlib.import_module(_name)
+    except ImportError:
+        continue
+    try:
+        _cap = _mod.setup(client)
+    except Exception as e:
+        print(f"{_name} setup failed, continuing without it: {e}")
+        continue
+    if _cap:
+        capabilities.append(_cap)
+
+
+async def fan(hook, *args):
+    """Call one lifecycle hook on every capability that implements it.
+    Errors are reported and swallowed for the same reason a failed setup
+    is: the bot answers questions first."""
+    for cap in capabilities:
+        fn = getattr(cap, hook, None)
+        if not fn:
+            continue
+        try:
+            await fn(*args)
+        except Exception as e:
+            print(f"capability {hook} failed: {e}")
 
 state = {"corpus": "", "stamp": "", "loaded": 0.0}
 last_reply = {}
@@ -180,12 +220,8 @@ async def freshness_poll():
                 stale = botlib.dir_fingerprint(src) != state["stamp"]
             if stale:
                 await asyncio.to_thread(load_corpus)
-                if capability:                      # announce new recaps
-                    try:
-                        await capability.on_corpus_refresh(
-                            state["corpus"])
-                    except Exception as ce:
-                        print(f"capability refresh failed: {ce}")
+                # announce new recaps, nudge the harvest's word list
+                await fan("on_corpus_refresh", state["corpus"])
         except Exception as e:                      # poll must survive
             print(f"freshness poll error: {e}")
 
@@ -260,11 +296,7 @@ async def on_ready():
     await asyncio.to_thread(load_corpus)
     client.loop.create_task(freshness_poll())
     client.loop.create_task(digest_loop())
-    if capability:
-        try:                                # never let a capability
-            await capability.ready(state["corpus"])  # break the bot
-        except Exception as e:
-            print(f"capability ready failed: {e}")
+    await fan("ready", state["corpus"])
     print(f"ready as {client.user}")
 
 

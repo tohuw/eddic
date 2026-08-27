@@ -160,6 +160,50 @@ def main():
     fails += check("and says so out loud",
                    bool(packed.get("compression_notes")))
 
+    # ---- the capability: the nightly runner, in the bot's process ----
+    capspec = importlib.util.spec_from_file_location(
+        "harvest_capability",
+        Path(__file__).resolve().parent.parent / "templates"
+        / "harvest_capability.py")
+    cap_mod = importlib.util.module_from_spec(capspec)
+    capspec.loader.exec_module(cap_mod)
+
+    class FakeClient:
+        class _Loop:
+            def create_task(self, coro):
+                coro.close()
+        loop = _Loop()
+
+    cap = cap_mod.setup(FakeClient())
+    packet = {"counts": {"messages": 3}, "checklist": [], "window": {},
+              "findings_schema": {}}
+
+    class GoodLLM:
+        def complete(self, **kw):
+            self.kw = kw
+            return ('here you go\n{"findings": [{"category": "gap", '
+                    '"severity": "info", "summary": "s", "evidence": "e", '
+                    '"suggestion": "x"}]}')
+
+    llm = GoodLLM()
+    found = cap.mine(packet, llm, "model", 500)
+    fails += check("capability mines findings out of a chatty reply",
+                   len(found) == 1 and found[0]["category"] == "gap")
+    fails += check("the packet rides in the cached corpus slot",
+                   "HARVEST PACKET" in llm.kw["corpus_text"])
+    fails += check("and no roster is ever handed to the harvest pass",
+                   llm.kw["roster"] == "")
+
+    class BadLLM:
+        def complete(self, **kw):
+            return '{"findings": [{"category": "vibes"}]}'
+
+    try:
+        cap.mine(packet, BadLLM(), "model", 500)
+        fails += check("a malformed finding is refused, not filed", False)
+    except RuntimeError:
+        fails += check("a malformed finding is refused, not filed", True)
+
     print("verify ok: harvest module" if not fails
           else f"verify FAILED: harvest module ({fails})")
     return 1 if fails else 0
