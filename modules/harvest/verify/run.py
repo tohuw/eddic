@@ -68,6 +68,7 @@ def main():
                                     encoding="utf-8")
     state = tmp / "harvest-state.json"
     config = {
+        "announced": True,
         "channels": {"100": "rules-questions", "200": "general",
                      FAILING: "locked-room"},
         "dm_ids": [DM], "bot_ids": [BOT], "optout_ids": [LURKER],
@@ -76,6 +77,15 @@ def main():
     }
 
     fails = 0
+
+    # The consent gate comes before anything reaches the network.
+    unarmed = dict(config)
+    unarmed.pop("announced", None)
+    packet0, code0 = harvest.do_pull(unarmed, state, "token", transport, 5)
+    fails += check("an unannounced campaign refuses to pull at all",
+                   packet0 is None and code0 == 2)
+    fails += check("and wrote no state doing it", not state.exists())
+
     packet, code = harvest.do_pull(config, state, "token", transport, 5)
     fails += check("pull exits 0 with a packet", code == 0 and packet)
 

@@ -383,6 +383,17 @@ def compress(packet):
 # -------------------------------------------------------------------- pull
 
 def do_pull(config, state_path, token, transport, max_pages):
+    if not config.get("announced"):
+        print("harvest is not armed: the table has not been told.\n"
+              "  Say in the server what is collected, from which channels, "
+              "and what is kept\n"
+              "  (the module ships the wording), give people the opt-out, "
+              "then set\n"
+              "  \"announced\": true in the harvest config. Nothing is "
+              "pulled until then.",
+              file=sys.stderr)
+        return None, 2
+
     channels = config.get("channels") or {}
     if not channels:
         print("no channels in the allow-list; nothing to harvest",

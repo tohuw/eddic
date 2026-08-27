@@ -47,9 +47,15 @@ it, because it is the claim the table is owed.
    opt-out and honor it: `optout_ids` drops a person's messages before
    they reach the packet.
 
+   The pull refuses until `"announced": true` is set in the harvest
+   config, so a scheduled routine cannot quietly get ahead of the
+   conversation. Whoever makes the announcement flips the flag; that is
+   the point of it, and it is why the flag is not set by this pattern.
+
 2. **Configure.** Under `harvest` in the campaign config:
 
        "harvest": {
+         "announced": false,
          "channels": {"<channel id>": "<label>", ...},
          "dm_ids": ["<the DM's user id>"],
          "bot_ids": ["<the lore bot's user id>"],
@@ -142,3 +148,28 @@ and an oversized packet is compressed and says so.
 With a real server: run the pull twice. The first writes a packet and a
 state file; the second returns zero messages. Read the state file and
 confirm it contains ids and timestamps and nothing anyone said.
+
+## The announcement
+
+The module ships wording rather than leaving the owner to invent it,
+because the honest version is short and the tempting version is vague.
+Adapt the channel names and post it where the table reads:
+
+> Snorri now keeps a nightly eye on **#dnd** and **#info** — and only
+> those two. Once a night he reads what was posted since the night
+> before, looking for three things: rulings I dropped between sessions
+> that never made it to the wiki, questions the wiki couldn't answer,
+> and names you spell right that the transcripts mangle. Anything he
+> finds becomes a suggestion I review by hand; nothing he finds edits
+> the wiki on its own.
+>
+> He keeps no copy of the chat. What's stored between runs is a single
+> "read up to here" marker per channel — no messages, no names, nothing
+> you can read back. Deleted messages are gone, and DMs were never
+> reachable. #general, #dice and #botspam aren't included.
+>
+> If you'd rather your messages weren't read at all, tell me and I'll
+> add you to the opt-out — your messages get dropped before anything
+> looks at them, no explanation needed.
+
+Then set `"announced": true`. The pull refuses until you do.
