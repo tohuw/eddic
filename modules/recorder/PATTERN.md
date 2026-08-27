@@ -108,7 +108,7 @@ versions as written below.
    the bot disconnects instead of recording. Reacts open each member's
    gate; `/record-stop` stages per-speaker WAV into
    `sessions/raw/<date>/` and appends a `witness` log entry.
-   Transcription stays a deliberate step (transcriber pattern). The
+   Transcription stays a deliberate step (transcriber pattern) — deliberate meaning an agent picks it up, not that it waits indefinitely: a staged folder with no matching transcript is a job queued for whoever opens the campaign next, and the witness entry is how they find it. The
    same start/stop/status run through a loopback control surface too
    (see the `streamdeck` module) — one shared session core, so button
    and slash never diverge. While at least one consented mic is

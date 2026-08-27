@@ -35,6 +35,28 @@ from pathlib import Path
 AUDIO_EXTS = {".flac", ".wav", ".mp3", ".m4a", ".ogg", ".aac", ".opus"}
 GAP_BREAK_MS = 30_000
 
+# Whisper fills silence with a small, stable set of stock phrases learned
+# from subtitle corpora. A recorder that pads per-speaker tracks to wall
+# clock hands it hours of silence per track, so these arrive in the
+# thousands. Drop them only over a long span: a real "Thank you." at the
+# table is a second of speech, while the artifact is stretched across a
+# half-minute of nothing. Anything genuinely ambiguous — "Okay.",
+# "Yeah." — stays, because those are how a table actually talks.
+SILENCE_ARTIFACTS = {
+    "Thank you.",
+    "Thank you very much.",
+    "Thank you for watching.",
+    "Thanks for watching!",
+    "We'll be right back.",
+    "Subtitles by the Amara.org community",
+    ".",
+}
+ARTIFACT_MIN_MS = 5_000
+
+
+def is_silence_artifact(text, duration_ms):
+    return text.strip() in SILENCE_ARTIFACTS and duration_ms >= ARTIFACT_MIN_MS
+
 
 def speaker_from_name(stem):
     """Craig names tracks like `1-username` or `01_username`."""
@@ -72,11 +94,21 @@ def run_whisper(audio, whisper, model, workdir, prompt=None):
 def segments_from_json(json_path, speaker):
     data = json.loads(json_path.read_text(encoding="utf-8"))
     segs = []
+    dropped = 0
     for item in data.get("transcription", []):
         text = item.get("text", "").strip()
-        start = (item.get("offsets") or {}).get("from", 0)
-        if text:
-            segs.append((start, speaker, text))
+        offsets = item.get("offsets") or {}
+        start = offsets.get("from", 0)
+        end = offsets.get("to", start)
+        if not text:
+            continue
+        if is_silence_artifact(text, end - start):
+            dropped += 1
+            continue
+        segs.append((start, speaker, text))
+    if dropped:
+        print(f"  {json_path.name}: dropped {dropped} silence artifact(s)",
+              file=sys.stderr)
     return segs
 
 
@@ -134,7 +166,9 @@ def main(argv):
     segments, origin = [], ""
     if "--from-json" in opts:
         jdir = Path(opts["--from-json"])
-        origin = jdir.name
+        # The JSON directory is an intermediate; provenance belongs to the
+        # audio it came from, so a re-merge keeps the recording's name.
+        origin = opts.get("--origin", jdir.name)
         for j in sorted(jdir.glob("*.json")):
             segments += segments_from_json(j, speaker_from_name(j.stem))
     else:

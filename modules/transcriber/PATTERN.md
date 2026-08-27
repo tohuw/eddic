@@ -17,6 +17,30 @@ the transcript body.
   audio never leaves the machine.
 - The session audio exists locally: one mixed file, or a directory
   of per-speaker tracks named like `1-username.flac`.
+- **Check the queue at the start of a working session.** The recorder
+  stages audio and logs a `witness` entry, then stops; nothing
+  transcribes itself. List `sessions/raw/` and compare the newest dated
+  folder against the highest `sources/session-N_transcript.md` — a
+  folder with no transcript is a session the table has not been given
+  back, and it is the first thing to do, ahead of whatever the owner
+  opened the campaign to ask about.
+- **Probe before the long run.** A multi-hour, multi-track recording
+  is hours of compute, and a recorder fault — a failed decrypt, the
+  wrong input device, a track that is silence end to end — produces
+  that many hours of garbage just as willingly. Cut a three-minute
+  slice from the middle of the largest track and transcribe only
+  that, then read it:
+
+      ffmpeg -ss 3600 -t 180 -i <largest-track> -ar 16000 -ac 1 probe.wav
+      whisper-cli -f probe.wav -m <model> -nt
+
+  Recognisable table talk means the recording is sound and the full
+  run is worth starting. Noise, silence, or a looping hallucination
+  means repair the recording — or accept it is lost — before spending
+  the afternoon on it. `ffprobe -show_entries format=duration` on each
+  track is the cheaper half of the same check: tracks that should
+  differ in length and do not, or a duration nothing like the
+  session's, are the fault showing up before whisper ever runs.
 
 ## Procedure
 
