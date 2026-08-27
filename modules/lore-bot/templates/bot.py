@@ -70,6 +70,21 @@ SITE_URL = os.environ.get("SITE_URL", "").rstrip("/")
 # not the corpus, not the projection, not the repo, not the site.
 _log_name = os.environ.get("QUESTION_LOG", "questions.jsonl").strip()
 QUESTION_LOG = (HERE / _log_name) if _log_name and _log_name != "off" else None
+if QUESTION_LOG:
+    # A log path on a volume that was never mounted is the likeliest
+    # deploy mistake here, and its natural failure is one error per
+    # question forever with the gap index quietly empty. Fail once, at
+    # startup, out loud, and answer questions without recording them —
+    # the bot's job is answering, and a promise to keep a record is
+    # better withdrawn than half-kept.
+    try:
+        QUESTION_LOG.parent.mkdir(parents=True, exist_ok=True)
+        QUESTION_LOG.touch(exist_ok=True)
+    except OSError as e:
+        print(f"question log disabled: cannot write {QUESTION_LOG} ({e}). "
+              f"If this is a mounted-volume path, mount the volume.")
+        QUESTION_LOG = None
+
 QUESTION_DAYS = int(os.environ.get("DIGEST_DAYS", "14"))
 DIGEST_WEEKDAY = int(os.environ.get("DIGEST_WEEKDAY", "0"))    # 0 = Monday
 DIGEST_HOUR = int(os.environ.get("DIGEST_HOUR", "10"))         # host's clock
