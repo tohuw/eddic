@@ -22,6 +22,20 @@ The contract's safety argument is that the whole routine is inert with respect t
 
 Because this pass spends model tokens, its natural runner is the top rung of the preference chain — a hosted agent routine — and the module's `routine-semantic-review` template, added at version 0.3.0, makes that concrete for a Claude Code Routine. A Claude Code Routine runs a scheduled Claude Code session on Anthropic's cloud, so the pass fires between sessions with the owner's laptop off, on the agent subscription already paid for. Its config lives in the owner's cloud account rather than the repo; what the repo supplies is the recipe — the campaign's vendored `semantic-review` verb, a `.claude/` command that drives the run, and a root `.mcp.json` declaring the retrieval witness server with its token pulled from an environment variable. The template ships a paste-ready routine Prompt and names the setup the owner performs at claude.ai/code/routines: the campaign repository, one environment variable holding the campaign's player-tier witness token (low-sensitivity, the same content as the public wiki, and enough because `suggest_edit` accepts any tier), a weekly schedule that sits well inside the platform's one-hour interval floor, and the custom-domain Allowed-domains gotcha — the default cloud environment `403`s arbitrary hosts, so the witness worker's domain must be allow-listed or every run falls to the PR fallback. That fallback writes the findings under `suggestions/` and opens a PR against the default branch when the witness path is off or blocked, so the owner triages the same advisory findings through review instead of the inbox.
 
+## The harvest routine
+
+The third standard routine, added at version 0.4.0, packages the
+[harvest](harvest.md) module as nightly upkeep: pull the allow-listed
+channels since the last watermark, read the packet for rulings, gaps and
+naming drift, validate, and file the findings as suggestions. It has the
+same safety shape as semantic review — the deterministic half spends no
+tokens, the model half spends on a pre-compressed packet, and neither
+half has a write path to canon. Its contract file is
+`templates/routine-harvest.md`, and its natural runner is the same top
+rung, since it wants to fire between sessions with the owner's laptop
+shut. Idempotency comes free from the watermark: re-running immediately
+returns an empty packet because the first run moved the mark.
+
 ## The GitHub Actions adapter
 
 The module ships one worked adapter that implements the freshness contract for a cloud-mode campaign whose repository lives on GitHub. It is a workflow that triggers on pushes touching the `wiki/` or `contribs/` trees, so its cadence is event-driven and no schedule is needed. Its job runs the six contract verbs in order — strict lint first, then project, build, site deploy, stage, and worker deploy — with no continue-on-error anywhere, so any refusal stops the chain and shows the owner a failed check. Adopting it requires only filling the Pages project name and setting the two Cloudflare secrets it names. For the hosted agent and cron-esque rungs there is no shipped template; the contract file is the specification, and the maintaining agent implements it natively against the host's own machinery.

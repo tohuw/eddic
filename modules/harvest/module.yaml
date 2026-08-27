@@ -1,0 +1,50 @@
+name: harvest
+version: 0.1.0
+summary: >
+  Nightly mining of the table's own Discord chatter for wiki work:
+  rulings the DM dropped between sessions, questions the wiki could
+  not answer, and names the table spells correctly that the
+  transcripts do not. Keeps no message store — Discord is the log,
+  and the campaign keeps one watermark per channel.
+fragility: vendor-bound
+walk_away: >
+  The owner loses an automatic backlog and writes the wiki from
+  memory and from session transcripts, as before. Canon is
+  unaffected: harvest has no write path to it, only to the
+  suggestion queue.
+touches:
+  - .eddic/
+depends:
+  - cli
+  - wiki
+  - lore-bot
+  - routines
+cost_posture:
+  free: >
+    The pull is deterministic and spends no model tokens; it needs a
+    Discord bot token the campaign already has for the lore bot, and
+    runs on any scheduler, including the free rung of the routines
+    preference chain.
+  paid: >
+    Only the model half — the agent reading the packet — costs
+    anything, and it reads a pre-compressed packet rather than a
+    day of chat.
+  heuristic: >
+    Worth turning on once the table talks between sessions. A table
+    that only speaks at the table has nothing to harvest, and the
+    lore bot's own question log alone is the cheaper first step.
+compatibility:
+  discord:
+    role: message source
+    status: documented
+    date: 2026-08-27
+    evidence: >
+      Live against a real guild (Land of Song, 2026-08-27): authenticated
+      transport, channel enumeration, pagination, watermark persistence,
+      and the missing-intent refusal firing on a token without the
+      Message Content intent and holding its watermark. The content path
+      is Discord's documented REST behavior for an application that has
+      that intent, exercised offline in verify against a fake transport
+      but not yet through a live pull — which waits on the table being
+      told, the pattern's own first procedure step. Promote to verified
+      after the first announced run.
