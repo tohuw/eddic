@@ -101,6 +101,25 @@ pipeline reads, and it should speak in character terms.
 
 ## Decision points
 
+- **Compressing transcripts before a model reads them.** Default:
+  **none — send the transcript.** A session transcript is large but it is
+  the provenance the whole pipeline cites, and a summarized transcript
+  cannot be quoted verbatim in a session page or checked against a line
+  number later. Two deterministic reductions come first and cost
+  nothing: the silence-artifact filter, which removed 31% of one real
+  seven-track session, and per-speaker merging, which is why the file
+  reads as dialogue rather than seven parallel monologues.
+
+  The when-it's-worth-it heuristic: measure a real transcript against
+  the model's window. A 2h37m seven-track session lands near 150 KB
+  after filtering — comfortable for a long-context model, painful for a
+  short one. If the corpus genuinely does not fit, prefer chunking by
+  scene over summarizing, because a chunk keeps its quotes and a summary
+  does not. An accelerator is the owner's choice against their own
+  material, never a dependency of this module.
+
+
+
 - **Model.** Default: **ask the owner interactively** — present the
   ladder with sizes and your recommendation for their machine and
   patience, then download their pick to a cache dir (e.g.

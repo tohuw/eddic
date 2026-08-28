@@ -54,6 +54,31 @@ tutorials.
 
 ## Decision points
 
+- **Compression accelerators.** Default: **none.** A routine that spends
+  model tokens pre-compresses its own input deterministically before any
+  model sees it — the semantic-review packet is assembled from the wiki
+  tree, the harvest packet drops its least load-bearing rows and states
+  what it dropped — and that is free, reproducible, and enough for a
+  corpus in the low hundreds of KB. Eddic points at an accelerator; it
+  never depends on one.
+
+  The when-it's-worth-it heuristic is a measurement, not a feeling:
+  compare the packet a routine actually builds against the model's
+  context. A campaign whose packets sit under roughly a fifth of the
+  window has nothing to gain and should not add a tool to its supply
+  chain for it. Above that, the first move is still deterministic —
+  tighten what the packet includes, since a row dropped by a rule is
+  cheaper and more auditable than a row summarized by a model — and only
+  then an accelerator, chosen and tuned by the owner against their own
+  corpus, because the heuristics are a property of the corpus and not of
+  Eddic.
+
+  Whatever is chosen, the rule that does not bend: an accelerator sits
+  *outside* the deterministic floor. A routine must still run, and still
+  refuse, with the accelerator absent.
+
+
+
 - **Runner.** Default: the preference chain top-down — take the
   first rung the owner's world already has. Do not introduce a new
   paid service to host a routine; the chain exists so the free rung
