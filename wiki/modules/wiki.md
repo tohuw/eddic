@@ -31,3 +31,15 @@ Lore arriving from the table lands as its own transient page carrying `proposes-
 The pattern stamps the schema and seeds — the campaign `AGENTS.md`, a `CLAUDE.md` stub, and the `index.md`, `index.dm.md`, and log seeds if absent — vendors the projection verb, records the module in the manifest, and creates `sources/`. Adoption of a wiki that predates Eddic adds two judgment-heavy steps: migrating player-safe static assets while rewriting site-rooted links to page-relative ones, and marking visibility page by page with the owner, failing closed so anything not verified as seen in play stays DM-only. The default taxonomy is the stock category set (characters, places, story, concepts, eras, species, sessions, systems), trimmed or extended only when a campaign clearly needs it and logged as a `schema` change. Twin pages are created only for topics that actually reveal progressively; empty twins are never pre-created. Two decision points set where the pen starts: ingest mode defaults to `derived` for pages the agent compiles from sources and `literal` for anything a human wrote, with a whole campaign worth setting to literal only where the owner wants a faithful transcription and accepts the rougher read; recap authorship defaults to machine, the agent writing each session recap from the transcript, while a DM who would rather write their own takes that surface's pen and receives the transcript, the timeline, and the open threads instead of prose. The mark is per page, so mixed tables need no setting, but the sale consequence is worth naming before defaulting past it, since machine-authored recaps never clear the [contribs](contribs.md) fence. The verify harness projects a planted campaign and confirms that player pages and safe assets arrive, DM pages and `.dm` assets are withheld, twins behave, and a planted breach refuses the whole projection without writing.
 
 Return to the [module index](index.md).
+
+## The standing party page
+
+Every campaign gets a `party.md`, scaffolded alongside the index. It is
+the page a table reads most — "who are we again?" — and it does double
+duty: its links to character pages *are* the set of player characters,
+so tooling that needs that set reads one page instead of a `pc:` flag
+scattered across N character files. `tools/wikilib.py` exposes
+`party_pages()` for exactly that read, and the reporter treats the party
+page as a reachability root, so a character linked only from the party
+is not an orphan. A campaign without one gets an info, never an error:
+a table in its first hour has not written it yet.

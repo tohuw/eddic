@@ -187,3 +187,23 @@ def page_ref(raw):
         return raw[:-4] + ".md", False
     return raw + ".md", False
 # <<<
+
+
+def party_pages(party_body, prefix="characters/"):
+    """The player characters, read off the standing party page.
+
+    The party page's links to character pages *are* the party set. That
+    is deliberately one page rather than a `pc: true` flag on N
+    character pages: the table already maintains this page because it
+    answers "who are we again?", and a fact maintained for its own sake
+    stays true, while a flag maintained only for a machine goes stale
+    the first time someone adds a character in a hurry.
+
+    Returns the link targets in page order, deduplicated.
+    """
+    out = []
+    for _line, target in link_targets(strip_code(party_body)):
+        ref, _strict = page_ref(target.split("#", 1)[0])
+        if ref and ref.startswith(prefix) and ref not in out:
+            out.append(ref)
+    return out

@@ -378,11 +378,24 @@ def lint(root, log_name, contribs=None):
         add("firewall-skipped", "info", ".",
             "no visibility frontmatter anywhere; firewall check skipped")
 
+    # A campaign has a standing party page. It answers the question the
+    # table asks most ("who are we again?") and its links to character
+    # pages are the canonical set of player characters — one page rather
+    # than a `pc:` flag on N character pages, because a page the table
+    # maintains for its own sake stays true. Info, not a warning: a
+    # campaign in its first hour has not written one yet.
+    if "party.md" not in pages:
+        add("no-party-page", "info", ".",
+            "no standing party.md; it is the page that answers "
+            "\"who are we again?\" and defines the player-character set")
+
     # Reachability and orphans. Roots are the catalogs: index.md and,
     # where the campaign keeps a DM catalog, index.dm.md — the player
     # catalog can never link DM pages (firewall), so DM pages are
-    # legitimately reachable only via the DM catalog.
-    roots = {r for r in ("index.md", "index.dm.md") if r in pages}
+    # legitimately reachable only via the DM catalog. party.md joins
+    # them: a character page linked only from the party is reachable.
+    roots = {r for r in ("index.md", "index.dm.md", "party.md")
+             if r in pages}
     if roots:
         seen, stack = set(roots), list(roots)
         while stack:

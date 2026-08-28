@@ -23,6 +23,7 @@ on — and the schema you (the agent) maintain across sessions.
        templates/index-seed.md      -> <wiki>/index.md      (if absent)
        templates/index-dm-seed.md   -> <wiki>/index.dm.md   (if absent)
        templates/log-seed.md        -> <wiki>/<log>         (if absent)
+       templates/party-seed.md      -> <wiki>/party.md      (if absent)
 
 2. Vendor the projection verb:
 

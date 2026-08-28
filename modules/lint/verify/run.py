@@ -18,6 +18,8 @@ REPORTER = HERE.parent / "scripts" / "eddic_lint.py"
 SEMANTIC = HERE.parent / "scripts" / "semantic_review.py"
 
 EXPECTED = Counter({
+    # the fixture wiki has no party.md, so the standing-page info fires
+    "no-party-page": 1,
     "broken-link": 2,        # sunken-city -> ghost-quarter.md (inline);
                              # sunken-city -> depths/hidden.dm.md (<a href>,
                              # proving HTML links are resolved too)
