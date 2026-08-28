@@ -37,6 +37,7 @@ default (see `modules/CONTRACT.md`).
 | claude.ai web: custom connector add flow (Add ▾ → Add custom connector; URL-only auth) | verified | 2026-07-16 | driven live via browser; see retrieval PATTERN |
 | Claude small-model chat tier uses worker tools and respects tier blindness | verified | 2026-07-16 | owner live test, player tier |
 | ChatGPT web: custom MCP apps in developer mode | documented | 2026-07 | help.openai.com 12584461; web-only, plan-gated |
+| Discord REST returns message content only to applications holding the Message Content privileged intent; without it messages arrive complete and wordless | verified | 2026-08-27 | owner live test on a real guild with a bot lacking the intent: 100 messages, every content field empty; the harvest module detects and refuses this case |
 | ChatGPT full custom MCP: Business/Enterprise/Edu (Pro: read/fetch tools in developer mode) | documented | 2026-07 | help.openai.com 12584461 |
 | ChatGPT Voice: apps/connectors | unsupported | 2026-07 | help.openai.com 11487775, 20001274 |
 | ChatGPT mobile: Custom GPT Actions in text chat | documented | 2026-07 | help.openai.com 9442513 |

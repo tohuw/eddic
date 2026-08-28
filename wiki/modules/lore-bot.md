@@ -24,7 +24,30 @@ The answer API is chosen by `PROVIDER`. The default and only live-verified path 
 
 ## Optional capabilities
 
-The always-on bot is an extension point. If a capability module such as [convene](convene.md) has vendored its file beside bot.py, the bot imports it at startup and wires it to the same Discord client, gaining session-lifecycle behavior — scheduled events, quorum, recap announcements — off the same corpus and the same refresh cycle. A capability that fails to load or errors is logged and skipped; it can never break the bot's core Q&A. This is [the capability seam](../concepts/the-capability-seam.md) in practice: the pure corpus helpers the bot exposes are exactly what a capability builds on, without re-reading disk.
+The always-on bot is an extension point. `CAPABILITIES` names the capability modules to load, in order, and each one that has vendored its file beside bot.py is wired to the same Discord client off the same corpus and the same refresh cycle: [convene](convene.md) for session lifecycle — scheduled events, quorum, recap announcements — and [harvest](harvest.md) for the nightly mining of the table's chatter. Lifecycle hooks fan across all of them, and the bot exposes its model seam on the client so a capability that needs a completion does not stand up a second provider or a second API key. A capability that fails to load or errors is logged and skipped; it can never break the bot's core Q&A. This is [the capability seam](../concepts/the-capability-seam.md) in practice: the pure corpus helpers the bot exposes are exactly what a capability builds on, without re-reading disk.
+
+## What the table asked
+
+The bot keeps a short DM-side record of the questions put to it: the
+question, the time, the pages it cited, and a one-way salted tag that
+exists so a player can have their own rows erased. No names, no other
+messages, nothing sent privately, and it never leaves the host — not
+into the corpus, the projection, the repository, or the site. Retention
+is `DIGEST_DAYS` and is enforced on every write rather than by a
+sweeper, so the promise holds without the process ever restarting.
+
+`!lore privacy` states all of that in the channel, `!lore forget` erases
+a player's rows, and the owner gets a weekly digest of what was asked
+and — more usefully — what the archive could not answer. That last list
+is the wiki's backlog in the table's own words, and it is what the
+[harvest](harvest.md) module mines.
+
+Setting `QUESTION_LOG=off` records nothing. On a host with an ephemeral
+disk the log's path should be a mounted volume: the salt and the opt-out
+list live in the log's directory, so a wiped disk silently rotates every
+tag and silently un-opts-out everyone who asked not to be recorded. If
+the path cannot be written the bot says so once at startup and disables
+the log rather than half-keeping the promise.
 
 ## Verify
 

@@ -15,7 +15,7 @@ extension and another host a matter of a file copied beside `bot.py`.
 ## The contract
 
 The host carries the seam whether or not anything rides it. At import it
-attempts `import convene` and calls `setup(client)`; an `ImportError`
+walks `CAPABILITIES` (default `convene`), imports each name and calls `setup(client)`; an `ImportError`
 means no capability is present and the host runs unchanged, while any
 other exception during setup is logged and the host continues without it.
 Two further touchpoints hand the capability the host's live state: after
