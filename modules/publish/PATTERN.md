@@ -52,6 +52,30 @@ The human's complete list — drive everything else yourself:
    verb; lint failures and firewall breaches refuse the deploy with
    the reason on stderr.
 
+### Where the site actually lives
+
+A campaign fronted by the retrieval worker serves its site from the
+worker's bundled assets. There, the site deploy *is* the worker deploy,
+and pushing to Pages updates a project nobody visits while printing
+success. `--target auto` (the default) reads each `*/wrangler.toml` for
+an `[assets]` directory that resolves to the campaign's site dir and
+deploys that worker instead. A worker holding only a route is not the
+site and is not mistaken for it. `--target pages` forces the old
+behavior and warns when a site-bundling worker exists.
+
+### Keeping the repo in step
+
+The lore bot polls the *repository's* projection, not the deployed
+site — that is how it notices a new session page and announces it. A
+publish that regenerates `dist/` without committing leaves the live site
+ahead of the repo, so the recap goes up and the table is never pinged,
+silently, because everything looks published. After a successful deploy
+this commits and pushes the regenerated projection when it is tracked.
+`--no-commit-projection` opts out; a campaign whose projection is not
+versioned is left alone. Every other outcome — cannot stage, cannot
+commit, committed but could not push — is stated out loud, because the
+failure this exists to prevent is a silent one.
+
 ## Decision points
 
 - **Pages project name.** Default: the site name, slugified. It

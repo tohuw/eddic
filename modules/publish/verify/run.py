@@ -90,6 +90,47 @@ def main():
         if failed:
             print(proc2.stdout, proc2.stderr, sep="\n")
             return 1
+        # --- #28: a worker that bundles the site IS the site deploy ---
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "publish_mod", Path(__file__).resolve().parent.parent
+            / "scripts" / "publish.py")
+        pub = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(pub)
+
+        wroot = Path(tempfile.mkdtemp(prefix="eddic-publish-worker-"))
+        (wroot / "dist" / "site").mkdir(parents=True)
+        (wroot / "worker").mkdir()
+        (wroot / "worker" / "wrangler.toml").write_text(
+            'name = "lore"\n[assets]\ndirectory = "../dist/site"\n'
+            'binding = "ASSETS"\n', encoding="utf-8")
+        found = pub.find_site_worker(wroot, wroot / "dist" / "site")
+        print(("ok   " if found and found.name == "worker" else "FAIL "),
+              "a worker bundling the site directory is detected")
+        if not (found and found.name == "worker"):
+            return 1
+
+        # a worker that holds a route but bundles nothing is not the site
+        (wroot / "other").mkdir()
+        (wroot / "other" / "wrangler.toml").write_text(
+            'name = "api"\nroutes = [{ pattern = "x.example", '
+            'custom_domain = true }]\n', encoding="utf-8")
+        still = pub.find_site_worker(wroot, wroot / "dist" / "site")
+        print(("ok   " if still.name == "worker" else "FAIL "),
+              "a route-only worker is not mistaken for the site")
+        if still.name != "worker":
+            return 1
+
+        plain = Path(tempfile.mkdtemp(prefix="eddic-publish-pages-"))
+        (plain / "dist" / "site").mkdir(parents=True)
+        print(("ok   " if pub.find_site_worker(
+            plain, plain / "dist" / "site") is None else "FAIL "),
+            "a campaign with no worker still deploys to Pages")
+
+        # --- #29: an untracked projection is left alone, not committed ---
+        pub.report_projection(plain, plain / "dist" / "player")
+        print("ok   ", "a non-repo campaign is not pushed to")
+
         print("verify ok: publish module")
         return 0
     finally:

@@ -36,3 +36,22 @@ The module's verify harness assembles a complete campaign in a temporary directo
 ## Related
 
 See [render](render.md) for how the static site is built, [wiki](wiki.md) and [lint](lint.md) for the projection and checks the pipeline gates on, the [cli](cli.md) for the vendored-verb mechanism, and the [firewall](../concepts/the-firewall.md) concept for what the projection stage protects. Return to the [module index](index.md) or the [Eddic overview](../index.md).
+
+## Two targets, one live site
+
+When the [retrieval](retrieval.md) module is applied the worker serves
+the site from its bundled assets, so the site deploy is the worker
+deploy. Publish detects a worker whose `wrangler.toml` bundles the
+campaign's site directory and deploys that; `--target pages` forces
+Cloudflare Pages and warns that the live site will not change. A worker
+that only holds a route is not the site.
+
+## The projection the bot reads
+
+The [lore bot](lore-bot.md) polls the repository's projection rather
+than the deployed site, which is how it notices a new session page and
+announces it to the table. Publish therefore commits and pushes the
+regenerated projection after a successful deploy, when that directory is
+tracked. Without it the live site runs ahead of the repo and a published
+recap never reaches the table — a silent divergence, since everything
+looks published. `--no-commit-projection` opts out.
