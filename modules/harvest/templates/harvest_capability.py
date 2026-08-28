@@ -15,6 +15,9 @@ table, and it holds no message store: harvest.py keeps watermarks.
 
 Config (environment):
     HARVEST_HOUR=4              host clock, 0-23; nightly run time
+    HARVEST_MAX_PAGES=20        pages of 100 per channel per run; the
+                                first run reads history, so raise it for
+                                a deeper backlog
     HARVEST_CONFIG=harvest.json the allow-list, dm_ids, announced flag
     HARVEST_STATE=harvest-state.json   watermarks; put it on a volume
     WITNESS_URL / WITNESS_TOKEN  where findings are filed
@@ -120,6 +123,11 @@ def setup(client):
     report_to = int(os.environ.get("HARVEST_REPORT_TO",
                                    os.environ.get("OWNER_ID", "0")) or 0)
     token = os.environ.get("DISCORD_TOKEN", "")
+    # Pages of 100 messages per channel per run. The default is plenty
+    # for a night; the first run reads history, so raise it when the
+    # backlog is deeper than 2,000 messages in a channel.
+    max_pages = int(os.environ.get("HARVEST_MAX_PAGES",
+                                   harvest.DEFAULT_MAX_PAGES))
 
     class Harvest:
         def __init__(self):
@@ -141,8 +149,7 @@ def setup(client):
             config.setdefault("state_file", state_path)
             config["corpus_dir"] = ""       # the live corpus is better
             packet, code = harvest.do_pull(
-                config, state_path, token, harvest.http_get,
-                harvest.DEFAULT_MAX_PAGES)
+                config, state_path, token, harvest.http_get, max_pages)
             if packet is None:
                 return None, code
             known = set(harvest.PROPER.findall(self.corpus))
