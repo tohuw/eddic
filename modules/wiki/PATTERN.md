@@ -107,6 +107,26 @@ on — and the schema you (the agent) maintain across sessions.
   either takes the pen here or accepts rewriting the recaps later
   (see the contribs pattern's packaging walkthrough).
 
+## What version the wiki conforms to
+
+The wiki module versions a **standard** — the page schema, fail-closed
+visibility, the `.dm` twin convention, the standing pages, the
+frontmatter fields those pages may carry. A campaign's pages are content
+and carry no version of their own; what is versioned is the standard
+they conform to, and that is recorded once, in the campaign's
+`.eddic/manifest.json`, when this pattern is applied.
+
+That is the right home and not a new file: the manifest already exists
+for exactly this question, `eddic upgrade` already diffs it against a
+checkout, and a second record would be a second thing to keep true.
+Re-record it with the manifest verb when re-applying the pattern:
+
+    uv run .eddic/eddic.py manifest record --module wiki --version <v>
+
+The reporter states the recorded version in its summary and in its JSON
+report, because the report is where conformance is judged. It states
+nothing when there is no manifest to read, and it never guesses.
+
 ## Verify
 
 - `uv run modules/wiki/verify/run.py` — projects a planted campaign:

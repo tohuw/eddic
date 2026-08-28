@@ -53,3 +53,13 @@ alongside everything else. The reporter refuses a location that names no
 page, and refuses one that names a DM page — pointing the party at
 hidden material announces that the material exists, which is the
 firewall failing in the direction nobody watches.
+
+## The standard has a version; the content does not
+
+This module versions a standard — the schema, fail-closed visibility,
+the twin convention, the standing pages and the fields they carry. A
+campaign's own pages are content, and content carries no version. What a
+campaign records is which version of the standard its pages conform to,
+once, in `.eddic/manifest.json` when the pattern is applied; `eddic
+upgrade` diffs that against a checkout, and the reporter states it in
+every report because the report is where conformance is judged.

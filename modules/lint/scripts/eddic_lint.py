@@ -582,6 +582,24 @@ def lint(root, log_name, contribs=None):
     return kept, quieted
 
 
+def wiki_standard():
+    """The wiki-module version the campaign's manifest records, which is
+    the version of the *standard* its pages conform to — the schema, the
+    fail-closed visibility rules, the twin convention, the standing
+    pages. Absent manifest, absent answer: never guessed."""
+    root = os.environ.get("EDDIC_ROOT")
+    if not root:
+        return ""
+    try:
+        data = json.loads(
+            (Path(root) / ".eddic" / "manifest.json").read_text(
+                encoding="utf-8"))
+    except (OSError, ValueError):
+        return ""
+    entry = (data.get("modules") or {}).get("wiki") or {}
+    return str(entry.get("version") or "")
+
+
 def main(argv):
     args = [a for a in argv if not a.startswith("--")]
     flags = {a for a in argv if a.startswith("--")}
@@ -625,8 +643,19 @@ def main(argv):
         findings = binding + [dict(f, quieted=True) for f in quieted]
     findings.sort(key=lambda f: (sev_rank[f["severity"]], f["path"], f["line"] or 0))
 
+    # Which version of the wiki standard this content was built against.
+    # It is recorded in the campaign manifest — the software is versioned,
+    # the content is not — and it belongs in the report because this is
+    # where conformance is judged. `eddic upgrade` is what compares it to
+    # a checkout; lint only states it, and states nothing when there is no
+    # manifest to read (a bare wiki directory, a fixture, a checkout).
+    standard = wiki_standard()
+
     if "--json" in flags:
-        print(json.dumps({"findings": findings, "summary": counts}, indent=2))
+        payload = {"findings": findings, "summary": counts}
+        if standard:
+            payload["wiki_standard"] = standard
+        print(json.dumps(payload, indent=2))
     else:
         for f in findings:
             loc = f"{f['path']}:{f['line']}" if f["line"] else f["path"]
@@ -634,6 +663,8 @@ def main(argv):
             print(f"{f['severity']:<8} {f['code']:<16} {loc} — {f['detail']}{mark}")
         print(f"\n{counts['error']} error(s), {counts['warning']} warning(s), "
               f"{counts['info']} info(s)")
+        if standard:
+            print(f"wiki standard {standard} (as recorded in the manifest)")
         if quieted and "--show-quieted" not in flags:
             print(f"{counts['quieted']} advisory finding(s) quieted on "
                   f"human-curated, opted-out, or proposal pages "
