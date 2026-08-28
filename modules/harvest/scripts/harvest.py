@@ -180,6 +180,29 @@ def assert_no_content(state):
 
 # -------------------------------------------------------------- collection
 
+def backfill_channel(channel, token, transport, max_pages):
+    """A channel with no watermark has no 'after' to read forward from,
+    so walk backwards from the present instead: newest page first, then
+    `before` the oldest id seen, until history runs out or the page cap
+    stops it. Returns (msgs ascending, truncated)."""
+    out, cursor = [], None
+    for page in range(max_pages):
+        url = f"{API}/channels/{channel}/messages?limit={PAGE}"
+        if cursor:
+            url += f"&before={cursor}"
+        batch = get_with_retry(url, token, transport)
+        if not batch:
+            break
+        batch.sort(key=lambda m: int(m["id"]))
+        out = batch + out
+        cursor = batch[0]["id"]
+        if len(batch) < PAGE:
+            break
+    else:
+        return out, True
+    return out, False
+
+
 def pull_channel(channel, token, after, transport, max_pages):
     """Ascending fetch of everything after `after`. Returns (msgs, truncated)."""
     out, cursor, truncated = [], after, False
@@ -406,12 +429,19 @@ def do_pull(config, state_path, token, transport, max_pages):
     state = load_state(state_path)
     watermarks = state["watermarks"]
 
-    records, truncated, dropped, failed = [], [], 0, []
+    records, truncated, dropped, failed, backfilled = [], [], 0, [], []
     for chan_id, chan_name in channels.items():
+        chan_id = str(chan_id)
         try:
-            msgs, cut = pull_channel(str(chan_id), token,
-                                     watermarks.get(str(chan_id)),
-                                     transport, max_pages)
+            if chan_id in watermarks:
+                msgs, cut = pull_channel(chan_id, token,
+                                         watermarks[chan_id],
+                                         transport, max_pages)
+            else:                       # first run: read the history
+                msgs, cut = backfill_channel(chan_id, token, transport,
+                                             max_pages)
+                if msgs:
+                    backfilled.append(f"{chan_name} ({len(msgs)})")
         except Exception as e:                      # one bad channel must
             failed.append(f"{chan_name}: {e}")      # not lose the others
             continue
@@ -432,7 +462,7 @@ def do_pull(config, state_path, token, transport, max_pages):
             if rec["text"]:
                 records.append(rec)
         if msgs:                                    # advance only on success
-            watermarks[str(chan_id)] = msgs[-1]["id"]
+            watermarks[chan_id] = msgs[-1]["id"]
 
     records.sort(key=lambda r: r["at"])
     known = corpus_words(config.get("corpus_dir"))
@@ -448,7 +478,8 @@ def do_pull(config, state_path, token, transport, max_pages):
         window={"from": records[0]["at"] if records else "",
                 "to": records[-1]["at"] if records else "",
                 "channels": sorted(channels.values()),
-                "failed_channels": failed},
+                "failed_channels": failed,
+                "backfilled_channels": backfilled},
         truncated=truncated,
         bot_asked=asked,
         bot_unanswered=unanswered,
@@ -466,6 +497,9 @@ def do_pull(config, state_path, token, transport, max_pages):
               file=sys.stderr)
     for f in failed:
         print(f"warning: channel failed, watermark held: {f}", file=sys.stderr)
+    for name in backfilled:
+        print(f"{name}: first run — read back through history to the "
+              f"page cap", file=sys.stderr)
     return packet, 0
 
 

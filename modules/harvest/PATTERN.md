@@ -143,12 +143,13 @@ failure this module exists to avoid.
   chance), never an off-topic or social channel. When the owner says
   "just pick," take the lore bot's `AUTO_CHANNEL_IDS` plus the rules
   channel: those are where questions already land.
-- **Telling the table.** Default: **a plain message in the server before
-  the first run**, naming the channels and the opt-out. The
-  when-it's-worth-more heuristic: a table that already accepted
-  react-gated session recording will accept this in one line; a table
-  that has never been recorded deserves the longer version and a chance
-  to object before anything runs.
+- **Telling the table.** Default: **the owner decides the terms and the
+  wording.** What a table has already agreed to varies — some consented
+  to the bot reading the server when it was installed, and for them this
+  is not a new question. The `announced` flag exists so the pull cannot
+  run before whoever owns that decision has made it; it does not exist
+  to make the decision. The module ships example wording below as a
+  starting point, not a script.
 - **Cadence.** Default: **nightly**, off-session, so a night's play is
   harvested with the following day's chatter and the routine never
   competes with a live session. A quiet table can run weekly; the pull
@@ -162,11 +163,12 @@ failure this module exists to avoid.
   run**, which no table exceeds in a day. A first run against a busy
   server with old channels will hit it, say so, and pick up the rest on
   the next run — that is a truncation notice, not a failure.
-- **What the first run harvests.** Default: **only what arrives after the
-  first run**, since a fresh watermark starts at the present. Backfilling
-  history is possible by seeding a watermark by hand and is usually a bad
-  trade: the table consented to what happens next, not to a retroactive
-  read of everything it ever said.
+- **What the first run harvests.** Default: **as much history as the page
+  cap allows**. A channel with no watermark is walked backwards from the
+  present until history runs out or the cap stops it, so the first run
+  mines what the table has already said rather than starting blank —
+  which is usually where the best backlog is. Raise `--max-pages` for a
+  deeper first read; the truncation notice says when more was left.
 
 ## Verify
 
@@ -185,11 +187,12 @@ With a real server: run the pull twice. The first writes a packet and a
 state file; the second returns zero messages. Read the state file and
 confirm it contains ids and timestamps and nothing anyone said.
 
-## The announcement
+## Example wording
 
-The module ships wording rather than leaving the owner to invent it,
-because the honest version is short and the tempting version is vague.
-Adapt the channel names and post it where the table reads:
+Offered so the owner is not starting from a blank page. It is an
+example, not a policy: the terms belong to whoever runs the table, and a
+table that has already agreed to the bot reading the server may need
+nothing like this. Adapt or discard.
 
 > Snorri now keeps a nightly eye on **#dnd** and **#info** — and only
 > those two. Once a night he reads what was posted since the night
@@ -208,4 +211,6 @@ Adapt the channel names and post it where the table reads:
 > add you to the opt-out — your messages get dropped before anything
 > looks at them, no explanation needed.
 
-Then set `"announced": true`. The pull refuses until you do.
+Then set `"announced": true`. The pull refuses until it is set — which
+is the flag's whole job: it holds the run until the owner has decided,
+not until the owner has said any particular thing.

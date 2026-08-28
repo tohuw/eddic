@@ -52,6 +52,9 @@ def transport(url, token):
     if "after=" in url:
         after = int(url.split("after=")[1].split("&")[0])
         page = [m for m in page if int(m["id"]) > after]
+    elif "before=" in url:
+        before = int(url.split("before=")[1].split("&")[0])
+        page = [m for m in page if int(m["id"]) < before]
     return list(reversed(page))          # Discord returns newest-first
 
 
@@ -122,6 +125,9 @@ def main():
     packet2, _ = harvest.do_pull(config, state, "token", transport, 5)
     fails += check("second run is empty — the watermark held",
                    packet2["counts"]["messages"] == 0)
+    fails += check("the first run read history, it did not start blank",
+                   any("rules-questions" in b
+                       for b in packet["window"]["backfilled_channels"]))
 
     # A bot without the Message Content intent gets messages with the
     # words removed. That must refuse loudly and hold its place, or the
