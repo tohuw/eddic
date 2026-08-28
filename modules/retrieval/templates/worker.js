@@ -114,7 +114,13 @@ const WRITE_TOOLS = [
     inputSchema: { type: "object", required: ["path", "suggestion"],
       properties: { path: { type: "string" },
                     suggestion: { type: "string" },
-                    rationale: { type: "string" } } },
+                    rationale: { type: "string" },
+                    visibility: { type: "string", enum: ["player", "dm"],
+                      description: "Who this material is for once the DM " +
+                        "accepts it. Use \"dm\" for anything the table " +
+                        "must not read — a per-player secret, a backstory " +
+                        "the player wants kept private. Carried on the " +
+                        "suggestion and shown to the DM at review." } } },
     annotations: WRITE },
   { name: "suggest_page", title: "Suggest a new page",
     description: "Propose a brand-new wiki page. This files a pending " +
@@ -122,7 +128,12 @@ const WRITE_TOOLS = [
       "DM accepts it out of band.",
     inputSchema: { type: "object", required: ["title", "content"],
       properties: { title: { type: "string" }, content: { type: "string" },
-                    path: { type: "string" }, rationale: { type: "string" } } },
+                    path: { type: "string" }, rationale: { type: "string" },
+                    visibility: { type: "string", enum: ["player", "dm"],
+                      description: "Who this page is for once the DM " +
+                        "accepts it. Use \"dm\" for a per-player secret " +
+                        "the rest of the table must not read. Carried on " +
+                        "the suggestion and shown to the DM at review." } } },
     annotations: WRITE },
 ];
 
@@ -330,6 +341,21 @@ async function pendingFull(env) {
 const INBOX_FULL = `the review inbox is full (${MAX_PENDING} pending); ` +
   "ask the DM to clear it before filing more suggestions";
 
+// Firewall intent, carried as a field rather than hinted in prose. The
+// companion kit tells a player their secret goes only to the DM; before
+// this, the only way to say so on the wire was a .dm.md suffix and a
+// banner in the rationale — hints to a human reading carefully, and one
+// slip away from a per-player secret landing in the player projection.
+// A `.dm` in the proposed path is taken as the same statement, so an
+// older client that only knew the convention still gets the guarantee.
+function askedVisibility(args) {
+  const asked = typeof args.visibility === "string"
+    ? args.visibility.trim().toLowerCase() : "";
+  if (asked === "dm" || asked === "player") return asked;
+  const path = typeof args.path === "string" ? args.path : "";
+  return /\.dm\.md$|\.dm$/i.test(path) ? "dm" : "";
+}
+
 async function writeTool(env, tier, name, args) {
   if (name === "suggest_edit") {
     for (const [f, req] of [["path", true], ["suggestion", true],
@@ -343,6 +369,7 @@ async function writeTool(env, tier, name, args) {
     // DM-only pages exist by watching suggest_edit succeed or fail.
     const id = await appendSuggestion(env, {
       kind: "edit", tier, path: args.path, suggestion: args.suggestion,
+      visibility: askedVisibility(args),
       rationale: typeof args.rationale === "string" ? args.rationale : "" });
     return confirm(id);
   }
@@ -356,6 +383,7 @@ async function writeTool(env, tier, name, args) {
     const id = await appendSuggestion(env, {
       kind: "page", tier, title: args.title, content: args.content,
       path: typeof args.path === "string" ? args.path : "",
+      visibility: askedVisibility(args),
       rationale: typeof args.rationale === "string" ? args.rationale : "" });
     return confirm(id);
   }

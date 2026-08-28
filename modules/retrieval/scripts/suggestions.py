@@ -138,6 +138,17 @@ def render(sug):
         fm["path"] = sug.get("path", "")
     if sug.get("note"):
         fm["note"] = sug["note"]
+    # Firewall intent as filed. A suggestion marked dm is a per-player
+    # secret whose author was told, out loud by the companion kit, that
+    # only the DM would read it. It reaches the review file as a field
+    # and as a banner, so applying a batch by hand cannot promote it
+    # into the player projection by inattention.
+    asked = (sug.get("visibility") or "").strip().lower()
+    if asked not in ("dm", "player"):
+        asked = "dm" if str(sug.get("path", "")).endswith(
+            (".dm.md", ".dm")) else ""
+    if asked:
+        fm["visibility"] = asked
 
     lines = ["---"]
     for k, v in fm.items():
@@ -148,6 +159,14 @@ def render(sug):
     heading = (sug.get("title") or sug.get("path") or "(untitled)")
     lines.append(f"# Suggestion {sid[:8]} — {kind}: {heading}")
     lines.append("")
+    if asked == "dm":
+        lines.append("> **DM-ONLY — filed as a secret.** Whoever wrote this "
+                     "was told it goes to you and to nobody else at the "
+                     "table. If you accept it, it belongs on a `.dm.md` "
+                     "page or behind `visibility: dm`; putting it on a "
+                     "player page breaks a promise that was made in your "
+                     "name.")
+        lines.append("")
     lines.append(f"- **Status:** {fm['status']}")
     lines.append(f"- **From tier:** {fm.get('tier') or 'unknown'}")
     lines.append(f"- **Created:** {fm.get('created') or 'unknown'}")
@@ -157,6 +176,8 @@ def render(sug):
             lines.append(f"- **Suggested path:** `{sug['path']}`")
     else:
         lines.append(f"- **Target path:** `{sug.get('path', '')}`")
+    if asked:
+        lines.append(f"- **Filed visibility:** {asked}")
     if sug.get("rationale"):
         lines.append(f"- **Rationale:** {sug['rationale']}")
     if sug.get("resolved"):

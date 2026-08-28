@@ -161,3 +161,20 @@ Related: [wiki](wiki.md), [publish](publish.md),
 [projection and visibility](../concepts/projection-and-visibility.md)
 and [the capability seam](../concepts/the-capability-seam.md). See the
 full [module index](index.md).
+
+## Firewall intent on the write path
+
+`suggest_edit` and `suggest_page` take an optional `visibility` of
+`player` or `dm`. A companion filing a per-player secret has already told
+the player, in the kit's own words, that it goes to the DM and to nobody
+else; before this the only way to say so on the wire was a `.dm.md`
+suffix and a banner in the rationale — hints to a human reading
+carefully, one slip from a secret landing in the player projection. The
+field is stored on the suggestion, and `eddic suggestions` renders it as
+frontmatter and as a banner at the top of the review file. A `.dm` path
+is read as the same statement, so a client that only knows the older
+convention still gets the guarantee.
+
+It is intent, not enforcement: the DM still decides where accepted
+material lands. What changed is that the intent is now impossible to
+miss rather than buried in prose.
