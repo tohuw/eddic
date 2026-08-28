@@ -85,6 +85,36 @@ def unit_checks():
     ck(not any(ln.startswith("fake:") for ln in fm2),
        "suggestions: a newline in a path injects no frontmatter key")
 
+    # Firewall intent survives the round trip to the review file. The
+    # promise made to whoever filed a secret is only kept if the DM sees
+    # it at the moment of applying, so it must be both a field and a
+    # banner — and it must NOT appear on an ordinary edit, or the banner
+    # becomes wallpaper and stops being read.
+    secret = sug.render({
+        "id": "abc12345", "kind": "page", "tier": "player",
+        "title": "Why Kestrel left home", "content": "...",
+        "path": "characters/kestrel-secret.md", "visibility": "dm",
+        "status": "pending", "created": "2026-08-27T00:00:00"})
+    ck("visibility: dm" in secret,
+       "suggestions: a dm-visibility suggestion carries the field")
+    ck("DM-ONLY" in secret,
+       "suggestions: and banners it where the reviewer cannot miss it")
+
+    by_path = sug.render({
+        "id": "def67890", "kind": "edit", "tier": "player",
+        "path": "characters/kestrel.dm.md", "suggestion": "s",
+        "status": "pending", "created": "2026-08-27T00:00:00"})
+    ck("DM-ONLY" in by_path,
+       "suggestions: a .dm path states the same intent, so an older "
+       "client keeps the guarantee")
+
+    plain = sug.render({
+        "id": "ffffffff", "kind": "edit", "tier": "player",
+        "path": "places/harbor.md", "suggestion": "s",
+        "status": "pending", "created": "2026-08-27T00:00:00"})
+    ck("DM-ONLY" not in plain and "visibility:" not in plain,
+       "suggestions: an ordinary edit is not banner-ed")
+
     return fails
 
 
