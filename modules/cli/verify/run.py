@@ -234,6 +234,17 @@ def main():
             print(nproc.stdout, nproc.stderr, sep="\n")
             return 1
 
+        # The roster is a cli-owned shared facility, so its checks ride
+        # this verify — verify_all only discovers run.py.
+        rproc = subprocess.run(
+            [sys.executable,
+             str(Path(__file__).resolve().parent / "roster_run.py")],
+            capture_output=True, text=True)
+        print(rproc.stdout.rstrip())
+        if rproc.returncode != 0:
+            print(rproc.stderr, file=sys.stderr)
+            return 1
+
         print("verify ok: cli module")
         return 0
     finally:

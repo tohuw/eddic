@@ -85,6 +85,20 @@ the transcript body.
    output) holds the raw per-track JSON; keep or delete at the
    owner's preference.
 
+### Speaker labels
+
+A track is named for whoever Discord thought was speaking — a username,
+a display name, sometimes a display name with a real first name glued
+on. With a campaign roster present (the cli module's `roster` verb),
+those resolve to the table's own terms before they reach the transcript:
+`1-Niðrerir_Ron.wav` becomes `Niðrerir`, `5-theseous` becomes `DM`.
+Pass `--roster FILE` to override; without a roster, labels pass through
+exactly as they always did.
+
+This is a firewall matter as much as a legibility one. The roster is
+DM-tier and holds real names; the transcript is a source file the whole
+pipeline reads, and it should speak in character terms.
+
 ## Decision points
 
 - **Model.** Default: **ask the owner interactively** — present the

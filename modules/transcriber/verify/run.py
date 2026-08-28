@@ -34,10 +34,21 @@ def main():
         (6000, "And I ask about the harbor."),
     ]), encoding="utf-8")
 
+    # With a roster, a track named for a Discord handle becomes the
+    # speaker the table actually knows.
+    (tmp / ".eddic").mkdir(parents=True, exist_ok=True)
+    (tmp / ".eddic" / "roster.json").write_text(json.dumps({"players": [
+        {"discord_id": "1", "discord_username": "dungeon_master",
+         "label": "DM", "role": "dm"},
+        {"discord_id": "2", "discord_username": "warden_player",
+         "player": "Sam", "characters": ["Warden"], "label": "Warden"},
+    ]}), encoding="utf-8")
+
     out = tmp / "sources" / "session-1_transcript.md"
     proc = subprocess.run(
         [sys.executable, str(SCRIPT), "--from-json", str(jdir),
-         "--out", str(out), "--session", "Session 1"],
+         "--out", str(out), "--session", "Session 1",
+         "--roster", str(tmp / ".eddic" / "roster.json")],
         capture_output=True, text=True)
     if proc.returncode != 0:
         print(f"FAIL: transcribe exit {proc.returncode}\n{proc.stderr}")
@@ -51,13 +62,16 @@ def main():
         ("## Known mishearings" in text, "mishearings section present"),
         (len(lines) == 3, f"3 merged segments (got {len(lines)}): "
                           "coalesce + gap break"),
-        (lines[0].startswith("[0:00:00] dungeon_master:")
+        (lines[0].startswith("[0:00:00] DM:")
          and "guard hails" in lines[0],
-         "same-speaker segments coalesced with label from track name"),
-        (lines[1].startswith("[0:00:04] warden_player:"),
-         "interleaved by timestamp across tracks"),
-        (lines[2].startswith("[0:01:35] dungeon_master:"),
+         "same-speaker segments coalesced, label resolved through the "
+         "roster rather than left as a Discord handle"),
+        (lines[1].startswith("[0:00:04] Warden:"),
+         "interleaved by timestamp across tracks, in the table's terms"),
+        (lines[2].startswith("[0:01:35] DM:"),
          "long gap breaks the paragraph"),
+        ("warden_player" not in text and "dungeon_master" not in text,
+         "no Discord handle survives into the transcript"),
     ]
     failed = [msg for ok, msg in checks if not ok]
     for ok, msg in checks:

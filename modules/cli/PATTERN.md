@@ -79,6 +79,32 @@ newer version against the manifest.
    then re-run until it exits 0; delete a stale entry (the renamed
    case) from `manifest.json` by hand once its successor is recorded.
 
+### The roster
+
+`scripts/roster.py` is stamped in beside the CLI as the `roster` verb.
+It answers one question the whole campaign keeps re-deriving and never
+keeping: who a Discord user is.
+
+    uv run .eddic/eddic.py roster                       list
+    uv run .eddic/eddic.py roster --seed-craig info.txt  seed ids+handles
+    uv run .eddic/eddic.py roster --set <id> --character "Niðrerir"
+    uv run .eddic/eddic.py roster --resolve 5-theseous   map any label
+    uv run .eddic/eddic.py roster --check                validate
+
+It is keyed by the numeric Discord user id, the one identifier that does
+not change: usernames change, display names change, a player retires a
+character. Every consumer maps whatever identifier it happens to hold —
+a Craig track stem, a display name, a raw id — through `resolve()` to
+one canonical `label`.
+
+**It is DM-tier and it stays there.** It holds real first names and
+Discord handles; it lives in `.eddic/`, which the projection never
+reads, and consumers resolve *through* it rather than copying it
+forward. That is the point of the `label` field: a transcript says
+"Niðrerir", not "Niðrerir_Ron" and not "tohuw". An unknown speaker
+resolves to itself rather than to the nearest guess, because a wrong
+attribution is worse than an unresolved one.
+
 ## Decision points
 
 - **Site name.** Default: the campaign directory's name, titleized.

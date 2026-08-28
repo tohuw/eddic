@@ -8,7 +8,9 @@ Usage:
         [--model PATH] [--whisper whisper-cli] [--session "Session 3"]
         [--prompt "Names in this recording: ..." | --prompt-file FILE]
     uv run transcribe.py --from-json <dir-of-whisper-json> --out ... \
-        [--session ...]
+        [--session ...] [--origin NAME]
+    (any form also takes --roster FILE; without it, the campaign's
+     .eddic/roster.json is used when one exists)
 
 A directory input is treated as per-speaker tracks (a Craig export:
 one file per voice, names like `1-username.flac`): each track is
@@ -27,6 +29,7 @@ mishearings section for corrections discovered later, and
 """
 
 import json
+import os
 import re
 import subprocess
 import sys
@@ -58,9 +61,65 @@ def is_silence_artifact(text, duration_ms):
     return text.strip() in SILENCE_ARTIFACTS and duration_ms >= ARTIFACT_MIN_MS
 
 
-def speaker_from_name(stem):
-    """Craig names tracks like `1-username` or `01_username`."""
-    return re.sub(r"^\d+[-_]", "", stem) or stem
+def load_roster(explicit=None):
+    """The campaign's roster, if it has one. A track is named for
+    whoever Discord thinks the speaker is — a username, a display name,
+    whatever the recorder wrote down — and the roster is what turns that
+    into the name the table uses. Absent roster: labels pass through
+    unchanged, which is what every campaign did before this existed."""
+    candidates = [Path(explicit)] if explicit else []
+    root = os.environ.get("EDDIC_ROOT")
+    if root:
+        candidates.append(Path(root) / ".eddic" / "roster.json")
+    candidates.append(Path(".eddic/roster.json"))
+    for c in candidates:
+        try:
+            if c.exists():
+                return json.loads(c.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+    return None
+
+
+def resolve_speaker(label, roster):
+    """Roster resolution, kept identical to the cli module's `roster`
+    verb by construction: same normalization, same longest-match rule.
+    Duplicated rather than imported because the transcriber must run
+    from a checkout with no campaign around it."""
+    if not roster or not label:
+        return label
+    stem = re.sub(r"^\d+[-_]", "", str(label)).strip()
+    stem = re.sub(r"\.(flac|wav|mp3|m4a|ogg|opus|aac|json)$", "", stem,
+                  flags=re.I)
+    target = re.sub(r"[^0-9a-z]+", "", stem.lower())
+    if not target:
+        return label
+    best, best_len = None, 0
+    for row in roster.get("players", []):
+        keys = [row.get("discord_id"), row.get("discord_username"),
+                row.get("label"), row.get("player")]
+        keys += list(row.get("characters") or [])
+        keys += list(row.get("aliases") or [])
+        for key in [k for k in keys if k]:
+            k = re.sub(r"[^0-9a-z]+", "", str(key).lower())
+            if not k:
+                continue
+            if k == target or target.startswith(k) or k.startswith(target) \
+                    or k in target:
+                if len(k) > best_len:
+                    best, best_len = row, len(k)
+    if best:
+        return best.get("label") or best.get("discord_username") or label
+    return label
+
+
+def speaker_from_name(stem, roster=None):
+    """Craig names tracks like `1-username` or `01_username`. With a
+    roster, that becomes the speaker's canonical label — so a transcript
+    reads in the table's own terms rather than in Discord handles, and
+    real names stay in the DM-tier roster where they belong."""
+    plain = re.sub(r"^\d+[-_]", "", stem) or stem
+    return resolve_speaker(plain, roster) if roster else plain
 
 
 def run_whisper(audio, whisper, model, workdir, prompt=None):
@@ -163,6 +222,7 @@ def main(argv):
         print(__doc__.strip(), file=sys.stderr)
         return 2
 
+    roster = load_roster(opts.get("--roster"))
     segments, origin = [], ""
     if "--from-json" in opts:
         jdir = Path(opts["--from-json"])
@@ -170,7 +230,8 @@ def main(argv):
         # audio it came from, so a re-merge keeps the recording's name.
         origin = opts.get("--origin", jdir.name)
         for j in sorted(jdir.glob("*.json")):
-            segments += segments_from_json(j, speaker_from_name(j.stem))
+            segments += segments_from_json(
+                j, speaker_from_name(j.stem, roster))
     else:
         src = Path(pos[0])
         origin = src.name
@@ -192,7 +253,8 @@ def main(argv):
                 j = run_whisper(t, whisper, model, workdir, prompt)
                 if not j:
                     return 1
-                segments += segments_from_json(j, speaker_from_name(t.stem))
+                segments += segments_from_json(
+                    j, speaker_from_name(t.stem, roster))
         else:
             j = run_whisper(src, whisper, model, workdir, prompt)
             if not j:
