@@ -8,6 +8,7 @@ review packet and enforces the findings schema. Exits 0 on match, 1
 otherwise."""
 
 import json
+import shutil
 import subprocess
 import sys
 from collections import Counter
@@ -237,8 +238,62 @@ FINDING_KEYS = ("page", "anchor_or_line", "category", "severity",
                 "finding", "suggested_fix")
 
 
+def check_party_location():
+    """The party's whereabouts are shared table knowledge, so the
+    location must name a page the players can actually read. Pointing it
+    at a DM page announces that the page exists — the firewall failing
+    in the direction nobody watches."""
+    import tempfile
+    tmp = Path(tempfile.mkdtemp(prefix="eddic-lint-party-"))
+    (tmp / "places").mkdir()
+    (tmp / "index.md").write_text(
+        "---\nvisibility: player\n---\n\n# Index\n\n"
+        "- [The Party](party.md)\n- [Harbor](places/harbor.md)\n",
+        encoding="utf-8")
+    (tmp / "places" / "harbor.md").write_text(
+        "---\nvisibility: player\n---\n\n# Harbor\n\nA working port "
+        "with a long stone quay and too many gulls.\n", encoding="utf-8")
+    (tmp / "places" / "vault.dm.md").write_text(
+        "---\nvisibility: dm\n---\n\n# Vault\n\nThe cache nobody has "
+        "found yet, and the reason the harbor is watched.\n",
+        encoding="utf-8")
+
+    def run_with(location):
+        (tmp / "party.md").write_text(
+            f"---\nvisibility: player\nlocation: {location}\n---\n\n"
+            "# The Party\n\nThe crew, such as it is, and where they have "
+            "got to so far.\n\nBack to [index](index.md).\n",
+            encoding="utf-8")
+        proc = subprocess.run(
+            [sys.executable, str(REPORTER), str(tmp), "--json"],
+            capture_output=True, text=True)
+        return Counter(f["code"] for f in json.loads(proc.stdout)["findings"])
+
+    fails = 0
+    got = run_with("places/harbor.md")
+    ok = not got["party-location-missing"] and not got["party-location-dm"]
+    print(("ok   " if ok else "FAIL "),
+          "a location naming a player-visible place is accepted")
+    fails += 0 if ok else 1
+
+    got = run_with("places/vault.dm.md")
+    ok = got["party-location-dm"] == 1
+    print(("ok   " if ok else "FAIL "),
+          "a location naming a DM page is refused")
+    fails += 0 if ok else 1
+
+    got = run_with("places/nowhere.md")
+    ok = got["party-location-missing"] == 1
+    print(("ok   " if ok else "FAIL "),
+          "a location naming no page at all is refused")
+    fails += 0 if ok else 1
+
+    shutil.rmtree(tmp, ignore_errors=True)
+    return 1 if fails else 0
+
+
 def main():
-    return check_reporter() or check_semantic()
+    return check_reporter() or check_semantic() or check_party_location()
 
 
 if __name__ == "__main__":

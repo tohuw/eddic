@@ -43,3 +43,13 @@ scattered across N character files. `tools/wikilib.py` exposes
 page as a reachability root, so a character linked only from the party
 is not an orphan. A campaign without one gets an info, never an error:
 a table in its first hour has not written it yet.
+
+The party page is also where a campaign tracks **where the party
+currently is**, as an optional `location:` frontmatter field naming a
+player-visible place page. That is deliberately not `.eddic/` state: the
+party's whereabouts are shared table knowledge rather than DM state, so
+it belongs on a page the players read, git-tracked and diffable
+alongside everything else. The reporter refuses a location that names no
+page, and refuses one that names a DM page — pointing the party at
+hidden material announces that the material exists, which is the
+firewall failing in the direction nobody watches.

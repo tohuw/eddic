@@ -388,6 +388,27 @@ def lint(root, log_name, contribs=None):
         add("no-party-page", "info", ".",
             "no standing party.md; it is the page that answers "
             "\"who are we again?\" and defines the player-character set")
+    else:
+        # Where the party currently is, if the campaign tracks it. It
+        # lives here rather than in .eddic/ because it is shared table
+        # knowledge, not DM state: git-tracked, diffable, and on a page
+        # the players can read. It must point at a place they can also
+        # read — pointing the party at a DM-only page would announce
+        # that the page exists, which is the firewall failing in the one
+        # direction nobody checks.
+        party = pages["party.md"]
+        where = (party.frontmatter.get("location") or "").strip()
+        if where:
+            ref, _strict = page_ref(where.split("#", 1)[0])
+            target = pages.get(ref) if ref else None
+            if target is None:
+                add("party-location-missing", "error", "party.md",
+                    f"location: {where} names no page")
+            elif target.declared != "player":
+                add("party-location-dm", "error", "party.md",
+                    f"location: {where} is not player-visible; the party's "
+                    f"whereabouts are shared table knowledge and must point "
+                    f"at a page the table can read")
 
     # Reachability and orphans. Roots are the catalogs: index.md and,
     # where the campaign keeps a DM catalog, index.dm.md — the player

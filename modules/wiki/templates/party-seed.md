@@ -2,6 +2,13 @@
 visibility: player
 ---
 
+<!-- Optional: track where the party currently is by adding a
+     `location:` line to the frontmatter above, naming a player-visible
+     place page — e.g. `location: places/harbor.md`. The reporter
+     refuses a location that names no page or a DM-only one, since the
+     party's whereabouts are shared table knowledge and pointing at a
+     hidden page would announce that it exists. -->
+
 # The Party
 
 The player characters, at a glance. This page is the answer to the
