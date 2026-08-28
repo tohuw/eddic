@@ -1,5 +1,5 @@
 name: publish
-version: 0.1.0
+version: 0.2.0
 summary: >
   Deploys the player site to Cloudflare Pages behind a safety
   pipeline: strict lint, firewall projection, render, then wrangler.
