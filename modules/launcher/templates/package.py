@@ -141,7 +141,30 @@ let service = "%s"
 let campaignDir = "%s"
 let campaignShell = "%s"
 let headless = %s
-let logPath = campaignDir + "/.eddic/" + service + ".log"
+
+// Where the campaign actually is, decided at launch rather than at build.
+// The app is packaged inside the campaign it launches, so the bundle's own
+// location answers the question — and a campaign that moves keeps working
+// without a rebuild, which a baked absolute path does not. The baked path
+// remains the fallback for an app deliberately moved out (into
+// /Applications, say). If neither holds a campaign, the app says so and
+// stops, naming both, instead of failing somewhere further down.
+func isCampaign(_ dir: String) -> Bool {
+    return FileManager.default.fileExists(
+        atPath: dir + "/.eddic/eddic.py")
+}
+
+// Same close/escape/reopen rule the build-time quoting uses: a path
+// cannot break out of the shell cd or inject a command.
+func bashQuote(_ s: String) -> String {
+    return "'" + s.replacingOccurrences(of: "'", with: "'\\''") + "'"
+}
+
+let bundleParent = Bundle.main.bundleURL
+    .deletingLastPathComponent().path
+let runDir = isCampaign(bundleParent) ? bundleParent : campaignDir
+let runShell = runDir == campaignDir ? campaignShell : bashQuote(runDir)
+let logPath = runDir + "/.eddic/" + service + ".log"
 
 final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate {
     var childPGID: pid_t = -1
@@ -156,6 +179,29 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func applicationDidFinishLaunching(_ note: Notification) {
         buildMenu()
         if !headless { buildWindow() }
+        if !isCampaign(runDir) {
+            // The campaign moved and this app was left behind. Say exactly
+            // that, and say where it looked, rather than launching a shell
+            // into a directory that is not there and reporting whatever
+            // that fails with.
+            let msg = displayName + " cannot find the campaign.\n\n"
+                + "Looked beside the app:\n  " + bundleParent + "\n\n"
+                + "and where it was built:\n  " + campaignDir + "\n\n"
+                + "Neither holds .eddic/eddic.py. Move the app back into "
+                + "the campaign folder, or rebuild it for the new location."
+            if headless {
+                FileHandle.standardError.write(
+                    (msg + "\n").data(using: .utf8)!)
+            } else {
+                let alert = NSAlert()
+                alert.alertStyle = .critical
+                alert.messageText = "Campaign not found"
+                alert.informativeText = msg
+                alert.runModal()
+            }
+            NSApp.terminate(nil)
+            return
+        }
         startService()
     }
 
@@ -247,7 +293,7 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func startService() {
-        let logDir = campaignDir + "/.eddic"
+        let logDir = runDir + "/.eddic"
         try? FileManager.default.createDirectory(
             atPath: logDir, withIntermediateDirectories: true)
         FileManager.default.createFile(atPath: logPath, contents: Data())
@@ -256,7 +302,7 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate {
         // Delegate to the run verb, as our own child, in a new
         // session/process group (setsid) so one signal fells the tree.
         let invoke = "uv run .eddic/eddic.py run " + service
-        let script = "cd " + campaignShell + " && exec perl -e "
+        let script = "cd " + runShell + " && exec perl -e "
             + "'use POSIX qw(setsid); setsid(); exec @ARGV' "
             + "/bin/bash -lc '" + invoke + "'"
         let p = Process()

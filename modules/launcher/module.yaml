@@ -1,5 +1,5 @@
 name: launcher
-version: 0.4.1
+version: 0.5.0
 # 0.4.0: the macOS supervisor gains a Restart menu item (Cmd-R). The child
 # launch is factored into a single startService() used both at launch and on
 # restart; a `restarting` flag lets the child's terminationHandler branch —

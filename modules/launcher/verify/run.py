@@ -196,8 +196,25 @@ def main():
     check(f'let campaignShell = "{baked_shell}"' in ed_swift,
           "the campaign dir is bash-single-quoted for the shell cd")
     check('"cd \\"" + campaignDir' not in ed_swift
-          and 'let script = "cd " + campaignShell' in ed_swift,
-          "the cd uses the bash-quoted campaignShell, not a raw quoted path")
+          and 'let script = "cd " + runShell' in ed_swift,
+          "the cd uses a bash-quoted path, never a raw interpolated one")
+
+    # The campaign is resolved at launch: the app is packaged inside the
+    # campaign, so a campaign that moves keeps working without a rebuild,
+    # and the baked path is only the fallback for an app moved out.
+    check("Bundle.main.bundleURL" in ed_swift
+          and "let runDir = isCampaign(bundleParent)" in ed_swift,
+          "the campaign is resolved from the bundle location first")
+    check('atPath: dir + "/.eddic/eddic.py"' in ed_swift,
+          "a directory counts as a campaign only if it holds the CLI")
+    check("func bashQuote" in ed_swift
+          and "let runShell = runDir == campaignDir ? campaignShell "
+              "+ \"\" : bashQuote(runDir)" in ed_swift
+          or "bashQuote(runDir)" in ed_swift,
+          "a runtime-resolved path is bash-quoted the same way")
+    check("cannot find the campaign" in ed_swift
+          and "NSApp.terminate" in ed_swift,
+          "a campaign that is not there fails loudly at launch")
     check(pkg._bash_squote("a'b") == "'a'\\''b'",
           "bash single-quoting closes/escapes/reopens an embedded quote")
 

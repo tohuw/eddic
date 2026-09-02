@@ -115,3 +115,15 @@ never typed a command.
 See the [module index](index.md), the services and run verb the
 [cli](cli.md) module provides, and the [recorder](recorder.md) and
 [lore-bot](lore-bot.md) services this most often wraps.
+
+## A campaign that moves
+
+The generator bakes the campaign path, but the app does not trust it
+first. At launch it checks its own bundle's parent directory for
+`.eddic/eddic.py` and uses that when it is there — the app is packaged
+inside the campaign it launches, so its own location is the better
+answer, and a campaign that is renamed or re-homed keeps working with no
+rebuild. The baked path remains the fallback for an app moved out of the
+campaign on purpose. If neither is a campaign, the app opens an alert
+naming both places it looked and quits, rather than running a shell in a
+directory that no longer exists and reporting whatever that produces.

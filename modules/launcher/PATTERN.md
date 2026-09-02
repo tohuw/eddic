@@ -96,6 +96,15 @@ over:
    ad-hoc-signs the finished bundle last, after every payload byte is
    final — never edit inside a stamped `.app`, restamp it.
 
+   The campaign path is still baked in, but it is a fallback rather than
+   the answer: the app resolves the campaign from its own bundle
+   location first, so a campaign that moves — renamed, re-homed, cloned
+   to a second machine at a different path — keeps working without a
+   rebuild. The baked path covers the app deliberately moved out of the
+   campaign (into `~/Applications`, say). When neither holds a campaign
+   the app says so at launch, naming both paths, instead of launching a
+   shell into a directory that is not there.
+
 2. Hand the launcher to the owner where their OS expects it. On macOS the
    `.app` is Spotlight- and Dock-droppable as-is; move or `--dest
    ~/Applications` it if the owner wants it in Launchpad. On Windows the
