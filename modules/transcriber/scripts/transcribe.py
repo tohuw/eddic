@@ -124,6 +124,19 @@ def speaker_from_name(stem, roster=None):
 
 def run_whisper(audio, whisper, model, workdir, prompt=None):
     out_base = workdir / audio.stem
+    # A finished track's JSON is already sitting in the workdir — that dir
+    # exists so --from-json can re-merge without whisper. A session is
+    # hours per track, so a run interrupted on track five must not throw
+    # away the four that finished: reuse any JSON that parses.
+    json_path = out_base.with_suffix(".json")
+    if json_path.exists():
+        try:
+            json.loads(json_path.read_text(encoding="utf-8"))
+            print(f"  {json_path.name}: reusing existing transcription",
+                  file=sys.stderr)
+            return json_path
+        except (ValueError, OSError):
+            pass  # truncated by the interruption; redo it
     cmd = [whisper, "-f", str(audio), "-oj", "-of", str(out_base)]
     # Per-speaker tracks (a Craig export) are mostly silence for any one
     # voice, and vanilla whisper hallucinates loops over the silence — the
@@ -142,7 +155,6 @@ def run_whisper(audio, whisper, model, workdir, prompt=None):
     if model:
         cmd += ["-m", str(model)]
     proc = subprocess.run(cmd, capture_output=True, text=True, shell=False)
-    json_path = out_base.with_suffix(".json")
     if proc.returncode != 0 or not json_path.exists():
         print(f"whisper failed on {audio.name}:\n{proc.stderr[-2000:]}",
               file=sys.stderr)
